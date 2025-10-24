@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
-import Logo from '../components/Logo';
+import { Animated, Dimensions, Easing, Image, StyleSheet, Text, View } from 'react-native';
+const logo = require('../../assets/images/1111.png');
 
 // Фирменные цвета
 const COLORS = {
@@ -21,13 +21,15 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Анимация вращения логотипа
+    // Анимация вращения логотипа - ПЛАВНОЕ непрерывное вращение
     const rotateAnimation = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
-        duration: 3000, // 3 секунды на полный оборот
+        duration: 2000, // 2 секунды на оборот
+        easing: Easing.linear, // Линейная анимация без ускорений
         useNativeDriver: true,
-      })
+      }),
+      { iterations: -1 }
     );
 
     // Анимация появления текста
@@ -41,10 +43,10 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
     rotateAnimation.start();
     fadeAnimation.start();
 
-    // Переходим к следующему экрану через 3 секунды
+    // Переходим к следующему экрану через 5 секунд
     const timer = setTimeout(() => {
       onFinish();
-    }, 3000);
+    }, 5000);
 
     return () => {
       rotateAnimation.stop();
@@ -55,22 +57,24 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
+    extrapolate: 'extend',
   });
 
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Animated.View style={[styles.logo, { transform: [{ rotate }] }]}>
-          <Logo size={120} color={COLORS.blue} />
+          <Image 
+            source={logo} 
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </Animated.View>
       </View>
       
       <Animated.View style={[styles.textContainer, { opacity: fadeAnim }]}>
-        <Text style={styles.welcomeText}>Добро пожаловать!</Text>
-        <Text style={styles.appName}>Самодиагностика бизнеса ХОРЕКА</Text>
-        <Text style={styles.description}>
-          Комплексная диагностика вашего ресторанного бизнеса
-        </Text>
+        <Text style={styles.welcomeText}>Pelby</Text>
+        <Text style={styles.appName}>Мы знаем все о ресторанах и немного больше...</Text>
       </Animated.View>
     </View>
   );
@@ -90,18 +94,12 @@ const styles = StyleSheet.create({
   logo: {
     width: 120,
     height: 120,
-    borderRadius: 60,
-    backgroundColor: COLORS.orange,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.orange,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   textContainer: {
     alignItems: 'center',
@@ -114,11 +112,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   appName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.orange,
-    marginBottom: 15,
     textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: width * 0.9,
   },
   description: {
     fontSize: 16,

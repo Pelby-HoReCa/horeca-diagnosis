@@ -1,28 +1,87 @@
 [
   {
-    "id": "operations",
-    "title": "Операции",
-    "description": "Вопросы по операционной деятельности",
+    "id": "economy",
+    "title": "Экономика",
+    "description": "Финансовые показатели и эффективность",
     "questions": [
       {
-        "id": "ops1",
-        "question": "Как вы оцениваете эффективность ваших операционных процессов?",
+        "id": "eco1",
+        "question": "Как вы оцениваете финансовое планирование в вашем бизнесе?",
         "type": "single",
         "options": [
-          { "id": "opt1", "text": "Отлично", "value": "excellent" },
-          { "id": "opt2", "text": "Хорошо", "value": "good" },
-          { "id": "opt3", "text": "Удовлетворительно", "value": "satisfactory" },
-          { "id": "opt4", "text": "Плохо", "value": "poor" }
+          { "id": "opt1", "text": "Отлично - есть детальный бюджет", "value": "excellent" },
+          { "id": "opt2", "text": "Хорошо - базовое планирование", "value": "good" },
+          { "id": "opt3", "text": "Плохо - нет системы планирования", "value": "poor" },
+          { "id": "opt4", "text": "Вообще не планируем", "value": "no" }
         ]
       },
       {
-        "id": "ops2",
-        "question": "Есть ли у вас стандартизированные процедуры?",
+        "id": "eco2",
+        "question": "Как часто вы анализируете финансовые показатели?",
         "type": "single",
         "options": [
-          { "id": "opt1", "text": "Да, полностью", "value": "yes_full" },
+          { "id": "opt1", "text": "Еженедельно", "value": "weekly" },
+          { "id": "opt2", "text": "Ежемесячно", "value": "monthly" },
+          { "id": "opt3", "text": "Редко", "value": "rarely" },
+          { "id": "opt4", "text": "Никогда", "value": "never" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "production",
+    "title": "Производство",
+    "description": "Операционные процессы и качество",
+    "questions": [
+      {
+        "id": "prod1",
+        "question": "Как вы контролируете качество продукции?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Строгий контроль на всех этапах", "value": "strict" },
+          { "id": "opt2", "text": "Базовый контроль качества", "value": "basic" },
+          { "id": "opt3", "text": "Плохо - много брака", "value": "poor" },
+          { "id": "opt4", "text": "Вообще не контролируем", "value": "no" }
+        ]
+      },
+      {
+        "id": "prod2",
+        "question": "Есть ли у вас стандартизированные рецепты?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, все рецепты стандартизированы", "value": "yes_full" },
           { "id": "opt2", "text": "Частично", "value": "yes_partial" },
-          { "id": "opt3", "text": "Нет", "value": "no" }
+          { "id": "opt3", "text": "Минимально", "value": "minimal" },
+          { "id": "opt4", "text": "Нет стандартов", "value": "no" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "team",
+    "title": "Команда",
+    "description": "Управление персоналом и мотивация",
+    "questions": [
+      {
+        "id": "team1",
+        "question": "Как вы оцениваете мотивацию сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Высокая мотивация", "value": "high" },
+          { "id": "opt2", "text": "Средняя мотивация", "value": "medium" },
+          { "id": "opt3", "text": "Низкая мотивация", "value": "low" },
+          { "id": "opt4", "text": "Редко мотивируем", "value": "rarely" }
+        ]
+      },
+      {
+        "id": "team2",
+        "question": "Проводите ли вы обучение персонала?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регулярно", "value": "regular" },
+          { "id": "opt2", "text": "Иногда", "value": "sometimes" },
+          { "id": "opt3", "text": "Редко", "value": "rarely" },
+          { "id": "opt4", "text": "Не проводим", "value": "no" }
         ]
       }
     ]
@@ -30,54 +89,86 @@
   {
     "id": "delivery",
     "title": "Доставка",
-    "description": "Вопросы по доставке и логистике",
+    "description": "Логистика и доставка",
     "questions": [
       {
         "id": "del1",
         "question": "Как вы оцениваете качество доставки?",
         "type": "single",
         "options": [
-          { "id": "opt1", "text": "Отлично", "value": "excellent" },
-          { "id": "opt2", "text": "Хорошо", "value": "good" },
-          { "id": "opt3", "text": "Удовлетворительно", "value": "satisfactory" },
-          { "id": "opt4", "text": "Плохо", "value": "poor" }
+          { "id": "opt1", "text": "Отличное качество", "value": "excellent" },
+          { "id": "opt2", "text": "Хорошее качество", "value": "good" },
+          { "id": "opt3", "text": "Плохое качество", "value": "poor" },
+          { "id": "opt4", "text": "Серьезные проблемы", "value": "major_issues" }
         ]
       },
       {
         "id": "del2",
-        "question": "Есть ли проблемы с логистикой?",
+        "question": "Какова скорость доставки заказов?",
         "type": "single",
         "options": [
-          { "id": "opt1", "text": "Нет проблем", "value": "no_problems" },
-          { "id": "opt2", "text": "Есть небольшие проблемы", "value": "minor_issues" },
-          { "id": "opt3", "text": "Серьезные проблемы", "value": "major_issues" }
+          { "id": "opt1", "text": "Очень быстро", "value": "fast" },
+          { "id": "opt2", "text": "Нормально", "value": "normal" },
+          { "id": "opt3", "text": "Медленно", "value": "slow" },
+          { "id": "opt4", "text": "Очень медленно", "value": "very_slow" }
         ]
       }
     ]
   },
   {
-    "id": "hr",
-    "title": "HR",
-    "description": "Вопросы по управлению персоналом",
+    "id": "service",
+    "title": "Сервис",
+    "description": "Качество обслуживания клиентов",
     "questions": [
       {
-        "id": "hr1",
-        "question": "Как вы оцениваете мотивацию сотрудников?",
+        "id": "serv1",
+        "question": "Как вы оцениваете качество обслуживания?",
         "type": "single",
         "options": [
-          { "id": "opt1", "text": "Высокая", "value": "high" },
-          { "id": "opt2", "text": "Средняя", "value": "medium" },
-          { "id": "opt3", "text": "Низкая", "value": "low" }
+          { "id": "opt1", "text": "Отличное обслуживание", "value": "excellent" },
+          { "id": "opt2", "text": "Хорошее обслуживание", "value": "good" },
+          { "id": "opt3", "text": "Плохое обслуживание", "value": "poor" },
+          { "id": "opt4", "text": "Нет стандартов обслуживания", "value": "no" }
         ]
       },
       {
-        "id": "hr2",
-        "question": "Проводите ли вы обучение персонала?",
+        "id": "serv2",
+        "question": "Как быстро вы обрабатываете жалобы клиентов?",
         "type": "single",
         "options": [
-          { "id": "opt1", "text": "Регулярно", "value": "regular" },
-          { "id": "opt2", "text": "Иногда", "value": "sometimes" },
-          { "id": "opt3", "text": "Редко", "value": "rarely" }
+          { "id": "opt1", "text": "Очень быстро", "value": "fast" },
+          { "id": "opt2", "text": "Нормально", "value": "normal" },
+          { "id": "opt3", "text": "Медленно", "value": "slow" },
+          { "id": "opt4", "text": "Не обрабатываем", "value": "no" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "sales",
+    "title": "Продажи",
+    "description": "Маркетинг и продажи",
+    "questions": [
+      {
+        "id": "sales1",
+        "question": "Как вы оцениваете эффективность продаж?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Очень эффективно", "value": "excellent" },
+          { "id": "opt2", "text": "Эффективно", "value": "good" },
+          { "id": "opt3", "text": "Плохо", "value": "poor" },
+          { "id": "opt4", "text": "Нет системы продаж", "value": "no" }
+        ]
+      },
+      {
+        "id": "sales2",
+        "question": "Как вы привлекаете новых клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Активный маркетинг", "value": "active" },
+          { "id": "opt2", "text": "Базовый маркетинг", "value": "basic" },
+          { "id": "opt3", "text": "Минимально", "value": "minimal" },
+          { "id": "opt4", "text": "Не привлекаем", "value": "no" }
         ]
       }
     ]

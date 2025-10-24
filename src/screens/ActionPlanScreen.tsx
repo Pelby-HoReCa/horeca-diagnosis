@@ -43,16 +43,20 @@ export default function ActionPlanScreen({ route }: { route?: any }) {
       const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
       if (storedTasks) {
         const parsedTasks = JSON.parse(storedTasks);
-        // Убеждаемся, что у всех задач есть id и completed
-        const tasksWithDefaults = parsedTasks.map((task: any) => ({
+        // Убеждаемся, что у всех задач есть уникальный id и completed
+        const tasksWithDefaults = parsedTasks.map((task: any, index: number) => ({
           ...task,
-          id: task.id || Math.random().toString(36).substr(2, 9),
+          id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
           completed: task.completed || false,
         }));
         setTasks(tasksWithDefaults);
+      } else {
+        // По умолчанию экшен план пустой
+        setTasks([]);
       }
     } catch (error) {
       console.error('Ошибка загрузки задач:', error);
+      setTasks([]);
     } finally {
       setLoading(false);
     }

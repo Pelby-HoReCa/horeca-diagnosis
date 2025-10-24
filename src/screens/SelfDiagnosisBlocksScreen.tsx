@@ -31,6 +31,22 @@ export default function SelfDiagnosisBlocksScreen() {
     loadBlocks();
   }, []);
 
+  // Принудительная инициализация блоков, если они пустые
+  useEffect(() => {
+    if (!loading && blocks.length === 0) {
+      console.log('Блоки пустые, принудительно инициализируем...');
+      const defaultBlocks: Block[] = [
+        { id: 'economy', title: 'Экономика', description: 'Финансовые показатели и эффективность', completed: false },
+        { id: 'production', title: 'Производство', description: 'Операционные процессы и качество', completed: false },
+        { id: 'team', title: 'Команда', description: 'Управление персоналом и мотивация', completed: false },
+        { id: 'delivery', title: 'Доставка', description: 'Логистика и доставка', completed: false },
+        { id: 'service', title: 'Сервис', description: 'Качество обслуживания клиентов', completed: false },
+        { id: 'sales', title: 'Продажи', description: 'Маркетинг и продажи', completed: false },
+      ];
+      setBlocks(defaultBlocks);
+    }
+  }, [loading, blocks.length]);
+
   const loadBlocks = async () => {
     try {
       console.log('Загружаем блоки диагностики...');
@@ -69,6 +85,7 @@ export default function SelfDiagnosisBlocksScreen() {
       ];
       setBlocks(defaultBlocks);
     } finally {
+      console.log('Загрузка завершена, устанавливаем loading = false');
       setLoading(false);
     }
   };
@@ -109,9 +126,7 @@ export default function SelfDiagnosisBlocksScreen() {
     setQuestionnaireCompleted(true);
     setShowModal(false);
     setModalType(null);
-    // Переходим к подтверждению
-    setModalType('confirm');
-    setShowModal(true);
+    // Убираем подтверждение - сразу показываем блоки
   };
 
   const handleConfirmStart = () => {
@@ -186,8 +201,6 @@ export default function SelfDiagnosisBlocksScreen() {
     );
   }
 
-  console.log('Текущие блоки:', blocks);
-  console.log('Количество блоков:', blocks.length);
 
   return (
     <View style={styles.container}>
@@ -200,21 +213,28 @@ export default function SelfDiagnosisBlocksScreen() {
         <TouchableOpacity
           style={styles.startButton}
           onPress={() => {
-            setModalType('questionnaire');
-            setShowModal(true);
+            // Показываем блоки сразу без модальных окон
+            setQuestionnaireCompleted(true);
           }}
         >
           <Text style={styles.startButtonText}>Начать диагностику</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={blocks}
-        renderItem={renderBlock}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
+      <View style={styles.blocksContainer}>
+        <Text style={styles.blocksTitle}>Выберите блок для диагностики:</Text>
+        {blocks.length > 0 ? (
+          <FlatList
+            data={blocks}
+            renderItem={renderBlock}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.emptyText}>Блоки не загружены</Text>
+        )}
+      </View>
 
       {/* Модальное окно для анкетирования */}
       <Modal
@@ -331,6 +351,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+    textAlign: 'center',
+  },
+  blocksContainer: {
+    flex: 1,
+    padding: 20,
+  },
+  blocksTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.blue,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: COLORS.darkGray,
+    textAlign: 'center',
+    marginTop: 20,
   },
   modalOverlay: {
     flex: 1,
@@ -391,22 +429,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
+    textAlign: 'center',
   },
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.blue,
+    textAlign: 'center',
   },
   listContainer: {
     padding: 20,
   },
   blockCard: {
     backgroundColor: COLORS.gray,
-    padding: 20,
+    padding: 16,
     borderRadius: 12,
     marginBottom: 15,
     borderWidth: 2,
     borderColor: 'transparent',
+    minHeight: 120,
   },
   blockCardCompleted: {
     backgroundColor: '#FFF4E6',

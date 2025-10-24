@@ -24,17 +24,6 @@ const wrongAnswersMapping: Record<string, Record<string, Task[]>> = {
         dueDate: '2024-02-15',
         completed: false,
         category: 'Финансы'
-      },
-      {
-        id: 'economy_financial_2',
-        title: 'Провести аудит финансовых процессов',
-        description: 'Проанализировать текущие финансовые показатели и выявить проблемы',
-        blockId: 'economy',
-        blockTitle: 'Экономика',
-        priority: 'high',
-        dueDate: '2024-02-20',
-        completed: false,
-        category: 'Анализ'
       }
     ],
     'no': [
@@ -59,6 +48,19 @@ const wrongAnswersMapping: Record<string, Record<string, Task[]>> = {
         blockTitle: 'Экономика',
         priority: 'medium',
         dueDate: '2024-02-25',
+        completed: false,
+        category: 'Анализ'
+      }
+    ],
+    'never': [
+      {
+        id: 'economy_analysis_2',
+        title: 'Внедрить еженедельный анализ финансов',
+        description: 'Создать систему регулярного анализа финансовых показателей',
+        blockId: 'economy',
+        blockTitle: 'Экономика',
+        priority: 'high',
+        dueDate: '2024-02-12',
         completed: false,
         category: 'Анализ'
       }
@@ -185,6 +187,19 @@ const wrongAnswersMapping: Record<string, Record<string, Task[]>> = {
         completed: false,
         category: 'Скорость'
       }
+    ],
+    'very_slow': [
+      {
+        id: 'delivery_speed_2',
+        title: 'Кардинально ускорить доставку',
+        description: 'Пересмотреть всю систему доставки для значительного сокращения времени',
+        blockId: 'delivery',
+        blockTitle: 'Доставка',
+        priority: 'high',
+        dueDate: '2024-02-19',
+        completed: false,
+        category: 'Скорость'
+      }
     ]
   },
   service: {
@@ -280,7 +295,14 @@ export const generateTasksFromAnswers = (blockId: string, answers: Record<string
   // Проходим по всем ответам и ищем неправильные
   Object.entries(answers).forEach(([questionId, answerValue]) => {
     if (blockMapping[answerValue]) {
-      tasks.push(...blockMapping[answerValue]);
+      // Добавляем уникальный суффикс к ID, чтобы избежать дублирования
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substr(2, 5);
+      const uniqueTasks = blockMapping[answerValue].map((task, index) => ({
+        ...task,
+        id: `${task.id}_${timestamp}_${randomSuffix}_${index}`
+      }));
+      tasks.push(...uniqueTasks);
     }
   });
   

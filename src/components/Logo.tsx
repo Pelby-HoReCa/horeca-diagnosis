@@ -6,27 +6,27 @@ interface LogoProps {
   color?: string;
 }
 
-export default function Logo({ size = 100, color = '#112677' }: LogoProps) {
-  const centerSize = size * 0.2;
-  const rayLength = size * 0.4;
-  const rayWidth = size * 0.06;
+export default function Logo({ size = 100, color = '#E84411' }: LogoProps) {
+  const centerSize = size * 0.25; // Центральный белый круг
+  const rayLength = size * 0.35; // Длина лучей
+  const rayWidth = size * 0.15; // Толщина лучей
   
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      {/* Центральный круг */}
+      {/* Центральный белый круг */}
       <View style={[
         styles.center,
         {
           width: centerSize,
           height: centerSize,
           borderRadius: centerSize / 2,
-          backgroundColor: '#000000',
+          backgroundColor: '#FFFFFF', // Белый цвет
         }
       ]} />
       
-      {/* 8 лучей */}
+      {/* 8 оранжевых лучей с закругленными концами */}
       {Array.from({ length: 8 }, (_, index) => {
-        const angle = (index * 45); // 8 лучей по 45 градусов
+        const angle = index * 45; // 8 лучей по 45 градусов
         return (
           <View
             key={index}
@@ -35,8 +35,8 @@ export default function Logo({ size = 100, color = '#112677' }: LogoProps) {
               {
                 width: rayLength,
                 height: rayWidth,
-                backgroundColor: color,
-                borderRadius: rayWidth / 2,
+                backgroundColor: color, // Оранжевый цвет
+                borderRadius: rayWidth / 2, // Закругленные концы
                 transform: [
                   { rotate: `${angle}deg` },
                   { translateX: rayLength / 2 }
