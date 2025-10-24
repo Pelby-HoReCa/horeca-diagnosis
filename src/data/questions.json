@@ -1,0 +1,85 @@
+[
+  {
+    "id": "operations",
+    "title": "Операции",
+    "description": "Вопросы по операционной деятельности",
+    "questions": [
+      {
+        "id": "ops1",
+        "question": "Как вы оцениваете эффективность ваших операционных процессов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Отлично", "value": "excellent" },
+          { "id": "opt2", "text": "Хорошо", "value": "good" },
+          { "id": "opt3", "text": "Удовлетворительно", "value": "satisfactory" },
+          { "id": "opt4", "text": "Плохо", "value": "poor" }
+        ]
+      },
+      {
+        "id": "ops2",
+        "question": "Есть ли у вас стандартизированные процедуры?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, полностью", "value": "yes_full" },
+          { "id": "opt2", "text": "Частично", "value": "yes_partial" },
+          { "id": "opt3", "text": "Нет", "value": "no" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "delivery",
+    "title": "Доставка",
+    "description": "Вопросы по доставке и логистике",
+    "questions": [
+      {
+        "id": "del1",
+        "question": "Как вы оцениваете качество доставки?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Отлично", "value": "excellent" },
+          { "id": "opt2", "text": "Хорошо", "value": "good" },
+          { "id": "opt3", "text": "Удовлетворительно", "value": "satisfactory" },
+          { "id": "opt4", "text": "Плохо", "value": "poor" }
+        ]
+      },
+      {
+        "id": "del2",
+        "question": "Есть ли проблемы с логистикой?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Нет проблем", "value": "no_problems" },
+          { "id": "opt2", "text": "Есть небольшие проблемы", "value": "minor_issues" },
+          { "id": "opt3", "text": "Серьезные проблемы", "value": "major_issues" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hr",
+    "title": "HR",
+    "description": "Вопросы по управлению персоналом",
+    "questions": [
+      {
+        "id": "hr1",
+        "question": "Как вы оцениваете мотивацию сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Высокая", "value": "high" },
+          { "id": "opt2", "text": "Средняя", "value": "medium" },
+          { "id": "opt3", "text": "Низкая", "value": "low" }
+        ]
+      },
+      {
+        "id": "hr2",
+        "question": "Проводите ли вы обучение персонала?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регулярно", "value": "regular" },
+          { "id": "opt2", "text": "Иногда", "value": "sometimes" },
+          { "id": "opt3", "text": "Редко", "value": "rarely" }
+        ]
+      }
+    ]
+  }
+]
