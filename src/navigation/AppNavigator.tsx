@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 import ActionPlanScreen from '../screens/ActionPlanScreen';
 import AIAssistantScreen from '../screens/AIAssistantScreen';
+import BlockQuestionsScreen from '../screens/BlockQuestionsScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import QuestionnaireScreen from '../screens/QuestionnaireScreen';
 import SelfDiagnosisBlocksScreen from '../screens/SelfDiagnosisBlocksScreen';
+import { clearDataOnAppLaunch } from '../utils/appState';
 
 // Фирменные цвета
 const COLORS = {
@@ -29,17 +34,37 @@ function HomeStack() {
         component={SelfDiagnosisBlocksScreen} 
         options={{ title: 'Блоки диагностики' }} 
       />
+      <Stack.Screen 
+        name="BlockQuestions" 
+        component={BlockQuestionsScreen} 
+        options={{ title: 'Вопросы блока' }} 
+      />
+      <Stack.Screen 
+        name="Questionnaire" 
+        component={QuestionnaireScreen} 
+        options={{ title: 'Анкетирование' }} 
+      />
     </Stack.Navigator>
   );
 }
 
 export default function AppNavigator() {
+  useEffect(() => {
+    clearDataOnAppLaunch();
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.orange,
         tabBarInactiveTintColor: COLORS.blue,
+        // Отключаем изменение URL на вебе
+        ...(Platform.OS === 'web' && {
+          linking: {
+            enabled: false,
+          },
+        }),
         tabBarStyle: {
           backgroundColor: COLORS.white,
           borderTopColor: COLORS.gray,
@@ -123,6 +148,20 @@ export default function AppNavigator() {
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons 
               name={focused ? 'bar-chart' : 'bar-chart-outline'} 
+              size={22} 
+              color={focused ? COLORS.orange : COLORS.blue} 
+            />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Профиль" 
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Профиль',
+          tabBarIcon: ({ focused, color, size }) => (
+            <Ionicons 
+              name={focused ? 'person' : 'person-outline'} 
               size={22} 
               color={focused ? COLORS.orange : COLORS.blue} 
             />

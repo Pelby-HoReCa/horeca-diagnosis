@@ -1,7 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import BarChart from '../components/BarChart';
+import ScrollToTopButton from '../components/ScrollToTopButton';
+import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
+import { Task } from '../utils/recommendationEngine';
 
 // Фирменные цвета
 const COLORS = {
@@ -14,78 +19,323 @@ const COLORS = {
   green: '#00AA00',
 };
 
-interface BlockResult {
-  id: string;
-  title: string;
-  score: number;
-}
-
 interface Comparison {
   previous: number;
   current: number;
-}
-
-interface Task {
-  id: string;
-  title: string;
-  priority: 'low' | 'medium' | 'high';
-  completed: boolean;
+  change?: number; // Изменение в процентах (положительное = рост, отрицательное = падение)
 }
 
 export default function DashboardScreen() {
   const [restaurantName, setRestaurantName] = useState('Название ресторана');
-  const [blockResults, setBlockResults] = useState<BlockResult[]>([]);
-  const [comparison, setComparison] = useState<Comparison>({ previous: 45, current: 72 });
+  const [blockResults, setBlockResults] = useState<DiagnosisBlock[]>([]);
+  const [comparison, setComparison] = useState<Comparison>({ previous: 0, current: 0 });
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
     loadDashboardData();
+    checkAuthStatus();
   }, []);
 
-  const loadDashboardData = async () => {
+  const checkAuthStatus = async () => {
     try {
-      // Загружаем данные из AsyncStorage
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
-        setTasks(parsedTasks.slice(0, 3)); // Показываем только первые 3 задачи
-      }
-
-      // Моковые данные для блоков
-      setBlockResults([
-        { id: 'economy', title: 'Экономика', score: 75 },
-        { id: 'production', title: 'Производство', score: 80 },
-        { id: 'team', title: 'Команда', score: 65 },
-        { id: 'delivery', title: 'Доставка', score: 70 },
-        { id: 'service', title: 'Сервис', score: 85 },
-        { id: 'sales', title: 'Продажи', score: 60 },
-      ]);
+      const authStatus = await AsyncStorage.getItem('isAuthenticated');
+      setIsAuthenticated(authStatus === 'true');
     } catch (error) {
-      console.error('Ошибка загрузки данных:', error);
+      console.error('Ошибка проверки авторизации:', error);
+      setIsAuthenticated(false);
     }
   };
 
-  const BlockCard = ({ block }: { block: BlockResult }) => (
-    <View style={styles.blockCard}>
-      <Text style={styles.blockTitle}>{block.title}</Text>
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { width: `${block.score}%` }
-            ]} 
-          />
-        </View>
-        <Text style={styles.progressText}>{block.score}%</Text>
-      </View>
-    </View>
+  // Обновляем данные при возврате на экран
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Дашборд получил фокус, обновляем данные...');
+      loadDashboardDataWithoutClearing();
+    }, [])
   );
+
+  const loadDashboardData = async () => {
+    try {
+      console.log('Загружаем данные дашборда...');
+      
+      // Загружаем название ресторана из анкеты
+      const questionnaireData = await AsyncStorage.getItem('questionnaireData');
+      if (questionnaireData) {
+        try {
+          const parsed = JSON.parse(questionnaireData);
+          if (parsed.restaurantName && parsed.restaurantName.trim()) {
+            setRestaurantName(parsed.restaurantName);
+          } else {
+            setRestaurantName('Название ресторана');
+          }
+        } catch (e) {
+          setRestaurantName('Название ресторана');
+        }
+      } else {
+        setRestaurantName('Название ресторана');
+      }
+      
+      // Загружаем существующие данные
+      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+      const allBlocksCompleted = await AsyncStorage.getItem('dashboardAllBlocksCompleted');
+      const storedPrevious = await AsyncStorage.getItem('dashboardPreviousResult');
+      const storedCurrent = await AsyncStorage.getItem('dashboardCurrentResult');
+      
+      if (storedBlocks) {
+        const blocks = JSON.parse(storedBlocks);
+        // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
+        const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
+          const foundBlock = blocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
+          if (foundBlock) {
+            // Если блок найден, используем его данные (включая efficiency и completed)
+            return {
+              ...defaultBlock,
+              ...foundBlock,
+              // Сохраняем title и description из DEFAULT_BLOCKS
+              title: defaultBlock.title,
+              description: defaultBlock.description,
+            };
+          }
+          return defaultBlock;
+        });
+        setBlockResults(allBlocks);
+        console.log('Загружены блоки для дашборда:', allBlocks.length);
+        console.log('Детали блоков:', allBlocks.map(b => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
+        
+        // Проверяем, все ли блоки завершены
+        const completedBlocks = allBlocks.filter(b => b.completed && b.efficiency !== undefined);
+        const allCompleted = completedBlocks.length === DEFAULT_BLOCKS.length;
+        
+        if (allCompleted && completedBlocks.length > 0) {
+          // Рассчитываем среднюю эффективность по всем блокам
+          const avgEfficiency = Math.round(
+            completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length
+          );
+          
+          const wasAllCompleted = allBlocksCompleted === 'true';
+          const previousValue = storedPrevious ? parseInt(storedPrevious, 10) : 0;
+          const currentValue = storedCurrent ? parseInt(storedCurrent, 10) : 0;
+          
+          if (!wasAllCompleted) {
+            // Первое прохождение всех блоков - ПРЕДЫДУЩИЙ и ТЕКУЩИЙ равны
+            await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
+            await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
+            await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+            setComparison({ previous: avgEfficiency, current: avgEfficiency, change: 0 });
+          } else {
+            // Последующие прохождения - проверяем, изменился ли результат
+            if (avgEfficiency !== currentValue) {
+              // Результат изменился - обновляем ПРЕДЫДУЩИЙ и ТЕКУЩИЙ
+              const newPrevious = currentValue;
+              const newCurrent = avgEfficiency;
+              const change = newCurrent - newPrevious;
+              
+              await AsyncStorage.setItem('dashboardPreviousResult', newPrevious.toString());
+              await AsyncStorage.setItem('dashboardCurrentResult', newCurrent.toString());
+              setComparison({ previous: newPrevious, current: newCurrent, change });
+            } else {
+              // Результат не изменился - используем сохраненные значения
+              const change = currentValue !== previousValue ? currentValue - previousValue : 0;
+              setComparison({ previous: previousValue, current: currentValue, change });
+            }
+          }
+        } else {
+          // Не все блоки завершены - ПРЕДЫДУЩИЙ = 0, ТЕКУЩИЙ = среднее по завершенным блокам (или 0)
+          const avgEfficiency = completedBlocks.length > 0 
+            ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
+            : 0;
+          setComparison({ previous: 0, current: avgEfficiency, change: 0 });
+        }
+      } else {
+        // Если блоков нет, показываем дефолтные
+        setBlockResults(DEFAULT_BLOCKS);
+        setComparison({ previous: 0, current: 0, change: 0 });
+        console.log('Блоков в хранилище нет, показываем дефолтные');
+      }
+      
+      if (storedTasks) {
+        const tasks = JSON.parse(storedTasks);
+        // Показываем только первые 3 задачи
+        setTasks(tasks.slice(0, 3));
+        console.log('Загружены задачи для дашборда:', tasks.slice(0, 3).length);
+      } else {
+        setTasks([]);
+        console.log('Задач для дашборда нет');
+      }
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error);
+      setTasks([]);
+      setBlockResults(DEFAULT_BLOCKS);
+      setComparison({ previous: 0, current: 0, change: 0 });
+    }
+  };
+
+  const loadDashboardDataWithoutClearing = async () => {
+    try {
+      console.log('Загружаем данные дашборда без очистки...');
+      
+      // Загружаем название ресторана из анкеты
+      const questionnaireData = await AsyncStorage.getItem('questionnaireData');
+      if (questionnaireData) {
+        try {
+          const parsed = JSON.parse(questionnaireData);
+          if (parsed.restaurantName && parsed.restaurantName.trim()) {
+            setRestaurantName(parsed.restaurantName);
+          } else {
+            setRestaurantName('Название ресторана');
+          }
+        } catch (e) {
+          setRestaurantName('Название ресторана');
+        }
+      } else {
+        setRestaurantName('Название ресторана');
+      }
+      
+      // Загружаем существующие данные
+      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+      const allBlocksCompleted = await AsyncStorage.getItem('dashboardAllBlocksCompleted');
+      const storedPrevious = await AsyncStorage.getItem('dashboardPreviousResult');
+      const storedCurrent = await AsyncStorage.getItem('dashboardCurrentResult');
+      
+      if (storedBlocks) {
+        const blocks = JSON.parse(storedBlocks);
+        // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
+        const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
+          const foundBlock = blocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
+          if (foundBlock) {
+            // Если блок найден, используем его данные (включая efficiency и completed)
+            return {
+              ...defaultBlock,
+              ...foundBlock,
+              // Сохраняем title и description из DEFAULT_BLOCKS
+              title: defaultBlock.title,
+              description: defaultBlock.description,
+            };
+          }
+          return defaultBlock;
+        });
+        setBlockResults(allBlocks);
+        console.log('Загружены блоки для дашборда:', allBlocks.length);
+        console.log('Детали блоков:', allBlocks.map(b => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
+        
+        // Проверяем, все ли блоки завершены
+        const completedBlocks = allBlocks.filter(b => b.completed && b.efficiency !== undefined);
+        const allCompleted = completedBlocks.length === DEFAULT_BLOCKS.length;
+        
+        if (allCompleted && completedBlocks.length > 0) {
+          // Рассчитываем среднюю эффективность по всем блокам
+          const avgEfficiency = Math.round(
+            completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length
+          );
+          
+          const wasAllCompleted = allBlocksCompleted === 'true';
+          const previousValue = storedPrevious ? parseInt(storedPrevious, 10) : 0;
+          const currentValue = storedCurrent ? parseInt(storedCurrent, 10) : 0;
+          
+          if (!wasAllCompleted) {
+            // Первое прохождение всех блоков - ПРЕДЫДУЩИЙ и ТЕКУЩИЙ равны
+            await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
+            await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
+            await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+            setComparison({ previous: avgEfficiency, current: avgEfficiency, change: 0 });
+          } else {
+            // Последующие прохождения - проверяем, изменился ли результат
+            if (avgEfficiency !== currentValue) {
+              // Результат изменился - обновляем ПРЕДЫДУЩИЙ и ТЕКУЩИЙ
+              const newPrevious = currentValue;
+              const newCurrent = avgEfficiency;
+              const change = newCurrent - newPrevious;
+              
+              await AsyncStorage.setItem('dashboardPreviousResult', newPrevious.toString());
+              await AsyncStorage.setItem('dashboardCurrentResult', newCurrent.toString());
+              setComparison({ previous: newPrevious, current: newCurrent, change });
+            } else {
+              // Результат не изменился - используем сохраненные значения
+              const change = currentValue !== previousValue ? currentValue - previousValue : 0;
+              setComparison({ previous: previousValue, current: currentValue, change });
+            }
+          }
+        } else {
+          // Не все блоки завершены - ПРЕДЫДУЩИЙ = 0, ТЕКУЩИЙ = среднее по завершенным блокам (или 0)
+          const avgEfficiency = completedBlocks.length > 0 
+            ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
+            : 0;
+          setComparison({ previous: 0, current: avgEfficiency, change: 0 });
+        }
+      } else {
+        // Если блоков нет, показываем дефолтные
+        setBlockResults(DEFAULT_BLOCKS);
+        setComparison({ previous: 0, current: 0, change: 0 });
+        console.log('Блоков в хранилище нет, показываем дефолтные');
+      }
+
+      // Загружаем задачи
+      if (storedTasks) {
+        const parsedTasks = JSON.parse(storedTasks);
+        setTasks(parsedTasks.slice(0, 3)); // Показываем только первые 3 задачи
+        console.log('Загружены задачи для дашборда:', parsedTasks.length);
+      } else {
+        setTasks([]);
+        console.log('Задач для дашборда нет');
+      }
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных дашборда:', error);
+    }
+  };
+
+  const getEfficiencyColor = (efficiency?: number): { bg: string; text: string; border?: string } => {
+    if (efficiency === undefined || efficiency === null) {
+      return { bg: COLORS.gray, text: COLORS.darkGray };
+    }
+    
+    // Чем ниже эффективность, тем тревожнее цвет
+    if (efficiency >= 80) {
+      // Высокая эффективность - спокойный зеленоватый
+      return { bg: '#E8F5E9', text: COLORS.green, border: '#81C784' };
+    } else if (efficiency >= 60) {
+      // Средняя эффективность - нейтральный голубоватый
+      return { bg: '#E3F2FD', text: COLORS.blue, border: '#64B5F6' };
+    } else if (efficiency >= 40) {
+      // Низкая эффективность - предупреждающий оранжевый
+      return { bg: '#FFF3E0', text: '#F57C00', border: '#FFB74D' };
+    } else {
+      // Очень низкая эффективность - тревожный красноватый
+      return { bg: '#FFEBEE', text: '#D32F2F', border: '#E57373' };
+    }
+  };
+
+  const BlockCard = ({ block }: { block: DiagnosisBlock }) => {
+    const efficiency = block.efficiency ?? 0;
+    const colors = getEfficiencyColor(block.efficiency);
+    
+    return (
+      <View style={[
+        styles.blockCard, 
+        { backgroundColor: colors.bg, borderLeftWidth: 4, borderLeftColor: colors.border || colors.text }
+      ]}>
+        <Text style={[styles.blockTitle, { color: COLORS.blue }]}>{block.title}</Text>
+        <View style={styles.efficiencyContainer}>
+          <Text style={[styles.efficiencyValue, { color: colors.text }]}>
+            {block.completed ? `${efficiency}%` : '—'}
+          </Text>
+          <Text style={[styles.efficiencyLabel, { color: colors.text }]}>эффективность</Text>
+        </View>
+      </View>
+    );
+  };
 
   const TaskItem = ({ task }: { task: Task }) => (
     <View style={styles.taskItem}>
       <View style={styles.taskInfo}>
         <Text style={styles.taskTitle}>{task.title}</Text>
+        <Text style={styles.taskDescription}>{task.description}</Text>
         <Text style={styles.taskPriority}>
           Приоритет: {task.priority === 'high' ? 'Высокий' : task.priority === 'medium' ? 'Средний' : 'Низкий'}
         </Text>
@@ -98,11 +348,64 @@ export default function DashboardScreen() {
     </View>
   );
 
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollButton(offsetY > 500);
+  };
+
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
+    <ScrollView 
+      ref={scrollViewRef} 
+      style={styles.scrollView}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+    >
       {/* Название ресторана */}
       <View style={styles.restaurantNameContainer}>
         <Text style={styles.restaurantName}>{restaurantName}</Text>
+      </View>
+
+      {/* Общий результат - сверху */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Общий результат</Text>
+        <View style={styles.comparisonContainer}>
+          <View style={styles.comparisonItem}>
+            <Text style={[styles.comparisonValue, { color: COLORS.red }]}>{comparison.previous}%</Text>
+            <Text style={styles.comparisonLabel}>ПРЕДЫДУЩИЙ</Text>
+          </View>
+          <View style={styles.comparisonItem}>
+            <View style={styles.currentResultContainer}>
+              <Text style={[styles.comparisonValue, { color: COLORS.green }]}>{comparison.current}%</Text>
+              {comparison.change !== undefined && comparison.change !== 0 && (
+                <View style={styles.changeIndicator}>
+                  <Ionicons 
+                    name={comparison.change > 0 ? "arrow-up" : "arrow-down"} 
+                    size={14} 
+                    color={comparison.change > 0 ? COLORS.green : COLORS.red} 
+                  />
+                  <Text style={[
+                    styles.changeText,
+                    { color: comparison.change > 0 ? COLORS.green : COLORS.red }
+                  ]}>
+                    {Math.abs(comparison.change)}%
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.comparisonLabel}>ТЕКУЩИЙ</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Столбчатая диаграмма */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Результаты диагностики</Text>
+        <BarChart blocks={blockResults} isAuthenticated={isAuthenticated} />
       </View>
 
       {/* Результаты по блокам */}
@@ -112,21 +415,6 @@ export default function DashboardScreen() {
           {blockResults.map((block) => (
             <BlockCard key={block.id} block={block} />
           ))}
-        </View>
-      </View>
-
-      {/* Сравнение было/стало */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Сравнение эффективности</Text>
-        <View style={styles.comparisonContainer}>
-          <View style={styles.comparisonItem}>
-            <Text style={[styles.comparisonValue, { color: COLORS.red }]}>{comparison.previous}%</Text>
-            <Text style={styles.comparisonLabel}>БЫЛО</Text>
-          </View>
-          <View style={styles.comparisonItem}>
-            <Text style={[styles.comparisonValue, { color: COLORS.green }]}>{comparison.current}%</Text>
-            <Text style={styles.comparisonLabel}>СТАЛО</Text>
-          </View>
         </View>
       </View>
 
@@ -142,6 +430,8 @@ export default function DashboardScreen() {
         )}
       </View>
     </ScrollView>
+    <ScrollToTopButton onPress={scrollToTop} visible={showScrollButton} />
+    </View>
   );
 }
 
@@ -150,27 +440,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.white,
   },
+  scrollView: {
+    flex: 1,
+  },
   restaurantNameContainer: {
-    backgroundColor: COLORS.orange,
-    padding: 20,
+    backgroundColor: COLORS.white,
+    padding: 12,
     marginTop: 50,
-    marginHorizontal: 20,
+    marginHorizontal: 12,
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.blue,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -2,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   restaurantName: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    color: COLORS.white,
+    color: COLORS.orange,
   },
   section: {
-    margin: 20,
+    margin: 12,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.blue,
-    marginBottom: 15,
+    marginBottom: 10,
   },
   blocksGrid: {
     flexDirection: 'row',
@@ -178,56 +482,74 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   blockCard: {
-    backgroundColor: COLORS.gray,
-    padding: 15,
+    padding: 8,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: 6,
     width: '48%',
+    minHeight: 70,
+    justifyContent: 'space-between',
   },
   blockTitle: {
-    fontSize: 16,
+    fontSize: 11,
     fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 8,
+    marginBottom: 2,
+    lineHeight: 14,
   },
-  progressContainer: {
-    flexDirection: 'row',
+  efficiencyContainer: {
     alignItems: 'center',
+    marginTop: 2,
   },
-  progressBar: {
-    flex: 1,
-    height: 8,
-    backgroundColor: COLORS.white,
-    borderRadius: 4,
-    marginRight: 10,
+  efficiencyValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 1,
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: COLORS.orange,
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.blue,
+  efficiencyLabel: {
+    fontSize: 9,
+    fontWeight: '500',
+    textTransform: 'uppercase',
   },
   comparisonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: COLORS.gray,
-    padding: 20,
+    backgroundColor: COLORS.white,
+    padding: 12,
     borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.blue,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -2,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   comparisonItem: {
     alignItems: 'center',
   },
+  currentResultContainer: {
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   comparisonValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 2,
+  },
+  changeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  changeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 2,
   },
   comparisonLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.blue,
   },
@@ -235,18 +557,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.gray,
-    padding: 15,
+    padding: 10,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   taskInfo: {
     flex: 1,
   },
   taskTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: COLORS.blue,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  taskDescription: {
+    fontSize: 11,
+    color: COLORS.darkGray,
+    marginBottom: 2,
+    lineHeight: 14,
   },
   taskPriority: {
     fontSize: 12,

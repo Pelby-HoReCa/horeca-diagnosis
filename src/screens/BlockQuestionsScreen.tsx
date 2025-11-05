@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import AnimatedPressable from '../components/AnimatedPressable';
+import questionsData from '../data/questions.json';
 import { generateTasksFromAnswers, Task } from '../utils/recommendationEngine';
 
 // Фирменные цвета
@@ -20,280 +22,217 @@ interface Question {
     id: string;
     text: string;
     value: string;
+    correct?: boolean;
+    recommendation?: {
+      title: string;
+      description: string;
+      priority: 'low' | 'medium' | 'high';
+      category: string;
+    };
   }>;
 }
 
 interface BlockQuestionsScreenProps {
-  blockId: string;
-  blockTitle: string;
-  onComplete: () => void;
-  onContinue: () => void;
+  route: any;
+  navigation: any;
 }
 
-const questions: Record<string, Question[]> = {
-  economy: [
-    {
-      id: 'q1',
-      question: 'Как вы оцениваете финансовую эффективность вашего бизнеса?',
-      options: [
-        { id: 'opt1', text: 'Отлично', value: 'excellent' },
-        { id: 'opt2', text: 'Хорошо', value: 'good' },
-        { id: 'opt3', text: 'Удовлетворительно', value: 'satisfactory' },
-        { id: 'opt4', text: 'Плохо', value: 'poor' }
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Есть ли у вас система учета расходов?',
-      options: [
-        { id: 'opt1', text: 'Да, полностью автоматизирована', value: 'automated' },
-        { id: 'opt2', text: 'Частично', value: 'partial' },
-        { id: 'opt3', text: 'Нет', value: 'no' }
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'Как часто вы анализируете финансовые показатели?',
-      options: [
-        { id: 'opt1', text: 'Ежедневно', value: 'daily' },
-        { id: 'opt2', text: 'Еженедельно', value: 'weekly' },
-        { id: 'opt3', text: 'Ежемесячно', value: 'monthly' },
-        { id: 'opt4', text: 'Редко', value: 'rarely' }
-      ]
-    }
-  ],
-  production: [
-    {
-      id: 'q1',
-      question: 'Как вы оцениваете качество ваших продуктов?',
-      options: [
-        { id: 'opt1', text: 'Отлично', value: 'excellent' },
-        { id: 'opt2', text: 'Хорошо', value: 'good' },
-        { id: 'opt3', text: 'Удовлетворительно', value: 'satisfactory' },
-        { id: 'opt4', text: 'Плохо', value: 'poor' }
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Есть ли стандартизированные рецепты?',
-      options: [
-        { id: 'opt1', text: 'Да, для всех блюд', value: 'all' },
-        { id: 'opt2', text: 'Частично', value: 'partial' },
-        { id: 'opt3', text: 'Нет', value: 'no' }
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'Как вы контролируете качество сырья?',
-      options: [
-        { id: 'opt1', text: 'Строгий контроль', value: 'strict' },
-        { id: 'opt2', text: 'Базовый контроль', value: 'basic' },
-        { id: 'opt3', text: 'Минимальный контроль', value: 'minimal' }
-      ]
-    }
-  ],
-  team: [
-    {
-      id: 'q1',
-      question: 'Как вы оцениваете мотивацию сотрудников?',
-      options: [
-        { id: 'opt1', text: 'Высокая', value: 'high' },
-        { id: 'opt2', text: 'Средняя', value: 'medium' },
-        { id: 'opt3', text: 'Низкая', value: 'low' }
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Проводите ли вы обучение персонала?',
-      options: [
-        { id: 'opt1', text: 'Регулярно', value: 'regular' },
-        { id: 'opt2', text: 'Иногда', value: 'sometimes' },
-        { id: 'opt3', text: 'Редко', value: 'rarely' }
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'Есть ли система поощрений?',
-      options: [
-        { id: 'opt1', text: 'Да, развитая система', value: 'developed' },
-        { id: 'opt2', text: 'Базовые поощрения', value: 'basic' },
-        { id: 'opt3', text: 'Нет', value: 'no' }
-      ]
-    }
-  ],
-  delivery: [
-    {
-      id: 'q1',
-      question: 'Как вы оцениваете качество доставки?',
-      options: [
-        { id: 'opt1', text: 'Отлично', value: 'excellent' },
-        { id: 'opt2', text: 'Хорошо', value: 'good' },
-        { id: 'opt3', text: 'Удовлетворительно', value: 'satisfactory' },
-        { id: 'opt4', text: 'Плохо', value: 'poor' }
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Есть ли проблемы с логистикой?',
-      options: [
-        { id: 'opt1', text: 'Нет проблем', value: 'no_problems' },
-        { id: 'opt2', text: 'Есть небольшие проблемы', value: 'minor_issues' },
-        { id: 'opt3', text: 'Серьезные проблемы', value: 'major_issues' }
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'Как быстро вы доставляете заказы?',
-      options: [
-        { id: 'opt1', text: 'Очень быстро', value: 'very_fast' },
-        { id: 'opt2', text: 'В пределах нормы', value: 'normal' },
-        { id: 'opt3', text: 'Медленно', value: 'slow' }
-      ]
-    }
-  ],
-  service: [
-    {
-      id: 'q1',
-      question: 'Как вы оцениваете качество обслуживания?',
-      options: [
-        { id: 'opt1', text: 'Отлично', value: 'excellent' },
-        { id: 'opt2', text: 'Хорошо', value: 'good' },
-        { id: 'opt3', text: 'Удовлетворительно', value: 'satisfactory' },
-        { id: 'opt4', text: 'Плохо', value: 'poor' }
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Есть ли стандарты обслуживания?',
-      options: [
-        { id: 'opt1', text: 'Да, детальные', value: 'detailed' },
-        { id: 'opt2', text: 'Базовые', value: 'basic' },
-        { id: 'opt3', text: 'Нет', value: 'no' }
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'Как вы работаете с жалобами клиентов?',
-      options: [
-        { id: 'opt1', text: 'Быстро и эффективно', value: 'fast_effective' },
-        { id: 'opt2', text: 'Стандартно', value: 'standard' },
-        { id: 'opt3', text: 'Медленно', value: 'slow' }
-      ]
-    }
-  ],
-  sales: [
-    {
-      id: 'q1',
-      question: 'Как вы оцениваете эффективность продаж?',
-      options: [
-        { id: 'opt1', text: 'Отлично', value: 'excellent' },
-        { id: 'opt2', text: 'Хорошо', value: 'good' },
-        { id: 'opt3', text: 'Удовлетворительно', value: 'satisfactory' },
-        { id: 'opt4', text: 'Плохо', value: 'poor' }
-      ]
-    },
-    {
-      id: 'q2',
-      question: 'Есть ли маркетинговая стратегия?',
-      options: [
-        { id: 'opt1', text: 'Да, детальная', value: 'detailed' },
-        { id: 'opt2', text: 'Базовая', value: 'basic' },
-        { id: 'opt3', text: 'Нет', value: 'no' }
-      ]
-    },
-    {
-      id: 'q3',
-      question: 'Как вы привлекаете новых клиентов?',
-      options: [
-        { id: 'opt1', text: 'Активно и разнообразно', value: 'active_diverse' },
-        { id: 'opt2', text: 'Стандартными методами', value: 'standard' },
-        { id: 'opt3', text: 'Минимально', value: 'minimal' }
-      ]
-    }
-  ]
-};
+// Загружаем вопросы из JSON файла
+const questions: Record<string, Question[]> = {};
+questionsData.forEach((block: any) => {
+  questions[block.id] = block.questions;
+});
 
 export default function BlockQuestionsScreen({ 
-  blockId, 
-  blockTitle, 
-  onComplete, 
-  onContinue 
+  route, 
+  navigation 
 }: BlockQuestionsScreenProps) {
+  const { blockId, blockTitle } = route.params;
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
   const blockQuestions = questions[blockId] || [];
   const currentQuestion = blockQuestions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === blockQuestions.length - 1;
   const allQuestionsAnswered = Object.keys(answers).length === blockQuestions.length;
 
-  const handleAnswerSelect = (questionId: string, answerValue: string) => {
-    setAnswers(prev => ({
-      ...prev,
+  const handleAnswerSelect = async (questionId: string, answerValue: string) => {
+    const newAnswers = {
+      ...answers,
       [questionId]: answerValue
-    }));
+    };
+    setAnswers(newAnswers);
+    
+    // Проверяем, является ли это последним вопросом
+    const currentQuestionIndex = blockQuestions.findIndex(q => q.id === questionId);
+    const isLastQuestion = currentQuestionIndex === blockQuestions.length - 1;
+    
+    if (isLastQuestion) {
+      // Если это последний вопрос, генерируем задачи и отмечаем блок как завершенный
+      console.log('=== ПОСЛЕДНИЙ ВОПРОС ОТВЕЧЕН ===');
+      console.log('Блок ID:', blockId);
+      console.log('Все ответы блока:', newAnswers);
+      
+      // Генерируем задачи на основе всех ответов блока
+      // Передаем также вопросы для определения правильности ответов
+      const generatedTasks = generateTasksFromAnswers(blockId, newAnswers, blockQuestions, blockTitle);
+      console.log('Сгенерированные задачи для блока:', generatedTasks);
+      
+      // Сохраняем задачи
+      await saveTasksToStorage(generatedTasks);
+      console.log('Задачи сохранены в хранилище:', generatedTasks.length);
+      
+      // ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА СОХРАНЕНИЯ
+      console.log('=== ПРИНУДИТЕЛЬНАЯ ПРОВЕРКА СОХРАНЕНИЯ ===');
+      
+      // Проверяем блоки
+      const verifyBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      const verifyBlocksParsed = JSON.parse(verifyBlocks || '[]');
+      console.log('Блоки в хранилище:', verifyBlocksParsed.map((b: any) => ({ id: b.id, completed: b.completed })));
+      
+      // Проверяем задачи
+      const verifyTasks = await AsyncStorage.getItem('actionPlanTasks');
+      const verifyTasksParsed = JSON.parse(verifyTasks || '[]');
+      console.log('Задачи в хранилище:', verifyTasksParsed.length, 'задач');
+      console.log('Задачи:', verifyTasksParsed.map((t: any) => ({ id: t.id, title: t.title, blockId: t.blockId })));
+      
+      console.log('=== КОНЕЦ ПРИНУДИТЕЛЬНОЙ ПРОВЕРКИ ===');
+      
+      // Отмечаем блок как завершенный с ответами
+      await markBlockAsCompleted(blockId, newAnswers);
+      console.log('Блок отмечен как завершенный');
+      
+      console.log('=== КОНЕЦ ОБРАБОТКИ ПОСЛЕДНЕГО ВОПРОСА ===');
+    }
   };
 
   const saveTasksToStorage = async (tasks: Task[]) => {
     try {
+      console.log('=== СОХРАНЕНИЕ ЗАДАЧ ===');
+      console.log('Получено задач для сохранения:', tasks.length);
+      console.log('Задачи:', tasks.map(t => ({ id: t.id, title: t.title, blockId: t.blockId })));
+      
       const existingTasks = await AsyncStorage.getItem('actionPlanTasks');
       const existingTasksArray = existingTasks ? JSON.parse(existingTasks) : [];
+      console.log('Существующие задачи в хранилище:', existingTasksArray.length);
+      
       const newTasks = [...existingTasksArray, ...tasks];
+      console.log('Общее количество задач после добавления:', newTasks.length);
+      
       await AsyncStorage.setItem('actionPlanTasks', JSON.stringify(newTasks));
-      console.log('Задачи сохранены:', newTasks);
+      console.log('Задачи успешно сохранены в AsyncStorage');
+      
+      // Проверяем сохранение
+      const verifyTasks = await AsyncStorage.getItem('actionPlanTasks');
+      const verifyParsed = JSON.parse(verifyTasks || '[]');
+      console.log('Проверка сохранения - задач в хранилище:', verifyParsed.length);
+      console.log('=== КОНЕЦ СОХРАНЕНИЯ ===');
     } catch (error) {
       console.error('Ошибка сохранения задач:', error);
     }
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (isLastQuestion) {
-      // Генерируем задачи на основе неправильных ответов
-      const generatedTasks = generateTasksFromAnswers(blockId, answers);
-      console.log('Сгенерированные задачи:', generatedTasks);
-      
-      if (generatedTasks.length > 0) {
-        // Сохраняем задачи
-        saveTasksToStorage(generatedTasks);
-        
-        // Показываем выбор с информацией о количестве задач
-        Alert.alert(
-          'Блок завершен!',
-          `На основе ваших ответов сгенерировано ${generatedTasks.length} рекомендаций. Что хотите сделать дальше?`,
-          [
-            {
-              text: 'Продолжить самодиагностику',
-              style: 'default',
-              onPress: onContinue
-            },
-            {
-              text: 'Перейти к рекомендациям',
-              style: 'default',
-              onPress: onComplete
-            }
-          ]
-        );
-      } else {
-        // Нет неправильных ответов, задач не генерируется
-        Alert.alert(
-          'Блок завершен!',
-          'Отлично! По результатам диагностики проблем не выявлено. Что хотите сделать дальше?',
-          [
-            {
-              text: 'Продолжить самодиагностику',
-              style: 'default',
-              onPress: onContinue
-            },
-            {
-              text: 'Перейти к рекомендациям',
-              style: 'default',
-              onPress: onComplete
-            }
-          ]
-        );
-      }
+      // Блок уже отмечен как завершенный в handleAnswerSelect
+      // Просто показываем модальное окно с выбором
+      console.log('Показываем модальное окно завершения блока');
+      setShowCompletionModal(true);
     } else {
       setCurrentQuestionIndex(prev => prev + 1);
+    }
+  };
+
+  const calculateBlockEfficiency = (blockId: string, answers: Record<string, string>): number => {
+    const blockQuestions = questions[blockId] || [];
+    if (blockQuestions.length === 0) return 0;
+    
+    // Считаем количество правильных ответов
+    // Правильный ответ - это первый вариант (opt1) или вариант с correct: true
+    let correctAnswersCount = 0;
+    blockQuestions.forEach((question) => {
+      const answerValue = answers[question.id];
+      if (answerValue) {
+        // Находим выбранный вариант ответа
+        const selectedOption = question.options.find(opt => opt.value === answerValue);
+        if (selectedOption) {
+          // Если это первый вариант (opt1) или помечен как correct - это правильный ответ
+          if (selectedOption.id === 'opt1' || selectedOption.correct === true) {
+            correctAnswersCount++;
+          }
+        }
+      }
+    });
+    
+    // Эффективность = (правильные ответы / общее количество) * 100
+    const efficiency = Math.round((correctAnswersCount / blockQuestions.length) * 100);
+    
+    return efficiency;
+  };
+
+  const markBlockAsCompleted = async (blockId: string, blockAnswers: Record<string, string>) => {
+    try {
+      console.log('Отмечаем блок как завершенный:', blockId);
+      
+      // Вычисляем эффективность блока
+      const efficiency = calculateBlockEfficiency(blockId, blockAnswers);
+      console.log('Эффективность блока:', efficiency + '%');
+      
+      let storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      let blocks: any[] = [];
+      
+      if (storedBlocks) {
+        blocks = JSON.parse(storedBlocks);
+        console.log('Текущие блоки до обновления:', blocks.length);
+        console.log('Статус блоков:', blocks.map((b: any) => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
+      } else {
+        console.log('Блоки не найдены в хранилище, инициализируем все блоки...');
+        // Инициализируем все блоки, если их нет
+        blocks = [
+          { id: 'economy', title: 'Экономика', description: 'Финансовые показатели и эффективность', completed: false },
+          { id: 'production', title: 'Производство', description: 'Операционные процессы и качество', completed: false },
+          { id: 'team', title: 'Команда', description: 'Управление персоналом и мотивация', completed: false },
+          { id: 'delivery', title: 'Доставка', description: 'Логистика и доставка', completed: false },
+          { id: 'service', title: 'Сервис', description: 'Качество обслуживания клиентов', completed: false },
+          { id: 'sales', title: 'Продажи', description: 'Маркетинг и продажи', completed: false },
+        ];
+      }
+      
+      // Обновляем конкретный блок, сохраняя все остальные
+      const updatedBlocks = blocks.map((block: any) => {
+        if (block.id === blockId) {
+          console.log('Обновляем блок:', blockId);
+          return { 
+            ...block, 
+            completed: true,
+            completedAt: new Date().toLocaleDateString('ru-RU'),
+            efficiency: efficiency,
+            answers: blockAnswers
+          };
+        }
+        return block; // Сохраняем остальные блоки как есть, включая уже завершенные
+      });
+      
+      console.log('Обновленные блоки после изменения:', updatedBlocks.length);
+      console.log('Статус всех блоков:', updatedBlocks.map((b: any) => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
+      
+      // Сохраняем все блоки
+      await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(updatedBlocks));
+      console.log('Блок успешно отмечен как завершенный и сохранен:', blockId);
+      
+      // Проверяем, что данные действительно сохранились
+      const verifyBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      const verifyParsed = JSON.parse(verifyBlocks || '[]');
+      console.log('Проверка сохранения - блоков в хранилище:', verifyParsed.length);
+      console.log('Все блоки:', verifyParsed.map((b: any) => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
+      
+      // Дополнительная проверка: убеждаемся, что задачи тоже есть
+      const verifyTasks = await AsyncStorage.getItem('actionPlanTasks');
+      const verifyTasksParsed = JSON.parse(verifyTasks || '[]');
+      console.log('Проверка задач при завершении блока:', verifyTasksParsed.length, 'задач в хранилище');
+    } catch (error) {
+      console.error('Ошибка обновления статуса блока:', error);
     }
   };
 
@@ -325,7 +264,7 @@ export default function BlockQuestionsScreen({
         
         <View style={styles.optionsContainer}>
           {currentQuestion.options.map((option) => (
-            <TouchableOpacity
+            <AnimatedPressable
               key={option.id}
               style={[
                 styles.optionButton,
@@ -349,23 +288,28 @@ export default function BlockQuestionsScreen({
                   {option.text}
                 </Text>
               </View>
-            </TouchableOpacity>
+            </AnimatedPressable>
           ))}
         </View>
       </ScrollView>
 
       <View style={styles.navigationContainer}>
-        {currentQuestionIndex > 0 && (
-          <TouchableOpacity
-            style={[styles.navButton, styles.backButton]}
-            onPress={handlePreviousQuestion}
-          >
-            <Ionicons name="arrow-back" size={20} color={COLORS.blue} />
-            <Text style={styles.backButtonText}>Назад</Text>
-          </TouchableOpacity>
-        )}
+        <AnimatedPressable
+          style={[styles.navButton, styles.backButton]}
+          onPress={() => {
+            if (currentQuestionIndex > 0) {
+              handlePreviousQuestion();
+            } else {
+              // Если это первый вопрос, возвращаемся к списку блоков
+              navigation.goBack();
+            }
+          }}
+        >
+          <Ionicons name="arrow-back" size={20} color={COLORS.blue} />
+          <Text style={styles.backButtonText}>Назад</Text>
+        </AnimatedPressable>
         
-        <TouchableOpacity
+        <AnimatedPressable
           style={[
             styles.navButton,
             styles.nextButton,
@@ -375,11 +319,66 @@ export default function BlockQuestionsScreen({
           disabled={!answers[currentQuestion.id]}
         >
           <Text style={styles.nextButtonText}>
-            {isLastQuestion ? 'Завершить блок' : 'Далее'}
+            {isLastQuestion ? 'Результаты' : 'Далее'}
           </Text>
           {!isLastQuestion && <Ionicons name="arrow-forward" size={20} color={COLORS.white} />}
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
+
+      {/* Модальное окно завершения блока */}
+      <Modal
+        visible={showCompletionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCompletionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Диагностика завершена!</Text>
+            <Text style={styles.modalText}>
+              {(() => {
+                const currentTasks = generateTasksFromAnswers(blockId, answers);
+                return currentTasks.length > 0 
+                  ? `На основе ваших ответов сгенерировано ${currentTasks.length} рекомендаций. Что хотите сделать дальше?`
+                  : 'Отлично! По результатам диагностики проблем не выявлено. Что хотите сделать дальше?';
+              })()}
+            </Text>
+            <View style={styles.modalButtons}>
+        <AnimatedPressable
+          style={[styles.modalButton, styles.continueButton]}
+          onPress={() => {
+            setShowCompletionModal(false);
+            console.log('Нажата кнопка "Продолжить самодиагностику" - возвращаемся к блокам');
+            // Явно переходим на экран списка блоков
+            navigation.navigate('SelfDiagnosisBlocks');
+          }}
+        >
+          <Text style={styles.continueButtonText}>Продолжить самодиагностику</Text>
+        </AnimatedPressable>
+              <AnimatedPressable
+                style={[styles.modalButton, styles.resultsButton]}
+                onPress={() => {
+                  setShowCompletionModal(false);
+                  console.log('Нажата кнопка "Перейти к рекомендациям" - переходим к результатам');
+                  
+                  // Сбрасываем стек навигации к экрану блоков, затем переходим к рекомендациям
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'SelfDiagnosisBlocks' }],
+                  });
+                  
+                  // Небольшая задержка для завершения сброса стека
+                  setTimeout(() => {
+                    navigation.navigate('Результаты');
+                  }, 100);
+                }}
+              >
+                <Text style={styles.resultsButtonText}>Перейти к рекомендациям</Text>
+              </AnimatedPressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -408,22 +407,22 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 12,
   },
   questionText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: COLORS.blue,
-    marginBottom: 24,
-    lineHeight: 24,
+    marginBottom: 16,
+    lineHeight: 22,
   },
   optionsContainer: {
-    gap: 12,
+    gap: 10,
   },
   optionButton: {
     backgroundColor: COLORS.gray,
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -455,7 +454,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.orange,
   },
   optionText: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.blue,
     flex: 1,
   },
@@ -466,7 +465,7 @@ const styles = StyleSheet.create({
   navigationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 12,
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray,
@@ -482,6 +481,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 2,
     borderColor: COLORS.blue,
+    flex: 1,
+    marginRight: 12,
   },
   backButtonText: {
     fontSize: 16,
@@ -492,7 +493,6 @@ const styles = StyleSheet.create({
   nextButton: {
     backgroundColor: COLORS.orange,
     flex: 1,
-    marginLeft: 12,
     justifyContent: 'center',
   },
   disabledButton: {
@@ -509,5 +509,73 @@ const styles = StyleSheet.create({
     color: COLORS.darkGray,
     textAlign: 'center',
     marginTop: 50,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.blue,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: COLORS.darkGray,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  modalButtons: {
+    flexDirection: 'column',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
+  continueButton: {
+    backgroundColor: COLORS.blue,
+  },
+  resultsButton: {
+    backgroundColor: COLORS.orange,
+  },
+  continueButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+    textAlign: 'center',
+  },
+  resultsButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.white,
+    textAlign: 'center',
   },
 });

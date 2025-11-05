@@ -1,5 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import AnimatedPressable from '../components/AnimatedPressable';
 
 // Фирменные цвета
 const COLORS = {
@@ -11,22 +13,23 @@ const COLORS = {
 };
 
 interface QuestionnaireScreenProps {
-  onComplete: () => void;
-  onSkip: () => void;
+  route: any;
+  navigation: any;
 }
 
-export default function QuestionnaireScreen({ onComplete, onSkip }: QuestionnaireScreenProps) {
+export default function QuestionnaireScreen({ route, navigation }: QuestionnaireScreenProps) {
   const [formData, setFormData] = useState({
     restaurantName: '',
-    city: '',
-    email: '',
+    fullName: '',
+    position: '',
     phone: '',
-    ownerName: '',
-    experience: '',
-    staffCount: '',
-    averageCheck: '',
-    workingHours: '',
-    cuisine: ''
+    email: '',
+    telegram: '',
+    outletsCount: '',
+    city: '',
+    address: '',
+    workFormat: '',
+    socialLink: ''
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -36,34 +39,43 @@ export default function QuestionnaireScreen({ onComplete, onSkip }: Questionnair
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Проверяем обязательные поля
-    if (!formData.restaurantName || !formData.email || !formData.phone) {
-      Alert.alert('Ошибка', 'Пожалуйста, заполните обязательные поля');
+    const requiredFields = ['restaurantName', 'fullName', 'position', 'phone', 'email', 'telegram', 'outletsCount', 'city', 'address', 'workFormat'];
+    const missingFields = requiredFields.filter(field => !formData[field as keyof typeof formData]);
+    
+    if (missingFields.length > 0) {
+      console.log('Не заполнены обязательные поля:', missingFields);
       return;
     }
 
     // Сохраняем данные анкеты
     console.log('Данные анкеты:', formData);
-    Alert.alert('Успешно!', 'Анкета заполнена. Переходим к диагностике.');
-    onComplete();
+    await AsyncStorage.setItem('questionnaireData', JSON.stringify(formData));
+    await AsyncStorage.setItem('questionnaireCompleted', 'true');
+    
+    // Переходим к первому блоку диагностики
+    navigation.navigate('BlockQuestions', { 
+      blockId: 'economy', 
+      blockTitle: 'Экономика' 
+    });
   };
 
-  const handleSkip = () => {
-    Alert.alert(
-      'Пропустить анкетирование',
-      'Вы уверены, что хотите пропустить заполнение анкеты?',
-      [
-        { text: 'Отмена', style: 'cancel' },
-        { text: 'Пропустить', onPress: onSkip }
-      ]
-    );
+  const handleSkip = async () => {
+    // Сохраняем статус пропуска анкетирования
+    await AsyncStorage.setItem('questionnaireCompleted', 'true');
+    
+    // Переходим к первому блоку диагностики без заполнения анкеты
+    navigation.navigate('BlockQuestions', { 
+      blockId: 'economy', 
+      blockTitle: 'Экономика' 
+    });
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Анкетирование</Text>
+        <Text style={styles.title}>Расскажите о себе!</Text>
         <Text style={styles.subtitle}>Расскажите о вашем ресторане</Text>
       </View>
 
@@ -80,18 +92,41 @@ export default function QuestionnaireScreen({ onComplete, onSkip }: Questionnair
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Город *</Text>
+          <Text style={styles.label}>ФИО *</Text>
           <TextInput
             style={styles.input}
-            value={formData.city}
-            onChangeText={(value) => handleInputChange('city', value)}
-            placeholder="Введите город"
+            value={formData.fullName}
+            onChangeText={(value) => handleInputChange('fullName', value)}
+            placeholder="Введите ФИО"
             placeholderTextColor={COLORS.darkGray}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email *</Text>
+          <Text style={styles.label}>Должность *</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.position}
+            onChangeText={(value) => handleInputChange('position', value)}
+            placeholder="Введите должность"
+            placeholderTextColor={COLORS.darkGray}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Номер телефона *</Text>
+          <TextInput
+            style={styles.input}
+            value={formData.phone}
+            onChangeText={(value) => handleInputChange('phone', value)}
+            placeholder="+7 (999) 123-45-67"
+            placeholderTextColor={COLORS.darkGray}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Почта *</Text>
           <TextInput
             style={styles.input}
             value={formData.email}
@@ -104,98 +139,89 @@ export default function QuestionnaireScreen({ onComplete, onSkip }: Questionnair
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Телефон *</Text>
+          <Text style={styles.label}>Телеграм *</Text>
           <TextInput
             style={styles.input}
-            value={formData.phone}
-            onChangeText={(value) => handleInputChange('phone', value)}
-            placeholder="+7 (999) 123-45-67"
+            value={formData.telegram}
+            onChangeText={(value) => handleInputChange('telegram', value)}
+            placeholder="@username"
             placeholderTextColor={COLORS.darkGray}
-            keyboardType="phone-pad"
+            autoCapitalize="none"
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Имя владельца/управляющего</Text>
+          <Text style={styles.label}>Количество точек *</Text>
           <TextInput
             style={styles.input}
-            value={formData.ownerName}
-            onChangeText={(value) => handleInputChange('ownerName', value)}
-            placeholder="Введите имя"
+            value={formData.outletsCount}
+            onChangeText={(value) => handleInputChange('outletsCount', value)}
+            placeholder="Например: 3"
             placeholderTextColor={COLORS.darkGray}
+            keyboardType="numeric"
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Опыт работы в ресторанном бизнесе</Text>
+          <Text style={styles.label}>Город *</Text>
           <TextInput
             style={styles.input}
-            value={formData.experience}
-            onChangeText={(value) => handleInputChange('experience', value)}
-            placeholder="Например: 5 лет"
-            placeholderTextColor={COLORS.darkGray}
-          />
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Количество сотрудников</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.staffCount}
-            onChangeText={(value) => handleInputChange('staffCount', value)}
-            placeholder="Например: 15 человек"
+            value={formData.city}
+            onChangeText={(value) => handleInputChange('city', value)}
+            placeholder="Введите город"
             placeholderTextColor={COLORS.darkGray}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Средний чек</Text>
+          <Text style={styles.label}>Адрес (улица/дом) *</Text>
           <TextInput
             style={styles.input}
-            value={formData.averageCheck}
-            onChangeText={(value) => handleInputChange('averageCheck', value)}
-            placeholder="Например: 1500 руб."
+            value={formData.address}
+            onChangeText={(value) => handleInputChange('address', value)}
+            placeholder="Введите адрес"
             placeholderTextColor={COLORS.darkGray}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Режим работы</Text>
+          <Text style={styles.label}>Формат работы *</Text>
           <TextInput
             style={styles.input}
-            value={formData.workingHours}
-            onChangeText={(value) => handleInputChange('workingHours', value)}
-            placeholder="Например: 10:00 - 23:00"
+            value={formData.workFormat}
+            onChangeText={(value) => handleInputChange('workFormat', value)}
+            placeholder="Кафе, ресторан, кофейня и пр."
             placeholderTextColor={COLORS.darkGray}
           />
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Тип кухни</Text>
+          <Text style={styles.label}>Ссылка на профиль в социальной сети</Text>
           <TextInput
             style={styles.input}
-            value={formData.cuisine}
-            onChangeText={(value) => handleInputChange('cuisine', value)}
-            placeholder="Например: Европейская, Азиатская"
+            value={formData.socialLink}
+            onChangeText={(value) => handleInputChange('socialLink', value)}
+            placeholder="https://instagram.com/username"
             placeholderTextColor={COLORS.darkGray}
+            autoCapitalize="none"
           />
         </View>
       </View>
 
       <View style={styles.buttonsContainer}>
-        <TouchableOpacity
+        <AnimatedPressable
           style={[styles.button, styles.primaryButton]}
           onPress={handleSubmit}
         >
-          <Text style={styles.primaryButtonText}>Начать диагностику</Text>
-        </TouchableOpacity>
+          <Text style={styles.primaryButtonText}>Подтвердить</Text>
+        </AnimatedPressable>
 
-        <TouchableOpacity
+        <AnimatedPressable
           style={[styles.button, styles.secondaryButton]}
           onPress={handleSkip}
         >
-          <Text style={styles.secondaryButtonText}>Начать без анкетирования</Text>
-        </TouchableOpacity>
+          <Text style={styles.secondaryButtonText}>Пропустить анкетирование</Text>
+        </AnimatedPressable>
       </View>
     </ScrollView>
   );
@@ -208,50 +234,50 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: COLORS.gray,
-    padding: 20,
-    paddingTop: 60, // Отступ от островка iPhone
+    padding: 12,
+    paddingTop: 50,
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.blue,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.darkGray,
     textAlign: 'center',
   },
   form: {
-    padding: 20,
+    padding: 12,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.blue,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   input: {
     backgroundColor: COLORS.gray,
-    padding: 16,
-    borderRadius: 12,
-    fontSize: 16,
+    padding: 12,
+    borderRadius: 10,
+    fontSize: 14,
     color: COLORS.blue,
     borderWidth: 2,
     borderColor: 'transparent',
   },
   buttonsContainer: {
-    padding: 20,
-    gap: 16,
+    padding: 12,
+    gap: 12,
   },
   button: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
   },
   primaryButton: {

@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   welcomeText: {
-    fontSize: 28,
+    fontSize: 72,
     fontWeight: 'bold',
     color: COLORS.blue,
     marginBottom: 10,

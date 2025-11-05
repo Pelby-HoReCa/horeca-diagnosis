@@ -1,7 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
-import { FlatList, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { FlatList, Image, Modal, StyleSheet, Text, View } from 'react-native';
+import AnimatedPressable from '../components/AnimatedPressable';
+import ScrollToTopButton from '../components/ScrollToTopButton';
+import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
+
+const logo = require('../../assets/images/1111.png');
 
 // Фирменные цвета
 const COLORS = {
@@ -12,85 +18,117 @@ const COLORS = {
   darkGray: '#666666',
 };
 
-interface Block {
-  id: string;
-  title: string;
-  description: string;
-  completed: boolean;
-}
-
-export default function SelfDiagnosisBlocksScreen() {
-  const [blocks, setBlocks] = useState<Block[]>([]);
+export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
+  const [blocks, setBlocks] = useState<DiagnosisBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<'questionnaire' | 'confirm' | null>(null);
-  const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<DiagnosisBlock | null>(null);
   const [questionnaireCompleted, setQuestionnaireCompleted] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
+    console.log('Компонент загружен, инициализируем...');
     loadBlocks();
+    checkQuestionnaireStatus();
   }, []);
+
+  // Обновляем блоки при возврате на экран (БЕЗ очистки данных)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Экран блоков получил фокус, обновляем блоки...');
+      loadBlocksWithoutClearing();
+    }, [])
+  );
+
+
+  const loadBlocksWithoutClearing = async () => {
+    try {
+      console.log('Загружаем блоки без очистки...');
+      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      
+      if (storedBlocks) {
+        const parsedBlocks = JSON.parse(storedBlocks);
+        console.log('Найдены блоки в хранилище:', parsedBlocks.length);
+        console.log('Статус блоков:', parsedBlocks.map((b: DiagnosisBlock) => ({ id: b.id, completed: b.completed })));
+        // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
+        const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
+          const foundBlock = parsedBlocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
+          return foundBlock || defaultBlock;
+        });
+        setBlocks(allBlocks);
+        console.log('Блоки обновлены в состоянии:', allBlocks.length);
+      } else {
+        console.log('Блоки не найдены в хранилище');
+        // Если блоков нет, инициализируем по умолчанию
+        setBlocks(DEFAULT_BLOCKS);
+        await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(DEFAULT_BLOCKS));
+        console.log('Инициализированы блоки по умолчанию');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки блоков:', error);
+    }
+  };
+
+  const checkQuestionnaireStatus = async () => {
+    try {
+      console.log('Проверяем статус анкетирования...');
+      const status = await AsyncStorage.getItem('questionnaireCompleted');
+      if (status === 'true') {
+        setQuestionnaireCompleted(true);
+        console.log('Анкетирование уже пройдено');
+      } else {
+        setQuestionnaireCompleted(false);
+        console.log('Анкетирование не пройдено');
+      }
+    } catch (error) {
+      console.error('Ошибка проверки статуса анкетирования:', error);
+      setQuestionnaireCompleted(false);
+    }
+  };
 
   // Принудительная инициализация блоков, если они пустые
   useEffect(() => {
     if (!loading && blocks.length === 0) {
-      console.log('Блоки пустые, принудительно инициализируем...');
-      const defaultBlocks: Block[] = [
-        { id: 'economy', title: 'Экономика', description: 'Финансовые показатели и эффективность', completed: false },
-        { id: 'production', title: 'Производство', description: 'Операционные процессы и качество', completed: false },
-        { id: 'team', title: 'Команда', description: 'Управление персоналом и мотивация', completed: false },
-        { id: 'delivery', title: 'Доставка', description: 'Логистика и доставка', completed: false },
-        { id: 'service', title: 'Сервис', description: 'Качество обслуживания клиентов', completed: false },
-        { id: 'sales', title: 'Продажи', description: 'Маркетинг и продажи', completed: false },
-      ];
-      setBlocks(defaultBlocks);
+      setBlocks(DEFAULT_BLOCKS);
     }
   }, [loading, blocks.length]);
 
   const loadBlocks = async () => {
     try {
       console.log('Загружаем блоки диагностики...');
+      
       const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      console.log('Сохраненные блоки:', storedBlocks);
       
       if (storedBlocks) {
         const parsedBlocks = JSON.parse(storedBlocks);
-        console.log('Парсированные блоки:', parsedBlocks);
-        setBlocks(parsedBlocks);
+        console.log('Найдены блоки в хранилище:', parsedBlocks.length);
+        console.log('Статус блоков:', parsedBlocks.map((b: DiagnosisBlock) => ({ id: b.id, completed: b.completed })));
+        // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
+        const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
+          const foundBlock = parsedBlocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
+          return foundBlock || defaultBlock;
+        });
+        setBlocks(allBlocks);
+        console.log('Блоки загружены из хранилища');
       } else {
-        // Инициализируем блоки по умолчанию
-        const defaultBlocks: Block[] = [
-          { id: 'economy', title: 'Экономика', description: 'Финансовые показатели и эффективность', completed: false },
-          { id: 'production', title: 'Производство', description: 'Операционные процессы и качество', completed: false },
-          { id: 'team', title: 'Команда', description: 'Управление персоналом и мотивация', completed: false },
-          { id: 'delivery', title: 'Доставка', description: 'Логистика и доставка', completed: false },
-          { id: 'service', title: 'Сервис', description: 'Качество обслуживания клиентов', completed: false },
-          { id: 'sales', title: 'Продажи', description: 'Маркетинг и продажи', completed: false },
-        ];
-        console.log('Инициализируем блоки по умолчанию:', defaultBlocks);
-        setBlocks(defaultBlocks);
-        await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(defaultBlocks));
-        console.log('Блоки сохранены в AsyncStorage');
+        console.log('Блоки не найдены в хранилище, инициализируем по умолчанию');
+        setBlocks(DEFAULT_BLOCKS);
+        await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(DEFAULT_BLOCKS));
+        console.log('Инициализированы блоки по умолчанию (все неактивные)');
       }
+      
     } catch (error) {
       console.error('Ошибка загрузки блоков:', error);
       // В случае ошибки показываем блоки по умолчанию
-      const defaultBlocks: Block[] = [
-        { id: 'economy', title: 'Экономика', description: 'Финансовые показатели и эффективность', completed: false },
-        { id: 'production', title: 'Производство', description: 'Операционные процессы и качество', completed: false },
-        { id: 'team', title: 'Команда', description: 'Управление персоналом и мотивация', completed: false },
-        { id: 'delivery', title: 'Доставка', description: 'Логистика и доставка', completed: false },
-        { id: 'service', title: 'Сервис', description: 'Качество обслуживания клиентов', completed: false },
-        { id: 'sales', title: 'Продажи', description: 'Маркетинг и продажи', completed: false },
-      ];
-      setBlocks(defaultBlocks);
+      setBlocks(DEFAULT_BLOCKS);
     } finally {
-      console.log('Загрузка завершена, устанавливаем loading = false');
       setLoading(false);
     }
   };
 
-  const saveBlocks = async (updatedBlocks: Block[]) => {
+  const saveBlocks = async (updatedBlocks: DiagnosisBlock[]) => {
     try {
       await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(updatedBlocks));
     } catch (error) {
@@ -98,73 +136,56 @@ export default function SelfDiagnosisBlocksScreen() {
     }
   };
 
-  const handleBlockPress = (block: Block) => {
-    console.log(`Начинаем диагностику блока: ${block.title}`);
+  const handleBlockPress = (block: DiagnosisBlock) => {
+    console.log('Нажата карточка блока:', block.title);
+    console.log('Статус анкетирования:', questionnaireCompleted);
+    
     setSelectedBlock(block);
     
     if (!questionnaireCompleted) {
+      console.log('Показываем модальное окно анкетирования');
       // Предлагаем сначала пройти анкетирование
       setModalType('questionnaire');
       setShowModal(true);
     } else {
-      // Показываем подтверждение
-      setModalType('confirm');
-      setShowModal(true);
+      console.log('Переходим к вопросам блока');
+      // Переходим сразу к вопросам
+      navigation.navigate('BlockQuestions', { blockId: block.id, blockTitle: block.title });
     }
   };
 
-  const handleQuestionnaireComplete = () => {
+  const handleQuestionnaireComplete = async () => {
     setQuestionnaireCompleted(true);
+    await AsyncStorage.setItem('questionnaireCompleted', 'true');
     setShowModal(false);
     setModalType(null);
-    // Переходим к подтверждению
-    setModalType('confirm');
-    setShowModal(true);
+    // Переходим к анкетированию
+    navigation.navigate('Questionnaire');
   };
 
-  const handleQuestionnaireSkip = () => {
+  const handleQuestionnaireSkip = async () => {
+    console.log('=== ПРОПУСК АНКЕТИРОВАНИЯ ===');
     setQuestionnaireCompleted(true);
+    await AsyncStorage.setItem('questionnaireCompleted', 'true');
     setShowModal(false);
     setModalType(null);
-    // Убираем подтверждение - сразу показываем блоки
-  };
-
-  const handleConfirmStart = () => {
-    if (!selectedBlock) return;
     
-    // Симулируем неправильные ответы для генерации задач
-    const mockAnswers = {
-      'q1': 'poor', // Неправильный ответ
-      'q2': 'no',   // Неправильный ответ
-      'q3': 'rarely' // Неправильный ответ
-    };
+    // Находим первый незавершенный блок для диагностики
+    const firstUncompletedBlock = blocks.find(block => !block.completed);
     
-    // Импортируем функцию генерации задач
-    import('../utils/recommendationEngine').then(({ generateTasksFromAnswers }) => {
-      const generatedTasks = generateTasksFromAnswers(selectedBlock.id, mockAnswers);
-      console.log('Сгенерированные задачи для блока', selectedBlock.id, ':', generatedTasks);
-      
-      // Сохраняем задачи
-      if (generatedTasks.length > 0) {
-        AsyncStorage.getItem('actionPlanTasks').then(existingTasks => {
-          const existingTasksArray = existingTasks ? JSON.parse(existingTasks) : [];
-          const newTasks = [...existingTasksArray, ...generatedTasks];
-          AsyncStorage.setItem('actionPlanTasks', JSON.stringify(newTasks));
-          console.log('Задачи сохранены:', newTasks);
-        });
-      }
-    });
-    
-    // Отмечаем блок как пройденный
-    const updatedBlocks = blocks.map(b => 
-      b.id === selectedBlock.id ? { ...b, completed: true } : b
-    );
-    setBlocks(updatedBlocks);
-    saveBlocks(updatedBlocks);
-    
-    setShowModal(false);
-    setModalType(null);
-    setSelectedBlock(null);
+    if (firstUncompletedBlock) {
+      console.log('Найден первый незавершенный блок:', firstUncompletedBlock.title);
+      setSelectedBlock(firstUncompletedBlock);
+      navigation.navigate('BlockQuestions', { 
+        blockId: firstUncompletedBlock.id, 
+        blockTitle: firstUncompletedBlock.title 
+      });
+    } else {
+      console.log('Все блоки завершены');
+      // Если все блоки завершены, показываем сообщение или переходим к результатам
+      alert('Все блоки диагностики уже завершены!');
+    }
+    console.log('=== КОНЕЦ ПРОПУСКА АНКЕТИРОВАНИЯ ===');
   };
 
   const handleCancel = () => {
@@ -173,23 +194,61 @@ export default function SelfDiagnosisBlocksScreen() {
     setSelectedBlock(null);
   };
 
-  const renderBlock = ({ item }: { item: Block }) => (
-    <TouchableOpacity
-      style={[
-        styles.blockCard,
-        item.completed && styles.blockCardCompleted
-      ]}
-      onPress={() => handleBlockPress(item)}
-    >
-      <View style={styles.blockHeader}>
-        <Text style={styles.blockTitle}>{item.title}</Text>
-        {item.completed && (
-          <Ionicons name="checkmark-circle" size={24} color={COLORS.orange} />
+  const getEfficiencyColor = (efficiency?: number): { bg: string; text: string; border?: string } => {
+    if (efficiency === undefined || efficiency === null) {
+      return { bg: COLORS.gray, text: COLORS.darkGray };
+    }
+    
+    // Чем ниже эффективность, тем тревожнее цвет (та же логика, что на дашборде)
+    if (efficiency >= 80) {
+      return { bg: '#E8F5E9', text: '#00AA00', border: '#81C784' };
+    } else if (efficiency >= 60) {
+      return { bg: '#E3F2FD', text: COLORS.blue, border: '#64B5F6' };
+    } else if (efficiency >= 40) {
+      return { bg: '#FFF3E0', text: '#F57C00', border: '#FFB74D' };
+    } else {
+      return { bg: '#FFEBEE', text: '#D32F2F', border: '#E57373' };
+    }
+  };
+
+  const renderBlock = ({ item }: { item: DiagnosisBlock }) => {
+    const colors = getEfficiencyColor(item.efficiency);
+    
+    return (
+      <AnimatedPressable
+        style={[
+          styles.blockCard,
+          { 
+            backgroundColor: item.completed ? colors.bg : COLORS.gray,
+            borderLeftWidth: item.completed ? 4 : 0,
+            borderLeftColor: colors.border || colors.text
+          }
+        ]}
+        onPress={() => handleBlockPress(item)}
+      >
+        <View style={styles.blockHeader}>
+          <Text style={styles.blockTitle}>{item.title}</Text>
+          {item.completed && (
+            <Ionicons name="checkmark-circle" size={24} color={COLORS.orange} />
+          )}
+        </View>
+        <Text style={styles.blockDescription}>{item.description}</Text>
+        {item.completed && item.efficiency !== undefined ? (
+          <View style={styles.efficiencyContainer}>
+            <Text style={[styles.efficiencyValue, { color: colors.text }]}>
+              {item.efficiency}%
+            </Text>
+            <Text style={[styles.efficiencyLabel, { color: colors.text }]}>эффективность</Text>
+          </View>
+        ) : (
+          <View style={styles.efficiencyContainer}>
+            <Text style={[styles.efficiencyValue, { color: COLORS.darkGray }]}>—</Text>
+            <Text style={[styles.efficiencyLabel, { color: COLORS.darkGray }]}>не пройдено</Text>
+          </View>
         )}
-      </View>
-      <Text style={styles.blockDescription}>{item.description}</Text>
-    </TouchableOpacity>
-  );
+      </AnimatedPressable>
+    );
+  };
 
   const completedCount = blocks.filter(block => block.completed).length;
 
@@ -201,40 +260,55 @@ export default function SelfDiagnosisBlocksScreen() {
     );
   }
 
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleScroll = (event: any) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollButton(offsetY > 500);
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Блоки самодиагностики</Text>
-        <Text style={styles.progress}>
-          Пройдено: {completedCount} из {blocks.length}
-        </Text>
-        
-        <TouchableOpacity
-          style={styles.startButton}
-          onPress={() => {
-            // Показываем блоки сразу без модальных окон
-            setQuestionnaireCompleted(true);
-          }}
-        >
-          <Text style={styles.startButtonText}>Начать диагностику</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.blocksContainer}>
-        <Text style={styles.blocksTitle}>Выберите блок для диагностики:</Text>
-        {blocks.length > 0 ? (
-          <FlatList
-            data={blocks}
-            renderItem={renderBlock}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
+      <FlatList
+        ref={flatListRef}
+        data={blocks}
+        renderItem={renderBlock}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        ListHeaderComponent={() => (
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <View style={styles.headerTitleContainer}>
+                <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
+                <Text style={styles.headerTitle} numberOfLines={1}>Блоки самодиагностики</Text>
+              </View>
+            </View>
+            <Text style={styles.progress}>
+              Пройдено: {completedCount} из {blocks.length}
+            </Text>
+            
+            <AnimatedPressable
+              style={styles.startButton}
+              onPress={() => {
+                console.log('Нажата кнопка "Начать диагностику"');
+                console.log('Статус анкетирования:', questionnaireCompleted);
+                setModalType('questionnaire');
+                setShowModal(true);
+              }}
+            >
+              <Text style={styles.startButtonText}>Начать диагностику</Text>
+            </AnimatedPressable>
+          </View>
+        )}
+        ListEmptyComponent={() => (
           <Text style={styles.emptyText}>Блоки не загружены</Text>
         )}
-      </View>
+      />
 
       {/* Модальное окно для анкетирования */}
       <Modal
@@ -242,61 +316,32 @@ export default function SelfDiagnosisBlocksScreen() {
         transparent={true}
         animationType="fade"
         onRequestClose={handleCancel}
+        onShow={() => console.log('Модальное окно анкетирования показано')}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Анкетирование</Text>
+            <Text style={styles.modalTitle}>Расскажите о себе!</Text>
             <Text style={styles.modalText}>
               Для более точной диагностики рекомендуем заполнить анкету с основными данными о вашем ресторане.
             </Text>
             <View style={styles.modalButtons}>
-              <TouchableOpacity
+              <AnimatedPressable
                 style={[styles.modalButton, styles.secondaryButton]}
                 onPress={handleQuestionnaireSkip}
               >
                 <Text style={styles.secondaryButtonText}>Пропустить</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </AnimatedPressable>
+              <AnimatedPressable
                 style={[styles.modalButton, styles.primaryButton]}
                 onPress={handleQuestionnaireComplete}
               >
-                <Text style={styles.primaryButtonText}>Заполнить анкету</Text>
-              </TouchableOpacity>
+                <Text style={styles.primaryButtonText}>Заполнить</Text>
+              </AnimatedPressable>
             </View>
           </View>
         </View>
       </Modal>
-
-      {/* Модальное окно для подтверждения */}
-      <Modal
-        visible={showModal && modalType === 'confirm'}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCancel}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Подтверждение</Text>
-            <Text style={styles.modalText}>
-              Вы уверены, что хотите начать диагностику блока "{selectedBlock?.title}"?
-            </Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.secondaryButton]}
-                onPress={handleCancel}
-              >
-                <Text style={styles.secondaryButtonText}>Отмена</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.primaryButton]}
-                onPress={handleConfirmStart}
-              >
-                <Text style={styles.primaryButtonText}>Начать диагностику</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ScrollToTopButton onPress={scrollToTop} visible={showScrollButton} />
     </View>
   );
 }
@@ -317,20 +362,39 @@ const styles = StyleSheet.create({
     color: COLORS.blue,
   },
   header: {
-    padding: 20,
+    padding: 12,
+    paddingTop: 40,
     backgroundColor: COLORS.gray,
+    marginBottom: 8,
   },
-  title: {
-    fontSize: 24,
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    marginRight: 10,
+  },
+  headerTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.blue,
-    marginBottom: 8,
   },
   progress: {
     fontSize: 16,
     color: COLORS.orange,
     fontWeight: '600',
     marginBottom: 16,
+    textAlign: 'center',
+    marginTop: 8,
   },
   startButton: {
     backgroundColor: COLORS.orange,
@@ -351,17 +415,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.white,
-    textAlign: 'center',
-  },
-  blocksContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  blocksTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 16,
     textAlign: 'center',
   },
   emptyText: {
@@ -408,14 +461,19 @@ const styles = StyleSheet.create({
   },
   modalButtons: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: 12,
+    marginTop: 20,
   },
   modalButton: {
-    flex: 1,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    minWidth: 120,
   },
   primaryButton: {
     backgroundColor: COLORS.orange,
@@ -438,45 +496,47 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContainer: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
   },
   blockCard: {
     backgroundColor: COLORS.gray,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 15,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    minHeight: 120,
-  },
-  blockCardCompleted: {
-    backgroundColor: '#FFF4E6',
-    borderColor: COLORS.orange,
-    borderWidth: 2,
-    shadowColor: COLORS.orange,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
+    borderWidth: 0,
+    minHeight: 110,
   },
   blockHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   blockTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: COLORS.blue,
     flex: 1,
   },
   blockDescription: {
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.darkGray,
-    lineHeight: 20,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  efficiencyContainer: {
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  efficiencyValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  efficiencyLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    textTransform: 'uppercase',
   },
 });

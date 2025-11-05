@@ -286,26 +286,128 @@ const wrongAnswersMapping: Record<string, Record<string, Task[]>> = {
   }
 };
 
-export const generateTasksFromAnswers = (blockId: string, answers: Record<string, string>): Task[] => {
+// Интерфейс для рекомендации из варианта ответа
+interface OptionRecommendation {
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  category: string;
+}
+
+export const generateTasksFromAnswers = (
+  blockId: string, 
+  answers: Record<string, string>,
+  questionsData?: Array<{ 
+    id: string; 
+    question?: string;
+    options: Array<{ 
+      id: string; 
+      value: string; 
+      correct?: boolean;
+      recommendation?: OptionRecommendation;
+    }> 
+  }>,
+  blockTitle?: string
+): Task[] => {
+  console.log('=== ГЕНЕРАЦИЯ ЗАДАЧ ===');
+  console.log('Блок ID:', blockId);
+  console.log('Ответы:', answers);
+  
   const tasks: Task[] = [];
   const blockMapping = wrongAnswersMapping[blockId];
   
-  if (!blockMapping) return tasks;
+  console.log('Маппинг для блока:', blockMapping);
   
-  // Проходим по всем ответам и ищем неправильные
-  Object.entries(answers).forEach(([questionId, answerValue]) => {
-    if (blockMapping[answerValue]) {
-      // Добавляем уникальный суффикс к ID, чтобы избежать дублирования
-      const timestamp = Date.now();
-      const randomSuffix = Math.random().toString(36).substr(2, 5);
-      const uniqueTasks = blockMapping[answerValue].map((task, index) => ({
-        ...task,
-        id: `${task.id}_${timestamp}_${randomSuffix}_${index}`
-      }));
-      tasks.push(...uniqueTasks);
+  // Если есть questionsData, используем логику с рекомендациями из вариантов ответов
+  if (questionsData) {
+    questionsData.forEach((question) => {
+      const answerValue = answers[question.id];
+      if (answerValue) {
+        // Находим выбранный вариант ответа
+        const selectedOption = question.options.find(opt => opt.value === answerValue);
+        if (selectedOption) {
+          // Проверяем, есть ли рекомендация в самом варианте ответа (новая логика)
+          if (selectedOption.recommendation) {
+            console.log(`Найдена рекомендация в варианте ответа для вопроса "${question.id}":`, selectedOption.recommendation);
+            const timestamp = Date.now();
+            const randomSuffix = Math.random().toString(36).substr(2, 5);
+            
+            const task: Task = {
+              id: `task_${blockId}_${question.id}_${timestamp}_${randomSuffix}`,
+              title: selectedOption.recommendation.title,
+              description: selectedOption.recommendation.description,
+              blockId: blockId,
+              blockTitle: blockTitle || blockId,
+              priority: selectedOption.recommendation.priority,
+              dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              completed: false,
+              category: selectedOption.recommendation.category,
+            };
+            
+            tasks.push(task);
+            console.log(`Добавлена задача из рекомендации:`, task.title);
+          } else if (selectedOption.id !== 'opt1' && selectedOption.correct !== true) {
+            // Если рекомендации нет, но ответ неправильный - используем старую логику с маппингом
+            console.log(`Рекомендации нет, но ответ неправильный. Проверяем маппинг для: ${answerValue}`);
+            if (blockMapping && blockMapping[answerValue]) {
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substr(2, 5);
+              const uniqueTasks = blockMapping[answerValue].map((task, index) => ({
+                ...task,
+                id: `${task.id}_${timestamp}_${randomSuffix}_${index}`,
+                blockId: blockId,
+              }));
+              tasks.push(...uniqueTasks);
+              console.log(`Добавлено ${uniqueTasks.length} задач из маппинга`);
+            } else {
+              // Генерируем общую задачу для неправильного ответа без рекомендации
+              const timestamp = Date.now();
+              const randomSuffix = Math.random().toString(36).substr(2, 5);
+              tasks.push({
+                id: `task_${blockId}_${question.id}_${timestamp}_${randomSuffix}`,
+                title: `Улучшить: ${question.question || question.id}`,
+                description: `Требуется улучшение по вопросу "${question.question || question.id}"`,
+                blockId: blockId,
+                blockTitle: blockId,
+                priority: 'medium',
+                dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                completed: false,
+                category: 'Улучшение',
+              });
+              console.log(`Добавлена общая задача для неправильного ответа`);
+            }
+          } else {
+            // Правильный ответ (opt1 или correct: true) - не создаем задачу
+            console.log(`Ответ правильный (${selectedOption.id}), задача не создается`);
+          }
+        }
+      }
+    });
+  } else {
+    // Старая логика для обратной совместимости (без questionsData)
+    if (!blockMapping) {
+      console.log('Маппинг не найден для блока:', blockId);
+      return tasks;
     }
-  });
+    
+    Object.entries(answers).forEach(([questionId, answerValue]) => {
+      console.log(`Проверяем ответ: ${questionId} = ${answerValue}`);
+      if (blockMapping[answerValue]) {
+        console.log(`Найдены задачи для ответа "${answerValue}":`, blockMapping[answerValue].length);
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substr(2, 5);
+        const uniqueTasks = blockMapping[answerValue].map((task, index) => ({
+          ...task,
+          id: `${task.id}_${timestamp}_${randomSuffix}_${index}`
+        }));
+        tasks.push(...uniqueTasks);
+        console.log(`Добавлено ${uniqueTasks.length} задач`);
+      }
+    });
+  }
   
+  console.log('Итого сгенерировано задач:', tasks.length);
+  console.log('=== КОНЕЦ ГЕНЕРАЦИИ ===');
   return tasks;
 };
 
