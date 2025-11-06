@@ -164,13 +164,6 @@ export default function AuthScreen({ onContinue }: AuthScreenProps) {
 
       <View style={styles.buttonsContainer}>
         <AnimatedPressable
-          style={[styles.button, styles.blueButton]}
-          onPress={onContinue}
-        >
-          <Text style={styles.blueButtonText}>Продолжить без авторизации</Text>
-        </AnimatedPressable>
-
-        <AnimatedPressable
           style={[styles.button, styles.orangeButton]}
           onPress={handleOpenRegisterModal}
         >
@@ -251,28 +244,34 @@ export default function AuthScreen({ onContinue }: AuthScreenProps) {
                 <Text style={styles.forgotPasswordText}>Забыли пароль?</Text>
               </AnimatedPressable>
 
-              <View style={styles.modalButtons}>
-                <AnimatedPressable
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={handleCloseLoginModal}
-                  disabled={loading}
-                >
-                  <Text style={styles.cancelButtonText}>Отмена</Text>
-                </AnimatedPressable>
+              <View style={styles.inputContainer}>
+                <View style={styles.modalButtons}>
+                  <View style={styles.modalButtonWrapper}>
+                    <AnimatedPressable
+                      style={[styles.modalButton, styles.cancelButton]}
+                      onPress={handleCloseLoginModal}
+                      disabled={loading}
+                    >
+                      <Text style={styles.cancelButtonText}>Отмена</Text>
+                    </AnimatedPressable>
+                  </View>
 
-                  <AnimatedPressable
-                    style={[
-                      styles.modalButton,
-                      styles.loginModalButton,
-                      loading && styles.disabledButton
-                    ]}
-                    onPress={handleLogin}
-                    disabled={loading}
-                  >
-                    <Text style={styles.loginModalButtonText}>
-                      {loading ? 'Вход...' : 'Войти'}
-                    </Text>
-                  </AnimatedPressable>
+                  <View style={styles.modalButtonWrapper}>
+                    <AnimatedPressable
+                      style={[
+                        styles.modalButton,
+                        styles.loginModalButton,
+                        loading && styles.disabledButton
+                      ]}
+                      onPress={handleLogin}
+                      disabled={loading}
+                    >
+                      <Text style={styles.loginModalButtonText}>
+                        {loading ? 'Вход...' : 'Войти'}
+                      </Text>
+                    </AnimatedPressable>
+                  </View>
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -358,11 +357,11 @@ const styles = StyleSheet.create({
     shadowColor: COLORS.orange,
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 6,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
   },
   loginButton: {
     backgroundColor: COLORS.white,
@@ -373,22 +372,22 @@ const styles = StyleSheet.create({
       width: 0,
       height: 4,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     elevation: 8,
   },
   blueButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.white,
   },
   orangeButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.white,
   },
   loginButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.blue,
   },
@@ -403,13 +402,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: '100%',
+    paddingVertical: 20,
   },
   modalContent: {
     backgroundColor: COLORS.white,
     borderRadius: 16,
-    padding: 24,
-    width: '100%',
+    padding: 16,
+    paddingBottom: 16,
+    width: '90%',
     maxWidth: 400,
+    minWidth: 350,
+    minHeight: 500,
+    alignSelf: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -461,11 +466,20 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 8,
+    marginTop: 0,
+    width: '100%',
+    alignSelf: 'stretch',
+    marginHorizontal: 0,
+    paddingHorizontal: 0,
+    marginBottom: 0,
+  },
+  modalButtonWrapper: {
+    flex: 1,
+    minWidth: 0,
   },
   modalButton: {
-    flex: 1,
-    paddingVertical: 12,
+    width: '100%',
+    paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -476,20 +490,36 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray,
     borderWidth: 1,
     borderColor: COLORS.darkGray,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   loginModalButton: {
     backgroundColor: COLORS.orange,
+    shadowColor: COLORS.orange,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
   },
   disabledButton: {
     opacity: 0.5,
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.blue,
   },
   loginModalButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.white,
   },

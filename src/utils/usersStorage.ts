@@ -84,6 +84,55 @@ export const findUserByEmail = async (email: string): Promise<UserData | null> =
 
 
 /**
+ * Обновление данных пользователя
+ */
+export const updateUser = async (userId: string, updates: Partial<Omit<UserData, 'id' | 'registeredAt'>>): Promise<UserData | null> => {
+  try {
+    const users = await getUsers();
+    const userIndex = users.findIndex(user => user.id === userId);
+    
+    if (userIndex === -1) {
+      return null;
+    }
+    
+    // Обновляем данные пользователя
+    users[userIndex] = {
+      ...users[userIndex],
+      ...updates,
+    };
+    
+    await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+    console.log('Данные пользователя обновлены:', userId);
+    return users[userIndex];
+  } catch (error) {
+    console.error('Ошибка обновления пользователя:', error);
+    throw error;
+  }
+};
+
+/**
+ * Удаление пользователя по ID
+ */
+export const deleteUser = async (userId: string): Promise<boolean> => {
+  try {
+    const users = await getUsers();
+    const filteredUsers = users.filter(user => user.id !== userId);
+    
+    if (filteredUsers.length === users.length) {
+      // Пользователь не найден
+      return false;
+    }
+    
+    await AsyncStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(filteredUsers));
+    console.log('Пользователь удален:', userId);
+    return true;
+  } catch (error) {
+    console.error('Ошибка удаления пользователя:', error);
+    throw error;
+  }
+};
+
+/**
  * Очистка всех пользователей (для тестирования)
  */
 export const clearAllUsers = async (): Promise<void> => {

@@ -7,7 +7,15 @@ export interface User {
   id: string;
   email: string;
   fullName?: string;
+  position?: string;
   phone?: string;
+  socialLink?: string;
+  projectName?: string;
+  outletsCount?: string;
+  workFormat?: string;
+  city?: string;
+  address?: string;
+  projectLink?: string;
   restaurantName?: string;
   createdAt: string;
 }
@@ -67,6 +75,17 @@ export const login = async (email: string, password: string): Promise<AuthRespon
     const userData: User = {
       id: user.id,
       email: user.email,
+      fullName: user.fullName,
+      position: user.position,
+      phone: user.phone,
+      socialLink: user.socialLink,
+      projectName: user.projectName,
+      outletsCount: user.outletsCount,
+      workFormat: user.workFormat,
+      city: user.city,
+      address: user.address,
+      projectLink: user.projectLink,
+      restaurantName: user.projectName,
       createdAt: user.registeredAt,
     };
 
@@ -141,6 +160,17 @@ export const register = async (
     const userData: User = {
       id: newUser.id,
       email: newUser.email,
+      fullName: newUser.fullName,
+      position: newUser.position,
+      phone: newUser.phone,
+      socialLink: newUser.socialLink,
+      projectName: newUser.projectName,
+      outletsCount: newUser.outletsCount,
+      workFormat: newUser.workFormat,
+      city: newUser.city,
+      address: newUser.address,
+      projectLink: newUser.projectLink,
+      restaurantName: newUser.projectName,
       createdAt: newUser.registeredAt,
     };
 
@@ -199,23 +229,32 @@ export const getUserData = async (): Promise<User | null> => {
     const token = await AsyncStorage.getItem('authToken');
     if (!token) return null;
 
-    // TODO: Реальный API вызов
-    // const response = await fetch(`${API_BASE_URL}/user/profile`, {
-    //   headers: {
-    //     'Authorization': `Bearer ${token}`,
-    //   },
-    // });
-    // const data = await response.json();
-
     const email = await AsyncStorage.getItem('userEmail');
     const userId = await AsyncStorage.getItem('userId');
 
     if (!email || !userId) return null;
 
+    // Загружаем полные данные пользователя из хранилища
+    const { findUserByEmail } = await import('./usersStorage');
+    const userData = await findUserByEmail(email);
+
+    if (!userData) return null;
+
     return {
-      id: userId,
-      email: email,
-      createdAt: new Date().toISOString(),
+      id: userData.id,
+      email: userData.email,
+      fullName: userData.fullName,
+      position: userData.position,
+      phone: userData.phone,
+      socialLink: userData.socialLink,
+      projectName: userData.projectName,
+      outletsCount: userData.outletsCount,
+      workFormat: userData.workFormat,
+      city: userData.city,
+      address: userData.address,
+      projectLink: userData.projectLink,
+      restaurantName: userData.projectName, // Для обратной совместимости
+      createdAt: userData.registeredAt,
     };
   } catch (error) {
     console.error('Ошибка получения данных пользователя:', error);
@@ -299,6 +338,93 @@ export const logout = async (): Promise<void> => {
     console.log('Выход из аккаунта выполнен успешно');
   } catch (error) {
     console.error('Ошибка выхода:', error);
+    throw error;
+  }
+};
+
+/**
+ * Обновление данных пользователя
+ */
+export const updateUserData = async (updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Пользователь не найден');
+    }
+
+    // Импортируем функцию обновления пользователя
+    const { updateUser } = await import('./usersStorage');
+    
+    // Преобразуем User в UserData формат
+    const userDataUpdates: any = { ...updates };
+    if (updates.restaurantName) {
+      userDataUpdates.projectName = updates.restaurantName;
+    }
+    
+    const updatedUser = await updateUser(userId, userDataUpdates);
+    
+    if (!updatedUser) {
+      throw new Error('Не удалось обновить данные пользователя');
+    }
+
+    // Возвращаем обновленные данные в формате User
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      fullName: updatedUser.fullName,
+      position: updatedUser.position,
+      phone: updatedUser.phone,
+      socialLink: updatedUser.socialLink,
+      projectName: updatedUser.projectName,
+      outletsCount: updatedUser.outletsCount,
+      workFormat: updatedUser.workFormat,
+      city: updatedUser.city,
+      address: updatedUser.address,
+      projectLink: updatedUser.projectLink,
+      restaurantName: updatedUser.projectName,
+      createdAt: updatedUser.registeredAt,
+    };
+  } catch (error) {
+    console.error('Ошибка обновления данных пользователя:', error);
+    throw error;
+  }
+};
+
+/**
+ * Удаление аккаунта
+ */
+export const deleteAccount = async (): Promise<boolean> => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Пользователь не найден');
+    }
+
+    // Импортируем функцию удаления пользователя
+    const { deleteUser } = await import('./usersStorage');
+    const { clearUserData } = await import('./userDataStorage');
+    
+    // Удаляем данные пользователя
+    await clearUserData(userId);
+    
+    // Удаляем пользователя из хранилища
+    const deleted = await deleteUser(userId);
+    
+    if (!deleted) {
+      throw new Error('Не удалось удалить пользователя');
+    }
+
+    // Очищаем данные авторизации
+    await AsyncStorage.removeItem('authToken');
+    await AsyncStorage.removeItem('isAuthenticated');
+    await AsyncStorage.removeItem('userEmail');
+    await AsyncStorage.removeItem('userId');
+    await AsyncStorage.removeItem('userAvatar');
+    
+    console.log('Аккаунт удален успешно');
+    return true;
+  } catch (error) {
+    console.error('Ошибка удаления аккаунта:', error);
     throw error;
   }
 };

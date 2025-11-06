@@ -223,3 +223,26 @@ export const migrateUserData = async (userId: string): Promise<void> => {
   }
 };
 
+/**
+ * Очистка всех данных пользователя
+ */
+export const clearUserData = async (userId: string): Promise<void> => {
+  try {
+    const keys = [
+      `user_${userId}_diagnosisBlocks`,
+      `user_${userId}_actionPlanTasks`,
+      `user_${userId}_questionnaireData`,
+      `user_${userId}_questionnaireCompleted`,
+      `user_${userId}_dashboardAllBlocksCompleted`,
+      `user_${userId}_dashboardPreviousResult`,
+      `user_${userId}_dashboardCurrentResult`,
+    ];
+
+    await Promise.all(keys.map(key => AsyncStorage.removeItem(key)));
+    console.log(`Все данные пользователя ${userId} удалены`);
+  } catch (error) {
+    console.error('Ошибка очистки данных пользователя:', error);
+    throw error;
+  }
+};
+

@@ -179,19 +179,10 @@ export default function RegisterScreen({
           socialLink: projectLink,
         });
 
-        Alert.alert(
-          'Регистрация успешна',
-          'Вы успешно зарегистрированы!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                onSuccess?.();
-                handleClose();
-              }
-            }
-          ]
-        );
+        // Автоматически переходим на главный экран
+        setLoading(false);
+        handleClose();
+        onSuccess?.();
       } else {
         setError(response.error || 'Ошибка регистрации');
         setLoading(false);
@@ -762,14 +753,6 @@ export default function RegisterScreen({
           </AnimatedPressable>
         </View>
       </View>
-
-      <AnimatedPressable
-        style={styles.registerButton}
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        <Text style={styles.registerButtonText}>Зарегистрировать проект</Text>
-      </AnimatedPressable>
     </View>
   );
 
@@ -843,6 +826,16 @@ export default function RegisterScreen({
 
             {step !== 3 && (
               <Text style={styles.requiredNote}>* поля, обязательные для заполнения</Text>
+            )}
+
+            {step === 3 && (
+              <AnimatedPressable
+                style={styles.registerButton}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                <Text style={styles.registerButtonText}>Зарегистрировать проект</Text>
+              </AnimatedPressable>
             )}
 
             <View style={styles.arrowsContainer}>
@@ -1185,6 +1178,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 24,
     marginTop: 8,
+    marginBottom: 8,
     paddingTop: 4,
   },
   arrowButton: {
@@ -1240,6 +1234,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
+    marginBottom: 24,
   },
   registerButtonText: {
     fontSize: 16,

@@ -7,7 +7,7 @@ import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View } from 'reac
 import { useAppContext } from '../components/AppWrapper';
 import AnimatedPressable from '../components/AnimatedPressable';
 import ScrollToTopButton from '../components/ScrollToTopButton';
-import { getUserData, logout, User } from '../utils/api';
+import { deleteAccount, getUserData, logout, User } from '../utils/api';
 
 const logo = require('../../assets/images/1111.png');
 
@@ -183,6 +183,62 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    // В веб-версии Alert может не работать, поэтому используем confirm
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Вы уверены, что хотите удалить аккаунт? Это действие необратимо. Все ваши данные будут удалены.');
+      if (!confirmed) return;
+    } else {
+      Alert.alert(
+        'Удаление аккаунта',
+        'Вы уверены, что хотите удалить аккаунт? Это действие необратимо. Все ваши данные будут удалены.',
+        [
+          { text: 'Отмена', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Удалить',
+            style: 'destructive',
+            onPress: () => performDeleteAccount(),
+          },
+        ]
+      );
+      return;
+    }
+    
+    // Если веб или после confirm, выполняем удаление
+    performDeleteAccount();
+  };
+
+  const performDeleteAccount = async () => {
+    try {
+      console.log('Выполняется удаление аккаунта...');
+      await deleteAccount();
+      
+      // Обновляем локальное состояние
+      setUser(null);
+      setAvatarUri(null);
+      setIsAuthenticated(false);
+      
+      console.log('Аккаунт удален, переход к авторизации...');
+      
+      // Переходим на экран авторизации
+      if (navigateToAuth) {
+        console.log('Вызываем navigateToAuth');
+        navigateToAuth();
+      } else {
+        console.log('navigateToAuth недоступен, перезагружаем данные');
+        // Fallback: перезагружаем данные
+        await loadUserData();
+      }
+    } catch (error) {
+      console.error('Ошибка удаления аккаунта:', error);
+      if (Platform.OS !== 'web') {
+        Alert.alert('Ошибка', 'Не удалось удалить аккаунт. Попробуйте снова.');
+      } else {
+        alert('Ошибка: Не удалось удалить аккаунт. Попробуйте снова.');
+      }
+    }
+  };
+
   const scrollToTop = () => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
@@ -247,6 +303,18 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                 <Text style={styles.userEmail}>{user?.email || 'Пользователь'}</Text>
                 {user?.fullName && (
                   <Text style={styles.userName}>{user.fullName}</Text>
+                )}
+                {user?.position && (
+                  <Text style={styles.userInfo}>{user.position}</Text>
+                )}
+                {user?.projectName && (
+                  <Text style={styles.userInfo}>Проект: {user.projectName}</Text>
+                )}
+                {user?.phone && (
+                  <Text style={styles.userInfo}>Телефон: {user.phone}</Text>
+                )}
+                {user?.city && (
+                  <Text style={styles.userInfo}>Город: {user.city}</Text>
                 )}
                 {user?.createdAt && (
                   <Text style={styles.userDate}>
@@ -321,6 +389,14 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
               >
                 <Ionicons name="log-out-outline" size={24} color={COLORS.red} />
                 <Text style={[styles.menuItemText, styles.logoutText]}>Выйти из аккаунта</Text>
+              </AnimatedPressable>
+
+              <AnimatedPressable
+                style={[styles.menuItem, styles.logoutItem]}
+                onPress={handleDeleteAccount}
+              >
+                <Ionicons name="trash-outline" size={24} color={COLORS.red} />
+                <Text style={[styles.menuItemText, styles.logoutText]}>Удалить аккаунт</Text>
               </AnimatedPressable>
             </View>
           </>
@@ -435,12 +511,20 @@ const styles = StyleSheet.create({
     color: COLORS.darkGray,
     marginBottom: 8,
     textAlign: 'center',
+    fontWeight: '600',
+  },
+  userInfo: {
+    fontSize: 14,
+    color: COLORS.darkGray,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   userDate: {
     fontSize: 14,
     color: COLORS.darkGray,
     fontStyle: 'italic',
     textAlign: 'center',
+    marginTop: 8,
   },
   notAuthorizedText: {
     fontSize: 18,
