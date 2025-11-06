@@ -2,13 +2,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface UserData {
   id: string;
-  firstName: string;
-  lastName: string;
+  // Данные о себе (шаг 1 регистрации)
+  fullName?: string;
+  position?: string;
+  phone?: string;
   email: string;
-  phone: string;
-  username: string;
-  agreePersonalData: boolean;
-  agreeMarketing: boolean;
+  socialLink?: string;
+  agreePersonalData?: boolean;
+  agreePrivacy?: boolean;
+  // Данные о бизнесе (шаг 2 регистрации)
+  projectName?: string;
+  outletsCount?: string;
+  workFormat?: string;
+  city?: string;
+  address?: string;
+  projectLink?: string;
+  // Данные для входа (шаг 3 регистрации)
+  password: string; // Храним пароль локально (в реальном приложении - только хеш)
   registeredAt: string;
 }
 
@@ -72,15 +82,6 @@ export const findUserByEmail = async (email: string): Promise<UserData | null> =
   }
 };
 
-export const findUserByUsername = async (username: string): Promise<UserData | null> => {
-  try {
-    const users = await getUsers();
-    return users.find(user => user.username.toLowerCase() === username.toLowerCase()) || null;
-  } catch (error) {
-    console.error('Ошибка поиска пользователя:', error);
-    return null;
-  }
-};
 
 /**
  * Очистка всех пользователей (для тестирования)
@@ -91,6 +92,26 @@ export const clearAllUsers = async (): Promise<void> => {
     console.log('Все пользователи удалены');
   } catch (error) {
     console.error('Ошибка очистки пользователей:', error);
+  }
+};
+
+/**
+ * Инициализация предустановленного пользователя
+ */
+export const initializeDefaultUser = async (): Promise<void> => {
+  try {
+    const existingUser = await findUserByEmail('Daykwon@yandex.ru');
+    if (!existingUser) {
+      const defaultUser = await saveUser({
+        email: 'Daykwon@yandex.ru',
+        password: 'Sergo1289',
+      });
+      console.log('Предустановленный пользователь создан:', defaultUser.id);
+    } else {
+      console.log('Предустановленный пользователь уже существует');
+    }
+  } catch (error) {
+    console.error('Ошибка инициализации предустановленного пользователя:', error);
   }
 };
 

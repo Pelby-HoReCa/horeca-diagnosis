@@ -6,11 +6,11 @@ import { Platform } from 'react-native';
 
 import ActionPlanScreen from '../screens/ActionPlanScreen';
 import AIAssistantScreen from '../screens/AIAssistantScreen';
+import BlockDetailScreen from '../screens/BlockDetailScreen';
 import BlockQuestionsScreen from '../screens/BlockQuestionsScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import QuestionnaireScreen from '../screens/QuestionnaireScreen';
 import SelfDiagnosisBlocksScreen from '../screens/SelfDiagnosisBlocksScreen';
 import { clearDataOnAppLaunch } from '../utils/appState';
 
@@ -39,11 +39,24 @@ function HomeStack() {
         component={BlockQuestionsScreen} 
         options={{ title: 'Вопросы блока' }} 
       />
-      <Stack.Screen 
-        name="Questionnaire" 
-        component={QuestionnaireScreen} 
-        options={{ title: 'Анкетирование' }} 
-      />
+    </Stack.Navigator>
+  );
+}
+
+function DashboardStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="DashboardMain" component={DashboardScreen} />
+      <Stack.Screen name="BlockDetail" component={BlockDetailScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ActionPlanStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ActionPlanMain" component={ActionPlanScreen} />
+      <Stack.Screen name="BlockDetail" component={BlockDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -86,7 +99,7 @@ export default function AppNavigator() {
     >
       <Tab.Screen 
         name="Главная" 
-        component={DashboardScreen}
+        component={DashboardStack}
         options={{
           tabBarLabel: 'Главная',
           tabBarIcon: ({ focused, color, size }) => (
@@ -100,7 +113,7 @@ export default function AppNavigator() {
       />
       <Tab.Screen 
         name="Задачи" 
-        component={ActionPlanScreen}
+        component={ActionPlanStack}
         options={{
           tabBarLabel: 'Задачи',
           tabBarIcon: ({ focused, color, size }) => (

@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AnimatedPressable from '../components/AnimatedPressable';
 import ScrollToTopButton from '../components/ScrollToTopButton';
+import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
 import { getTasksByBlock, Task } from '../utils/recommendationEngine';
 
 const logo = require('../../assets/images/1111.png');
@@ -22,7 +23,7 @@ const COLORS = {
 
 // Task interface теперь импортируется из recommendationEngine
 
-export default function ActionPlanScreen({ route }: { route?: any }) {
+export default function ActionPlanScreen({ route, navigation }: { route?: any; navigation?: any }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'completed'>('all');
@@ -213,9 +214,6 @@ export default function ActionPlanScreen({ route }: { route?: any }) {
             <Text style={styles.headerTitle} numberOfLines={1}>План действий</Text>
           </View>
         </View>
-        <Text style={styles.subtitle}>
-          Всего задач: {tasks.length} | Выполнено: {tasks.filter(t => t.completed).length}
-        </Text>
         {tasks.length > 0 && (
           <View style={styles.clearButtonContainer}>
             <AnimatedPressable
@@ -251,9 +249,16 @@ export default function ActionPlanScreen({ route }: { route?: any }) {
           onPress={() => setActiveTab('completed')}
         >
           <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>
-            Готово ({getTabCount('completed')})
+            Выполнены ({getTabCount('completed')})
           </Text>
         </AnimatedPressable>
+      </View>
+
+      {/* Подзаголовок под табами */}
+      <View style={styles.subtitleContainer}>
+        <Text style={styles.subtitle}>
+          Всего задач: {tasks.length} | Выполнено: {tasks.filter(t => t.completed).length}
+        </Text>
       </View>
 
       {/* Блоки с прогрессом */}
@@ -261,7 +266,15 @@ export default function ActionPlanScreen({ route }: { route?: any }) {
         <View style={styles.blocksContainer}>
           <Text style={styles.blocksTitle}>Прогресс по блокам</Text>
           {Object.entries(tasksByBlock).map(([blockId, blockData]) => (
-            <View key={blockId} style={styles.blockProgress}>
+            <AnimatedPressable
+              key={blockId}
+              style={styles.blockProgress}
+              onPress={() => {
+                if (navigation) {
+                  navigation.navigate('BlockDetail', { blockId });
+                }
+              }}
+            >
               <View style={styles.blockHeader}>
                 <Text style={styles.blockTitle}>{blockData.tasks[0]?.blockTitle || blockId}</Text>
                 <Text style={styles.blockProgressText}>
@@ -276,67 +289,86 @@ export default function ActionPlanScreen({ route }: { route?: any }) {
                   ]} 
                 />
               </View>
-            </View>
+            </AnimatedPressable>
           ))}
         </View>
       )}
 
-      {/* Список задач */}
-      <View style={styles.tasksContainer}>
-        {filteredTasks.length > 0 ? (
-          filteredTasks.map((task) => (
-            <View key={task.id} style={[styles.taskCard, task.completed && styles.taskCardCompleted]}>
-              <View style={styles.taskHeader}>
-                <AnimatedPressable
-                  style={styles.checkbox}
-                  onPress={() => toggleTaskCompletion(task.id)}
-                >
-                  <Ionicons
-                    name={task.completed ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={24}
-                    color={task.completed ? COLORS.green : COLORS.blue}
-                  />
-                </AnimatedPressable>
-                <View style={styles.taskInfo}>
-                  <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
-                    {task.title}
-                  </Text>
-                  <Text style={styles.taskDescription}>{task.description}</Text>
-                  <View style={styles.taskMeta}>
-                    <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(task.priority) }]}>
-                      <Text style={styles.priorityText}>{getPriorityText(task.priority)}</Text>
-                    </View>
-                    <Text style={styles.dueDate}>{task.dueDate}</Text>
-                  </View>
-                </View>
-                <AnimatedPressable
-                  style={styles.deleteButton}
-                  onPress={() => deleteTask(task.id)}
-                >
-                  <Ionicons name="trash-outline" size={20} color={COLORS.darkGray} />
-                </AnimatedPressable>
+      {/* Рекомендации по приоритету блоков */}
+      {(() => {
+        // Вычисляем приоритет блоков на основе количества высокоприоритетных задач
+        const blockPriorities = Object.entries(tasksByBlock).map(([blockId, blockData]) => {
+          const highPriorityTasks = blockData.tasks.filter(t => t.priority === 'high' && !t.completed).length;
+          const mediumPriorityTasks = blockData.tasks.filter(t => t.priority === 'medium' && !t.completed).length;
+          const lowPriorityTasks = blockData.tasks.filter(t => t.priority === 'low' && !t.completed).length;
+          const totalPending = blockData.tasks.filter(t => !t.completed).length;
+          
+          const block = DEFAULT_BLOCKS.find(b => b.id === blockId);
+          
+          return {
+            blockId,
+            blockTitle: block?.title || blockData.tasks[0]?.blockTitle || blockId,
+            highPriorityTasks,
+            mediumPriorityTasks,
+            lowPriorityTasks,
+            totalPending,
+            score: highPriorityTasks * 3 + mediumPriorityTasks * 2 + lowPriorityTasks * 1,
+          };
+        }).filter(b => b.totalPending > 0).sort((a, b) => b.score - a.score);
+
+        if (blockPriorities.length === 0) {
+          return (
+            <View style={styles.recommendationsContainer}>
+              <Text style={styles.recommendationsTitle}>Рекомендации по приоритету</Text>
+              <View style={styles.emptyRecommendations}>
+                <Text style={styles.emptyRecommendationsText}>
+                  Все задачи выполнены! Отличная работа!
+                </Text>
               </View>
             </View>
-          ))
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="checkmark-circle-outline" size={48} color={COLORS.darkGray} />
-            <Text style={styles.emptyText}>
-              {activeTab === 'all' ? 'Нет задач' : 
-               activeTab === 'pending' ? 'Нет задач в работе' : 
-               'Нет выполненных задач'}
+          );
+        }
+
+        return (
+          <View style={styles.recommendationsContainer}>
+            <Text style={styles.recommendationsTitle}>Рекомендуемый порядок выполнения</Text>
+            <Text style={styles.recommendationsSubtitle}>
+              Выполняйте блоки в указанном порядке для максимальной эффективности
             </Text>
-            <Text style={styles.emptySubtext}>
-              {activeTab === 'all' ? 
-                'Задачи появятся после прохождения блоков диагностики с неправильными ответами' :
-                activeTab === 'pending' ? 
-                'Все задачи выполнены или еще не созданы' :
-                'Выполненных задач пока нет'
-              }
-            </Text>
+            {blockPriorities.map((blockPriority, index) => (
+              <View key={blockPriority.blockId} style={styles.recommendationCard}>
+                <View style={styles.recommendationNumber}>
+                  <Text style={styles.recommendationNumberText}>{index + 1}</Text>
+                </View>
+                <View style={styles.recommendationContent}>
+                  <Text style={styles.recommendationBlockTitle}>{blockPriority.blockTitle}</Text>
+                  <View style={styles.recommendationStats}>
+                    {blockPriority.highPriorityTasks > 0 && (
+                      <View style={styles.recommendationStat}>
+                        <Ionicons name="alert-circle" size={14} color={COLORS.red} />
+                        <Text style={[styles.recommendationStatText, { color: COLORS.red }]}>
+                          {blockPriority.highPriorityTasks} высокий приоритет
+                        </Text>
+                      </View>
+                    )}
+                    {blockPriority.mediumPriorityTasks > 0 && (
+                      <View style={styles.recommendationStat}>
+                        <Ionicons name="information-circle" size={14} color={COLORS.orange} />
+                        <Text style={[styles.recommendationStatText, { color: COLORS.orange }]}>
+                          {blockPriority.mediumPriorityTasks} средний приоритет
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={styles.recommendationTotalTasks}>
+                      Всего задач: {blockPriority.totalPending}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ))}
           </View>
-        )}
-      </View>
+        );
+      })()}
     </ScrollView>
     <ScrollToTopButton onPress={scrollToTop} visible={showScrollButton} />
     </View>
@@ -370,6 +402,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 60,
     marginBottom: 8,
   },
   headerTitleContainer: {
@@ -412,12 +445,16 @@ const styles = StyleSheet.create({
     color: COLORS.blue,
     marginBottom: 8,
   },
+  subtitleContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   subtitle: {
     fontSize: 14,
     color: COLORS.orange,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 8,
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -544,6 +581,11 @@ const styles = StyleSheet.create({
   },
   blockProgress: {
     marginBottom: 12,
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.blue,
   },
   blockHeader: {
     flexDirection: 'row',
@@ -572,5 +614,87 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: COLORS.orange,
     borderRadius: 4,
+  },
+  recommendationsContainer: {
+    padding: 12,
+    marginTop: 8,
+  },
+  recommendationsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.blue,
+    marginBottom: 8,
+  },
+  recommendationsSubtitle: {
+    fontSize: 14,
+    color: COLORS.darkGray,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  recommendationCard: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.white,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: COLORS.blue,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: -2,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  recommendationNumber: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.orange,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  recommendationNumberText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.white,
+  },
+  recommendationContent: {
+    flex: 1,
+  },
+  recommendationBlockTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.blue,
+    marginBottom: 8,
+  },
+  recommendationStats: {
+    gap: 6,
+  },
+  recommendationStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  recommendationStatText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  recommendationTotalTasks: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    marginTop: 4,
+  },
+  emptyRecommendations: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyRecommendationsText: {
+    fontSize: 16,
+    color: COLORS.darkGray,
+    textAlign: 'center',
   },
 });

@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import AppNavigator from '../navigation/AppNavigator';
 import AuthScreen from '../screens/AuthScreen';
 import SplashScreen from '../screens/SplashScreen';
+import { initializeDefaultUser } from '../utils/usersStorage';
 
 // Контекст для управления переходом к авторизации
 interface AppContextType {
@@ -23,6 +24,8 @@ export default function AppWrapper() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
+    // Инициализируем предустановленного пользователя
+    initializeDefaultUser();
     checkAuthStatus();
   }, []);
 

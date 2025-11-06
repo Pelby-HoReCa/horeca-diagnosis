@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FlatList, Image, Modal, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import AnimatedPressable from '../components/AnimatedPressable';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
@@ -21,17 +21,12 @@ const COLORS = {
 export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   const [blocks, setBlocks] = useState<DiagnosisBlock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<'questionnaire' | 'confirm' | null>(null);
-  const [selectedBlock, setSelectedBlock] = useState<DiagnosisBlock | null>(null);
-  const [questionnaireCompleted, setQuestionnaireCompleted] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     console.log('Компонент загружен, инициализируем...');
     loadBlocks();
-    checkQuestionnaireStatus();
   }, []);
 
   // Обновляем блоки при возврате на экран (БЕЗ очистки данных)
@@ -71,22 +66,6 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
     }
   };
 
-  const checkQuestionnaireStatus = async () => {
-    try {
-      console.log('Проверяем статус анкетирования...');
-      const status = await AsyncStorage.getItem('questionnaireCompleted');
-      if (status === 'true') {
-        setQuestionnaireCompleted(true);
-        console.log('Анкетирование уже пройдено');
-      } else {
-        setQuestionnaireCompleted(false);
-        console.log('Анкетирование не пройдено');
-      }
-    } catch (error) {
-      console.error('Ошибка проверки статуса анкетирования:', error);
-      setQuestionnaireCompleted(false);
-    }
-  };
 
   // Принудительная инициализация блоков, если они пустые
   useEffect(() => {
@@ -138,60 +117,8 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
 
   const handleBlockPress = (block: DiagnosisBlock) => {
     console.log('Нажата карточка блока:', block.title);
-    console.log('Статус анкетирования:', questionnaireCompleted);
-    
-    setSelectedBlock(block);
-    
-    if (!questionnaireCompleted) {
-      console.log('Показываем модальное окно анкетирования');
-      // Предлагаем сначала пройти анкетирование
-      setModalType('questionnaire');
-      setShowModal(true);
-    } else {
-      console.log('Переходим к вопросам блока');
-      // Переходим сразу к вопросам
-      navigation.navigate('BlockQuestions', { blockId: block.id, blockTitle: block.title });
-    }
-  };
-
-  const handleQuestionnaireComplete = async () => {
-    setQuestionnaireCompleted(true);
-    await AsyncStorage.setItem('questionnaireCompleted', 'true');
-    setShowModal(false);
-    setModalType(null);
-    // Переходим к анкетированию
-    navigation.navigate('Questionnaire');
-  };
-
-  const handleQuestionnaireSkip = async () => {
-    console.log('=== ПРОПУСК АНКЕТИРОВАНИЯ ===');
-    setQuestionnaireCompleted(true);
-    await AsyncStorage.setItem('questionnaireCompleted', 'true');
-    setShowModal(false);
-    setModalType(null);
-    
-    // Находим первый незавершенный блок для диагностики
-    const firstUncompletedBlock = blocks.find(block => !block.completed);
-    
-    if (firstUncompletedBlock) {
-      console.log('Найден первый незавершенный блок:', firstUncompletedBlock.title);
-      setSelectedBlock(firstUncompletedBlock);
-      navigation.navigate('BlockQuestions', { 
-        blockId: firstUncompletedBlock.id, 
-        blockTitle: firstUncompletedBlock.title 
-      });
-    } else {
-      console.log('Все блоки завершены');
-      // Если все блоки завершены, показываем сообщение или переходим к результатам
-      alert('Все блоки диагностики уже завершены!');
-    }
-    console.log('=== КОНЕЦ ПРОПУСКА АНКЕТИРОВАНИЯ ===');
-  };
-
-  const handleCancel = () => {
-    setShowModal(false);
-    setModalType(null);
-    setSelectedBlock(null);
+    // Переходим сразу к вопросам блока
+    navigation.navigate('BlockQuestions', { blockId: block.id, blockTitle: block.title });
   };
 
   const getEfficiencyColor = (efficiency?: number): { bg: string; text: string; border?: string } => {
@@ -288,59 +215,17 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
                 <Text style={styles.headerTitle} numberOfLines={1}>Блоки самодиагностики</Text>
               </View>
             </View>
-            <Text style={styles.progress}>
-              Пройдено: {completedCount} из {blocks.length}
-            </Text>
-            
-            <AnimatedPressable
-              style={styles.startButton}
-              onPress={() => {
-                console.log('Нажата кнопка "Начать диагностику"');
-                console.log('Статус анкетирования:', questionnaireCompleted);
-                setModalType('questionnaire');
-                setShowModal(true);
-              }}
-            >
-              <Text style={styles.startButtonText}>Начать диагностику</Text>
-            </AnimatedPressable>
+            <View style={styles.startButtonContainer}>
+              <Text style={styles.progress}>
+                Пройдено: {completedCount} из {blocks.length}
+              </Text>
+            </View>
           </View>
         )}
         ListEmptyComponent={() => (
           <Text style={styles.emptyText}>Блоки не загружены</Text>
         )}
       />
-
-      {/* Модальное окно для анкетирования */}
-      <Modal
-        visible={showModal && modalType === 'questionnaire'}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={handleCancel}
-        onShow={() => console.log('Модальное окно анкетирования показано')}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Расскажите о себе!</Text>
-            <Text style={styles.modalText}>
-              Для более точной диагностики рекомендуем заполнить анкету с основными данными о вашем ресторане.
-            </Text>
-            <View style={styles.modalButtons}>
-              <AnimatedPressable
-                style={[styles.modalButton, styles.secondaryButton]}
-                onPress={handleQuestionnaireSkip}
-              >
-                <Text style={styles.secondaryButtonText}>Пропустить</Text>
-              </AnimatedPressable>
-              <AnimatedPressable
-                style={[styles.modalButton, styles.primaryButton]}
-                onPress={handleQuestionnaireComplete}
-              >
-                <Text style={styles.primaryButtonText}>Заполнить</Text>
-              </AnimatedPressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
       <ScrollToTopButton onPress={scrollToTop} visible={showScrollButton} />
     </View>
   );
@@ -371,6 +256,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 60,
     marginBottom: 6,
   },
   headerTitleContainer: {
@@ -388,112 +274,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.blue,
   },
-  progress: {
-    fontSize: 16,
-    color: COLORS.orange,
-    fontWeight: '600',
-    marginBottom: 16,
-    textAlign: 'center',
+  startButtonContainer: {
+    position: 'relative',
     marginTop: 8,
   },
-  startButton: {
-    backgroundColor: COLORS.orange,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    shadowColor: COLORS.orange,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  startButtonText: {
-    fontSize: 16,
+  progress: {
+    fontSize: 12,
+    color: COLORS.orange,
     fontWeight: '600',
-    color: COLORS.white,
-    textAlign: 'center',
+    textAlign: 'right',
+    marginTop: 8,
+    paddingRight: 4,
   },
   emptyText: {
     fontSize: 16,
     color: COLORS.darkGray,
     textAlign: 'center',
     marginTop: 20,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  modalText: {
-    fontSize: 16,
-    color: COLORS.darkGray,
-    marginBottom: 24,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 20,
-  },
-  modalButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    minWidth: 120,
-  },
-  primaryButton: {
-    backgroundColor: COLORS.orange,
-  },
-  secondaryButton: {
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.blue,
-  },
-  primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.white,
-    textAlign: 'center',
-  },
-  secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.blue,
-    textAlign: 'center',
   },
   listContainer: {
     paddingHorizontal: 12,

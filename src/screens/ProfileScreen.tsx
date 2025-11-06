@@ -362,6 +362,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 60,
     marginBottom: 8,
   },
   headerTitleContainer: {

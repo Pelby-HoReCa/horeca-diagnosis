@@ -7,8 +7,6 @@ export const clearDataOnAppLaunch = async () => {
     console.log('ПЕРВЫЙ ЗАПУСК ПРИЛОЖЕНИЯ - ОЧИЩАЕМ ВСЕ ДАННЫЕ');
     await AsyncStorage.removeItem('diagnosisBlocks');
     await AsyncStorage.removeItem('actionPlanTasks');
-    await AsyncStorage.removeItem('questionnaireCompleted');
-    await AsyncStorage.removeItem('questionnaireData');
     await AsyncStorage.removeItem('dashboardPreviousResult');
     await AsyncStorage.removeItem('dashboardCurrentResult');
     await AsyncStorage.removeItem('dashboardAllBlocksCompleted');

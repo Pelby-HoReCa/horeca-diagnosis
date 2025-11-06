@@ -3,10 +3,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import AnimatedPressable from '../components/AnimatedPressable';
 import BarChart from '../components/BarChart';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import { Task } from '../utils/recommendationEngine';
+import {
+  getCurrentUserId,
+  loadUserBlocks,
+  loadUserDashboardData,
+  loadUserQuestionnaire,
+  loadUserTasks,
+  saveUserDashboardData
+} from '../utils/userDataStorage';
 
 // Фирменные цвета
 const COLORS = {
@@ -25,7 +34,7 @@ interface Comparison {
   change?: number; // Изменение в процентах (положительное = рост, отрицательное = падение)
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }: any) {
   const [restaurantName, setRestaurantName] = useState('Название ресторана');
   const [blockResults, setBlockResults] = useState<DiagnosisBlock[]>([]);
   const [comparison, setComparison] = useState<Comparison>({ previous: 0, current: 0 });
@@ -61,17 +70,14 @@ export default function DashboardScreen() {
     try {
       console.log('Загружаем данные дашборда...');
       
-      // Загружаем название ресторана из анкеты
-      const questionnaireData = await AsyncStorage.getItem('questionnaireData');
-      if (questionnaireData) {
-        try {
-          const parsed = JSON.parse(questionnaireData);
-          if (parsed.restaurantName && parsed.restaurantName.trim()) {
-            setRestaurantName(parsed.restaurantName);
-          } else {
-            setRestaurantName('Название ресторана');
-          }
-        } catch (e) {
+      const userId = await getCurrentUserId();
+      
+      // Загружаем название ресторана из данных пользователя
+      if (userId) {
+        const questionnaireData = await loadUserQuestionnaire(userId);
+        if (questionnaireData && questionnaireData.restaurantName && questionnaireData.restaurantName.trim()) {
+          setRestaurantName(questionnaireData.restaurantName);
+        } else {
           setRestaurantName('Название ресторана');
         }
       } else {
@@ -79,14 +85,38 @@ export default function DashboardScreen() {
       }
       
       // Загружаем существующие данные
-      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      const allBlocksCompleted = await AsyncStorage.getItem('dashboardAllBlocksCompleted');
-      const storedPrevious = await AsyncStorage.getItem('dashboardPreviousResult');
-      const storedCurrent = await AsyncStorage.getItem('dashboardCurrentResult');
+      let storedBlocks: DiagnosisBlock[] | null = null;
+      let storedTasks: Task[] = [];
+      
+      if (userId) {
+        storedBlocks = await loadUserBlocks(userId);
+        storedTasks = await loadUserTasks(userId);
+      } else {
+        // Fallback к глобальным данным
+        const blocksJson = await AsyncStorage.getItem('diagnosisBlocks');
+        const tasksJson = await AsyncStorage.getItem('actionPlanTasks');
+        if (blocksJson) storedBlocks = JSON.parse(blocksJson);
+        if (tasksJson) storedTasks = JSON.parse(tasksJson);
+      }
+      
+      let allBlocksCompleted: string | null = null;
+      let storedPrevious: string | null = null;
+      let storedCurrent: string | null = null;
+      
+      if (userId) {
+        const dashboardData = await loadUserDashboardData(userId);
+        allBlocksCompleted = dashboardData.allBlocksCompleted;
+        storedPrevious = dashboardData.previousResult;
+        storedCurrent = dashboardData.currentResult;
+      } else {
+        // Fallback к глобальным данным
+        allBlocksCompleted = await AsyncStorage.getItem('dashboardAllBlocksCompleted');
+        storedPrevious = await AsyncStorage.getItem('dashboardPreviousResult');
+        storedCurrent = await AsyncStorage.getItem('dashboardCurrentResult');
+      }
       
       if (storedBlocks) {
-        const blocks = JSON.parse(storedBlocks);
+        const blocks = Array.isArray(storedBlocks) ? storedBlocks : JSON.parse(storedBlocks);
         // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
         const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
           const foundBlock = blocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
@@ -104,7 +134,6 @@ export default function DashboardScreen() {
         });
         setBlockResults(allBlocks);
         console.log('Загружены блоки для дашборда:', allBlocks.length);
-        console.log('Детали блоков:', allBlocks.map(b => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
         
         // Проверяем, все ли блоки завершены
         const completedBlocks = allBlocks.filter(b => b.completed && b.efficiency !== undefined);
@@ -122,9 +151,17 @@ export default function DashboardScreen() {
           
           if (!wasAllCompleted) {
             // Первое прохождение всех блоков - ПРЕДЫДУЩИЙ и ТЕКУЩИЙ равны
-            await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
-            await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
-            await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+            if (userId) {
+              await saveUserDashboardData(userId, {
+                allBlocksCompleted: 'true',
+                previousResult: avgEfficiency.toString(),
+                currentResult: avgEfficiency.toString(),
+              });
+            } else {
+              await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
+              await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
+              await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+            }
             setComparison({ previous: avgEfficiency, current: avgEfficiency, change: 0 });
           } else {
             // Последующие прохождения - проверяем, изменился ли результат
@@ -134,8 +171,15 @@ export default function DashboardScreen() {
               const newCurrent = avgEfficiency;
               const change = newCurrent - newPrevious;
               
-              await AsyncStorage.setItem('dashboardPreviousResult', newPrevious.toString());
-              await AsyncStorage.setItem('dashboardCurrentResult', newCurrent.toString());
+              if (userId) {
+                await saveUserDashboardData(userId, {
+                  previousResult: newPrevious.toString(),
+                  currentResult: newCurrent.toString(),
+                });
+              } else {
+                await AsyncStorage.setItem('dashboardPreviousResult', newPrevious.toString());
+                await AsyncStorage.setItem('dashboardCurrentResult', newCurrent.toString());
+              }
               setComparison({ previous: newPrevious, current: newCurrent, change });
             } else {
               // Результат не изменился - используем сохраненные значения
@@ -157,10 +201,9 @@ export default function DashboardScreen() {
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
       
-      if (storedTasks) {
-        const tasks = JSON.parse(storedTasks);
+      if (storedTasks && storedTasks.length > 0) {
         // Показываем только первые 3 задачи
-        setTasks(tasks.slice(0, 3));
+        setTasks(storedTasks.slice(0, 3));
         console.log('Загружены задачи для дашборда:', tasks.slice(0, 3).length);
       } else {
         setTasks([]);
@@ -179,17 +222,14 @@ export default function DashboardScreen() {
     try {
       console.log('Загружаем данные дашборда без очистки...');
       
-      // Загружаем название ресторана из анкеты
-      const questionnaireData = await AsyncStorage.getItem('questionnaireData');
-      if (questionnaireData) {
-        try {
-          const parsed = JSON.parse(questionnaireData);
-          if (parsed.restaurantName && parsed.restaurantName.trim()) {
-            setRestaurantName(parsed.restaurantName);
-          } else {
-            setRestaurantName('Название ресторана');
-          }
-        } catch (e) {
+      const userId = await getCurrentUserId();
+      
+      // Загружаем название ресторана из данных пользователя
+      if (userId) {
+        const questionnaireData = await loadUserQuestionnaire(userId);
+        if (questionnaireData && questionnaireData.restaurantName && questionnaireData.restaurantName.trim()) {
+          setRestaurantName(questionnaireData.restaurantName);
+        } else {
           setRestaurantName('Название ресторана');
         }
       } else {
@@ -197,14 +237,36 @@ export default function DashboardScreen() {
       }
       
       // Загружаем существующие данные
-      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      const allBlocksCompleted = await AsyncStorage.getItem('dashboardAllBlocksCompleted');
-      const storedPrevious = await AsyncStorage.getItem('dashboardPreviousResult');
-      const storedCurrent = await AsyncStorage.getItem('dashboardCurrentResult');
+      let storedBlocks: DiagnosisBlock[] | null = null;
+      let storedTasks: Task[] = [];
+      
+      if (userId) {
+        storedBlocks = await loadUserBlocks(userId);
+        storedTasks = await loadUserTasks(userId);
+      } else {
+        // Fallback к глобальным данным
+        const blocksJson = await AsyncStorage.getItem('diagnosisBlocks');
+        const tasksJson = await AsyncStorage.getItem('actionPlanTasks');
+        if (blocksJson) storedBlocks = JSON.parse(blocksJson);
+        if (tasksJson) storedTasks = JSON.parse(tasksJson);
+      }
+      let allBlocksCompleted: string | null = null;
+      let storedPrevious: string | null = null;
+      let storedCurrent: string | null = null;
+      
+      if (userId) {
+        const dashboardData = await loadUserDashboardData(userId);
+        allBlocksCompleted = dashboardData.allBlocksCompleted;
+        storedPrevious = dashboardData.previousResult;
+        storedCurrent = dashboardData.currentResult;
+      } else {
+        allBlocksCompleted = await AsyncStorage.getItem('dashboardAllBlocksCompleted');
+        storedPrevious = await AsyncStorage.getItem('dashboardPreviousResult');
+        storedCurrent = await AsyncStorage.getItem('dashboardCurrentResult');
+      }
       
       if (storedBlocks) {
-        const blocks = JSON.parse(storedBlocks);
+        const blocks = Array.isArray(storedBlocks) ? storedBlocks : JSON.parse(storedBlocks);
         // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
         const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
           const foundBlock = blocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
@@ -222,7 +284,6 @@ export default function DashboardScreen() {
         });
         setBlockResults(allBlocks);
         console.log('Загружены блоки для дашборда:', allBlocks.length);
-        console.log('Детали блоков:', allBlocks.map(b => ({ id: b.id, completed: b.completed, efficiency: b.efficiency })));
         
         // Проверяем, все ли блоки завершены
         const completedBlocks = allBlocks.filter(b => b.completed && b.efficiency !== undefined);
@@ -240,9 +301,17 @@ export default function DashboardScreen() {
           
           if (!wasAllCompleted) {
             // Первое прохождение всех блоков - ПРЕДЫДУЩИЙ и ТЕКУЩИЙ равны
-            await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
-            await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
-            await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+            if (userId) {
+              await saveUserDashboardData(userId, {
+                allBlocksCompleted: 'true',
+                previousResult: avgEfficiency.toString(),
+                currentResult: avgEfficiency.toString(),
+              });
+            } else {
+              await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
+              await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
+              await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+            }
             setComparison({ previous: avgEfficiency, current: avgEfficiency, change: 0 });
           } else {
             // Последующие прохождения - проверяем, изменился ли результат
@@ -252,8 +321,15 @@ export default function DashboardScreen() {
               const newCurrent = avgEfficiency;
               const change = newCurrent - newPrevious;
               
-              await AsyncStorage.setItem('dashboardPreviousResult', newPrevious.toString());
-              await AsyncStorage.setItem('dashboardCurrentResult', newCurrent.toString());
+              if (userId) {
+                await saveUserDashboardData(userId, {
+                  previousResult: newPrevious.toString(),
+                  currentResult: newCurrent.toString(),
+                });
+              } else {
+                await AsyncStorage.setItem('dashboardPreviousResult', newPrevious.toString());
+                await AsyncStorage.setItem('dashboardCurrentResult', newCurrent.toString());
+              }
               setComparison({ previous: newPrevious, current: newCurrent, change });
             } else {
               // Результат не изменился - используем сохраненные значения
@@ -276,10 +352,9 @@ export default function DashboardScreen() {
       }
 
       // Загружаем задачи
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
-        setTasks(parsedTasks.slice(0, 3)); // Показываем только первые 3 задачи
-        console.log('Загружены задачи для дашборда:', parsedTasks.length);
+      if (storedTasks && storedTasks.length > 0) {
+        setTasks(storedTasks.slice(0, 3)); // Показываем только первые 3 задачи
+        console.log('Загружены задачи для дашборда:', storedTasks.length);
       } else {
         setTasks([]);
         console.log('Задач для дашборда нет');
@@ -316,10 +391,17 @@ export default function DashboardScreen() {
     const colors = getEfficiencyColor(block.efficiency);
     
     return (
-      <View style={[
-        styles.blockCard, 
-        { backgroundColor: colors.bg, borderLeftWidth: 4, borderLeftColor: colors.border || colors.text }
-      ]}>
+      <AnimatedPressable
+        style={[
+          styles.blockCard,
+          { backgroundColor: colors.bg, borderLeftWidth: 4, borderLeftColor: colors.border || colors.text }
+        ]}
+        onPress={() => {
+          if (navigation) {
+            navigation.navigate('BlockDetail', { blockId: block.id });
+          }
+        }}
+      >
         <Text style={[styles.blockTitle, { color: COLORS.blue }]}>{block.title}</Text>
         <View style={styles.efficiencyContainer}>
           <Text style={[styles.efficiencyValue, { color: colors.text }]}>
@@ -327,7 +409,7 @@ export default function DashboardScreen() {
           </Text>
           <Text style={[styles.efficiencyLabel, { color: colors.text }]}>эффективность</Text>
         </View>
-      </View>
+      </AnimatedPressable>
     );
   };
 
@@ -412,8 +494,16 @@ export default function DashboardScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Результаты по блокам</Text>
         <View style={styles.blocksGrid}>
-          {blockResults.map((block) => (
-            <BlockCard key={block.id} block={block} />
+          {blockResults.map((block, index) => (
+            <View 
+              key={block.id}
+              style={[
+                styles.blockCardWrapper,
+                index % 2 === 0 ? null : styles.blockCardRight
+              ]}
+            >
+              <BlockCard block={block} />
+            </View>
           ))}
         </View>
       </View>
@@ -479,25 +569,33 @@ const styles = StyleSheet.create({
   blocksGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    width: '100%',
     justifyContent: 'space-between',
   },
-  blockCard: {
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 6,
+  blockCardWrapper: {
     width: '48%',
-    minHeight: 70,
+    marginBottom: 12,
+  },
+  blockCardRight: {},
+  blockCard: {
+    padding: 10,
+    borderRadius: 8,
+    minHeight: 90,
+    width: '100%',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
   blockTitle: {
     fontSize: 11,
     fontWeight: '600',
     marginBottom: 2,
     lineHeight: 14,
+    textAlign: 'center',
   },
   efficiencyContainer: {
     alignItems: 'center',
     marginTop: 2,
+    width: '100%',
   },
   efficiencyValue: {
     fontSize: 20,

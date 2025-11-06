@@ -26,89 +26,134 @@ export interface PasswordResetResponse {
 }
 
 /**
- * Авторизация пользователя
- * TODO: Заменить на реальный API вызов
+ * Авторизация пользователя (локальная)
  */
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
   try {
-    // TODO: Реальный API вызов
-    // const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //   },
-    //   body: JSON.stringify({ email, password }),
-    // });
-    // const data = await response.json();
-
-    // Пока используем mock-авторизацию
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Имитация задержки сети
+    // Импортируем функции для работы с пользователями
+    const { findUserByEmail } = await import('./usersStorage');
+    const { migrateUserData } = await import('./userDataStorage');
     
-    const mockUser: User = {
-      id: 'user_' + Date.now(),
-      email: email,
-      createdAt: new Date().toISOString(),
-    };
+    // Ищем пользователя по email
+    const user = await findUserByEmail(email);
+    
+    if (!user) {
+      return {
+        success: false,
+        error: 'Пользователь с таким email не найден',
+      };
+    }
 
-    const mockToken = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // Проверяем пароль
+    if (user.password !== password) {
+      return {
+        success: false,
+        error: 'Неверный пароль',
+      };
+    }
 
-    // Сохраняем в AsyncStorage
-    await AsyncStorage.setItem('authToken', mockToken);
+    // Создаем токен
+    const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+    // Сохраняем данные авторизации
+    await AsyncStorage.setItem('authToken', token);
     await AsyncStorage.setItem('userEmail', email);
     await AsyncStorage.setItem('isAuthenticated', 'true');
-    await AsyncStorage.setItem('userId', mockUser.id);
+    await AsyncStorage.setItem('userId', user.id);
+
+    // Мигрируем данные из глобальных ключей (если есть)
+    await migrateUserData(user.id);
+
+    const userData: User = {
+      id: user.id,
+      email: user.email,
+      createdAt: user.registeredAt,
+    };
 
     return {
       success: true,
-      token: mockToken,
-      user: mockUser,
+      token: token,
+      user: userData,
     };
   } catch (error) {
     console.error('Ошибка авторизации:', error);
     return {
       success: false,
-      error: 'Ошибка подключения к серверу',
+      error: 'Ошибка авторизации. Попробуйте снова.',
     };
   }
 };
 
 /**
- * Регистрация нового пользователя
- * TODO: Заменить на реальный API вызов
+ * Регистрация нового пользователя (локальная)
  */
 export const register = async (
   email: string,
   password: string,
-  fullName?: string
+  additionalData?: {
+    fullName?: string;
+    position?: string;
+    phone?: string;
+    socialLink?: string;
+    agreePersonalData?: boolean;
+    agreePrivacy?: boolean;
+    projectName?: string;
+    outletsCount?: string;
+    workFormat?: string;
+    city?: string;
+    address?: string;
+    projectLink?: string;
+  }
 ): Promise<AuthResponse> => {
   try {
-    // TODO: Реальный API вызов
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Импортируем функции для работы с пользователями
+    const { findUserByEmail, saveUser } = await import('./usersStorage');
+    const { migrateUserData } = await import('./userDataStorage');
     
-    const mockUser: User = {
-      id: 'user_' + Date.now(),
-      email: email,
-      fullName: fullName,
-      createdAt: new Date().toISOString(),
-    };
+    // Проверяем, не существует ли пользователь
+    const existingUser = await findUserByEmail(email);
+    if (existingUser) {
+      return {
+        success: false,
+        error: 'Пользователь с таким email уже зарегистрирован',
+      };
+    }
 
-    const mockToken = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // Создаем нового пользователя с дополнительными данными
+    const newUser = await saveUser({
+      email,
+      password,
+      ...(additionalData || {}),
+    });
 
-    await AsyncStorage.setItem('authToken', mockToken);
+    // Создаем токен
+    const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+    // Сохраняем данные авторизации
+    await AsyncStorage.setItem('authToken', token);
     await AsyncStorage.setItem('userEmail', email);
     await AsyncStorage.setItem('isAuthenticated', 'true');
-    await AsyncStorage.setItem('userId', mockUser.id);
+    await AsyncStorage.setItem('userId', newUser.id);
+
+    // Мигрируем данные из глобальных ключей (если есть)
+    await migrateUserData(newUser.id);
+
+    const userData: User = {
+      id: newUser.id,
+      email: newUser.email,
+      createdAt: newUser.registeredAt,
+    };
 
     return {
       success: true,
-      token: mockToken,
-      user: mockUser,
+      token: token,
+      user: userData,
     };
   } catch (error) {
     console.error('Ошибка регистрации:', error);
     return {
       success: false,
-      error: 'Ошибка подключения к серверу',
+      error: 'Ошибка регистрации. Попробуйте снова.',
     };
   }
 };

@@ -30,9 +30,9 @@ export default function RootLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.white }}>
       <StatusBar style="dark" backgroundColor={COLORS.white} />
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AppWrapper />
-      </ThemeProvider>
+    </ThemeProvider>
     </View>
   );
 }

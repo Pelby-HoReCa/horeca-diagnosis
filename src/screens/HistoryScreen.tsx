@@ -195,9 +195,6 @@ export default function HistoryScreen() {
             <Text style={styles.headerTitle} numberOfLines={1}>Результаты диагностики</Text>
           </View>
         </View>
-        <Text style={styles.subtitle}>
-          Завершенные блоки: {results.length} | Задач: {tasks.length}
-        </Text>
       </View>
 
       {/* Завершенные блоки */}
@@ -276,6 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 60,
     marginBottom: 8,
   },
   headerTitleContainer: {
