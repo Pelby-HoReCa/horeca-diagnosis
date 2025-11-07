@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useAppContext } from '../components/AppWrapper';
 import AnimatedPressable from '../components/AnimatedPressable';
+import { useAppContext } from '../components/AppWrapper';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { deleteAccount, getUserData, logout, User } from '../utils/api';
 
@@ -452,9 +452,10 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.blue,
+    marginLeft: 10,
   },
   section: {
     margin: 20,
@@ -469,13 +470,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.gray,
     borderRadius: 12,
     padding: 24,
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderLeftWidth: 4,
     borderLeftColor: COLORS.orange,
   },
   avatarContainer: {
     marginBottom: 16,
     position: 'relative',
+    alignSelf: 'center',
   },
   avatarWrapper: {
     position: 'relative',
@@ -504,26 +506,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.blue,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   userName: {
     fontSize: 16,
     color: COLORS.darkGray,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
     fontWeight: '600',
   },
   userInfo: {
     fontSize: 14,
     color: COLORS.darkGray,
     marginBottom: 4,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   userDate: {
     fontSize: 14,
     color: COLORS.darkGray,
     fontStyle: 'italic',
-    textAlign: 'center',
+    textAlign: 'left',
     marginTop: 8,
   },
   notAuthorizedText: {

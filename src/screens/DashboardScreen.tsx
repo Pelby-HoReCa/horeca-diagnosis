@@ -41,6 +41,7 @@ export default function DashboardScreen({ navigation }: any) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [allBlocksFinished, setAllBlocksFinished] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -138,6 +139,7 @@ export default function DashboardScreen({ navigation }: any) {
         // Проверяем, все ли блоки завершены
         const completedBlocks = allBlocks.filter(b => b.completed && b.efficiency !== undefined);
         const allCompleted = completedBlocks.length === DEFAULT_BLOCKS.length;
+        setAllBlocksFinished(allCompleted);
         
         if (allCompleted && completedBlocks.length > 0) {
           // Рассчитываем среднюю эффективность по всем блокам
@@ -193,11 +195,13 @@ export default function DashboardScreen({ navigation }: any) {
             ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
             : 0;
           setComparison({ previous: 0, current: avgEfficiency, change: 0 });
+          setAllBlocksFinished(false);
         }
       } else {
         // Если блоков нет, показываем дефолтные
         setBlockResults(DEFAULT_BLOCKS);
         setComparison({ previous: 0, current: 0, change: 0 });
+        setAllBlocksFinished(false);
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
       
@@ -215,6 +219,7 @@ export default function DashboardScreen({ navigation }: any) {
       setTasks([]);
       setBlockResults(DEFAULT_BLOCKS);
       setComparison({ previous: 0, current: 0, change: 0 });
+      setAllBlocksFinished(false);
     }
   };
 
@@ -288,6 +293,7 @@ export default function DashboardScreen({ navigation }: any) {
         // Проверяем, все ли блоки завершены
         const completedBlocks = allBlocks.filter(b => b.completed && b.efficiency !== undefined);
         const allCompleted = completedBlocks.length === DEFAULT_BLOCKS.length;
+        setAllBlocksFinished(allCompleted);
         
         if (allCompleted && completedBlocks.length > 0) {
           // Рассчитываем среднюю эффективность по всем блокам
@@ -343,11 +349,13 @@ export default function DashboardScreen({ navigation }: any) {
             ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
             : 0;
           setComparison({ previous: 0, current: avgEfficiency, change: 0 });
+          setAllBlocksFinished(false);
         }
       } else {
         // Если блоков нет, показываем дефолтные
         setBlockResults(DEFAULT_BLOCKS);
         setComparison({ previous: 0, current: 0, change: 0 });
+        setAllBlocksFinished(false);
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
 
@@ -362,6 +370,7 @@ export default function DashboardScreen({ navigation }: any) {
       
     } catch (error) {
       console.error('Ошибка загрузки данных дашборда:', error);
+      setAllBlocksFinished(false);
     }
   };
 
@@ -457,13 +466,17 @@ export default function DashboardScreen({ navigation }: any) {
         <Text style={styles.sectionTitle}>Общий результат</Text>
         <View style={styles.comparisonContainer}>
           <View style={styles.comparisonItem}>
-            <Text style={[styles.comparisonValue, { color: COLORS.red }]}>{comparison.previous}%</Text>
+            <Text style={[styles.comparisonValue, { color: COLORS.red }]}>
+              {allBlocksFinished ? `${comparison.previous}%` : '—'}
+            </Text>
             <Text style={styles.comparisonLabel}>ПРЕДЫДУЩИЙ</Text>
           </View>
           <View style={styles.comparisonItem}>
             <View style={styles.currentResultContainer}>
-              <Text style={[styles.comparisonValue, { color: COLORS.green }]}>{comparison.current}%</Text>
-              {comparison.change !== undefined && comparison.change !== 0 && (
+              <Text style={[styles.comparisonValue, { color: COLORS.green }]}>
+                {allBlocksFinished ? `${comparison.current}%` : '—'}
+              </Text>
+              {allBlocksFinished && comparison.change !== undefined && comparison.change !== 0 && (
                 <View style={styles.changeIndicator}>
                   <Ionicons 
                     name={comparison.change > 0 ? "arrow-up" : "arrow-down"} 
@@ -482,6 +495,9 @@ export default function DashboardScreen({ navigation }: any) {
             <Text style={styles.comparisonLabel}>ТЕКУЩИЙ</Text>
           </View>
         </View>
+        {!allBlocksFinished && (
+          <Text style={styles.incompleteHint}>Пройдите все блоки, чтобы увидеть сводные показатели</Text>
+        )}
       </View>
 
       {/* Столбчатая диаграмма */}
@@ -650,6 +666,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: COLORS.blue,
+  },
+  incompleteHint: {
+    fontSize: 12,
+    color: COLORS.darkGray,
+    textAlign: 'center',
+    marginTop: 8,
   },
   taskItem: {
     flexDirection: 'row',

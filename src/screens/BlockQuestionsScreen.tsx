@@ -5,6 +5,12 @@ import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AnimatedPressable from '../components/AnimatedPressable';
 import questionsData from '../data/questions.json';
 import { generateTasksFromAnswers, Task } from '../utils/recommendationEngine';
+import {
+  getCurrentUserId,
+  loadUserTasks,
+  saveUserBlocks,
+  saveUserTasks,
+} from '../utils/userDataStorage';
 
 // Фирменные цвета
 const COLORS = {
@@ -128,6 +134,19 @@ export default function BlockQuestionsScreen({
       const verifyParsed = JSON.parse(verifyTasks || '[]');
       console.log('Проверка сохранения - задач в хранилище:', verifyParsed.length);
       console.log('=== КОНЕЦ СОХРАНЕНИЯ ===');
+
+      // Сохраняем задачи также в персональном хранилище пользователя
+      const userId = await getCurrentUserId();
+      if (userId) {
+        try {
+          const userTasks = await loadUserTasks(userId);
+          const updatedUserTasks = [...userTasks, ...tasks];
+          await saveUserTasks(userId, updatedUserTasks as Task[]);
+          console.log(`Задачи сохранены для пользователя ${userId}:`, updatedUserTasks.length);
+        } catch (userError) {
+          console.error('Ошибка сохранения задач пользователя:', userError);
+        }
+      }
     } catch (error) {
       console.error('Ошибка сохранения задач:', error);
     }
@@ -220,6 +239,17 @@ export default function BlockQuestionsScreen({
       // Сохраняем все блоки
       await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(updatedBlocks));
       console.log('Блок успешно отмечен как завершенный и сохранен:', blockId);
+
+      // Синхронизируем данные блока с персональным хранилищем пользователя
+      const userId = await getCurrentUserId();
+      if (userId) {
+        try {
+          await saveUserBlocks(userId, updatedBlocks as any);
+          console.log(`Блоки сохранены для пользователя ${userId}`);
+        } catch (userError) {
+          console.error('Ошибка сохранения блоков пользователя:', userError);
+        }
+      }
       
       // Проверяем, что данные действительно сохранились
       const verifyBlocks = await AsyncStorage.getItem('diagnosisBlocks');
@@ -305,8 +335,7 @@ export default function BlockQuestionsScreen({
             }
           }}
         >
-          <Ionicons name="arrow-back" size={20} color={COLORS.blue} />
-          <Text style={styles.backButtonText}>Назад</Text>
+          <Ionicons name="arrow-back-outline" size={20} color={COLORS.blue} />
         </AnimatedPressable>
         
         <AnimatedPressable
@@ -318,10 +347,7 @@ export default function BlockQuestionsScreen({
           onPress={handleNextQuestion}
           disabled={!answers[currentQuestion.id]}
         >
-          <Text style={styles.nextButtonText}>
-            {isLastQuestion ? 'Результаты' : 'Далее'}
-          </Text>
-          {!isLastQuestion && <Ionicons name="arrow-forward" size={20} color={COLORS.white} />}
+          <Ionicons name="arrow-forward-outline" size={20} color={COLORS.white} />
         </AnimatedPressable>
       </View>
 
@@ -465,44 +491,44 @@ const styles = StyleSheet.create({
   navigationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
     padding: 12,
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray,
   },
   navButton: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
+    width: 90,
+    flexShrink: 0,
   },
   backButton: {
     backgroundColor: COLORS.white,
     borderWidth: 2,
     borderColor: COLORS.blue,
-    flex: 1,
-    marginRight: 12,
   },
   backButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.blue,
-    marginLeft: 8,
+    textAlign: 'center',
   },
   nextButton: {
     backgroundColor: COLORS.orange,
-    flex: 1,
     justifyContent: 'center',
   },
   disabledButton: {
     backgroundColor: COLORS.darkGray,
   },
   nextButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: COLORS.white,
-    marginRight: 8,
+    textAlign: 'center',
   },
   errorText: {
     fontSize: 16,

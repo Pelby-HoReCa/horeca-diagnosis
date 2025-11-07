@@ -31,6 +31,7 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
   console.log('displayData:', displayData.map(b => ({ id: b.id, efficiency: b.efficiency })));
 
   const maxEfficiency = 100;
+  const chartHeight = 150;
 
   const getBarColor = (efficiency: number) => {
     if (efficiency === 0 || efficiency === undefined) return COLORS.gray;
@@ -40,9 +41,22 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
     return COLORS.red;
   };
 
+  const chartData = displayData.map(block => {
+    const efficiency = block.efficiency ?? 0;
+    const hasData = block.completed && block.efficiency !== undefined;
+    const barHeight = hasData && efficiency > 0 ? (efficiency / maxEfficiency) * chartHeight : 0;
+    const barColor = getBarColor(efficiency);
+    return {
+      block,
+      efficiency,
+      hasData,
+      barHeight,
+      barColor,
+    };
+  });
+
   // Генерируем линии сетки
   const gridLines = [0, 25, 50, 75, 100];
-  const chartHeight = 150;
 
   return (
     <View style={styles.container}>
@@ -68,15 +82,12 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
 
         {/* Столбцы */}
         <View style={styles.chartContainer}>
-          {displayData.map((block, index) => {
-            const efficiency = block.efficiency ?? 0;
-            const barHeight = efficiency > 0 ? (efficiency / maxEfficiency) * chartHeight : 0;
-            const barColor = getBarColor(efficiency);
-
+          {chartData.map(({ block, hasData, barHeight, barColor }) => {
+            
             return (
               <View key={block.id} style={styles.barWrapper}>
-                <View style={styles.barContainer}>
-                  {barHeight > 0 && (
+                <View style={[styles.barContainer, { minHeight: chartHeight }]}>
+                  {hasData && barHeight > 0 && (
                     <View
                       style={[
                         styles.bar,
@@ -85,14 +96,12 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
                           backgroundColor: barColor,
                         },
                       ]}
-                    >
-                      <Text style={styles.barValue}>{efficiency}%</Text>
-                    </View>
+                    />
                   )}
-                  {barHeight === 0 && (
+                  {(!hasData || (hasData && barHeight === 0)) && (
                     <View style={styles.zeroBar}>
                       <View style={styles.zeroBarIndicator} />
-                      <Text style={styles.zeroBarText}>0%</Text>
+                      {hasData && barHeight === 0 && <Text style={styles.zeroBarText}>0%</Text>}
                     </View>
                   )}
                 </View>
@@ -103,7 +112,7 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
 
         {/* Вертикальные линии сетки */}
         <View style={styles.verticalGridContainer}>
-          {displayData.map((block, index) => (
+          {chartData.map(({ block }, index) => (
             <View
               key={`v-grid-${block.id}`}
               style={[
@@ -113,11 +122,30 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
             />
           ))}
         </View>
+
+        {/* Значения над столбцами */}
+        <View style={styles.valuesOverlay} pointerEvents="none">
+          {chartData.map(({ block, efficiency, hasData, barHeight, barColor }) => (
+            <View key={`val-${block.id}`} style={styles.valueWrapper}>
+              {hasData && (
+                <Text
+                  style={[styles.barValue, {
+                    color: barColor,
+                    position: 'absolute',
+                    bottom: barHeight + 8,
+                  }]}
+                >
+                  {efficiency}%
+                </Text>
+              )}
+            </View>
+          ))}
+        </View>
       </View>
 
       {/* Подписи блоков */}
       <View style={styles.labelsContainer}>
-        {displayData.map((block) => (
+        {chartData.map(({ block }) => (
           <View key={`label-${block.id}`} style={styles.labelWrapper}>
             <Text style={styles.barLabel} numberOfLines={2}>
               {block.title}
@@ -207,10 +235,10 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     marginHorizontal: 2,
+    justifyContent: 'flex-end',
   },
   barContainer: {
     width: '100%',
-    height: '100%',
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
@@ -219,8 +247,6 @@ const styles = StyleSheet.create({
     minHeight: 15,
     borderRadius: 4,
     justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 3,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -231,9 +257,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   barValue: {
-    fontSize: 9,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   zeroBar: {
     width: '75%',
@@ -261,7 +287,32 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '600',
     color: COLORS.darkGray,
-    marginBottom: 4,
+    marginTop: 4,
+  },
+  valuesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 6,
+    paddingHorizontal: 4,
+  },
+  valueWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 2,
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  valuesOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'stretch',
+    paddingHorizontal: 4,
+    zIndex: 3,
   },
   labelsContainer: {
     flexDirection: 'row',

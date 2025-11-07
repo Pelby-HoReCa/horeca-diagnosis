@@ -7,6 +7,7 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
 import { getTasksByBlock, Task } from '../utils/recommendationEngine';
+import { getCurrentUserId, loadUserTasks, saveUserTasks } from '../utils/userDataStorage';
 
 const logo = require('../../assets/images/1111.png');
 
@@ -45,21 +46,33 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
   const loadTasksWithoutClearing = async () => {
     try {
       console.log('Загружаем задачи без очистки...');
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
+      let tasksSource: Task[] = [];
+      const userId = await getCurrentUserId();
+
+      if (userId) {
+        tasksSource = await loadUserTasks(userId);
+      }
+
+      if ((!userId || tasksSource.length === 0)) {
+        const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+        if (storedTasks) {
+          tasksSource = JSON.parse(storedTasks);
+        }
+      }
+
+      if (tasksSource.length > 0) {
         console.log('=== ЗАГРУЗКА ЗАДАЧ В ЭКШЕН ПЛАНЕ ===');
-        console.log('Найдены задачи в хранилище:', parsedTasks.length);
-        console.log('Сырые задачи:', parsedTasks);
-        const tasksWithDefaults = parsedTasks.map((task: any, index: number) => ({
+        console.log('Найдены задачи:', tasksSource.length);
+        const tasksWithDefaults = tasksSource.map((task: any, index: number) => ({
           ...task,
           id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
           completed: task.completed || false,
         }));
         setTasks(tasksWithDefaults);
         console.log('Загружены задачи:', tasksWithDefaults.map((t: Task) => ({ id: t.id, title: t.title, blockId: t.blockId })));
-        console.log('=== КОНЕЦ ЗАГРУЗКИ ЗАДАЧ ===');
+        if (userId) {
+          await saveUserTasks(userId, tasksWithDefaults);
+        }
       } else {
         console.log('Задач в хранилище нет, показываем пустой список');
         setTasks([]);
@@ -86,19 +99,33 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     try {
       console.log('Загружаем задачи из AsyncStorage...');
       
-      // Загружаем существующие задачи
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
-        console.log('Найдены задачи в хранилище:', parsedTasks.length);
-        const tasksWithDefaults = parsedTasks.map((task: any, index: number) => ({
+      let tasksSource: Task[] = [];
+      const userId = await getCurrentUserId();
+
+      if (userId) {
+        tasksSource = await loadUserTasks(userId);
+      }
+
+      if ((!userId || tasksSource.length === 0)) {
+        const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+        if (storedTasks) {
+          tasksSource = JSON.parse(storedTasks);
+        }
+      }
+
+      if (tasksSource.length > 0) {
+        console.log('Найдены задачи:', tasksSource.length);
+        console.log('Сырые задачи:', tasksSource);
+        const tasksWithDefaults = tasksSource.map((task: any, index: number) => ({
           ...task,
           id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
           completed: task.completed || false,
         }));
         setTasks(tasksWithDefaults);
         console.log('Загружены задачи:', tasksWithDefaults.map((t: Task) => ({ id: t.id, title: t.title, blockId: t.blockId })));
+        if (userId) {
+          await saveUserTasks(userId, tasksWithDefaults);
+        }
       } else {
         console.log('Задач в хранилище нет, показываем пустой список');
         setTasks([]);
@@ -114,11 +141,17 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 
   const toggleTaskCompletion = async (taskId: string) => {
     try {
-      const updatedTasks = tasks.map(task => 
+      const updatedTasks = tasks.map(task =>
         task.id === taskId ? { ...task, completed: !task.completed } : task
       );
       setTasks(updatedTasks);
+
       await AsyncStorage.setItem('actionPlanTasks', JSON.stringify(updatedTasks));
+
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await saveUserTasks(userId, updatedTasks);
+      }
     } catch (error) {
       console.error('Ошибка обновления задачи:', error);
     }
@@ -129,6 +162,11 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       const updatedTasks = tasks.filter(task => task.id !== taskId);
       setTasks(updatedTasks);
       await AsyncStorage.setItem('actionPlanTasks', JSON.stringify(updatedTasks));
+
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await saveUserTasks(userId, updatedTasks);
+      }
     } catch (error) {
       console.error('Ошибка удаления задачи:', error);
     }
@@ -140,6 +178,11 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       setTasks([]);
       await AsyncStorage.removeItem('actionPlanTasks');
       console.log('Все задачи очищены');
+
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await saveUserTasks(userId, []);
+      }
     } catch (error) {
       console.error('Ошибка очистки задач:', error);
     }
@@ -416,7 +459,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.blue,
   },

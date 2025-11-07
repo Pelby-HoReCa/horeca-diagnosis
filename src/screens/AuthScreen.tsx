@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import AnimatedPressable from '../components/AnimatedPressable';
 import { login } from '../utils/api';
 import PasswordResetScreen from './PasswordResetScreen';
@@ -252,7 +252,9 @@ export default function AuthScreen({ onContinue }: AuthScreenProps) {
                       onPress={handleCloseLoginModal}
                       disabled={loading}
                     >
-                      <Text style={styles.cancelButtonText}>Отмена</Text>
+                      <View style={styles.modalButtonContent}>
+                        <Text style={styles.cancelButtonText}>Отмена</Text>
+                      </View>
                     </AnimatedPressable>
                   </View>
 
@@ -266,9 +268,13 @@ export default function AuthScreen({ onContinue }: AuthScreenProps) {
                       onPress={handleLogin}
                       disabled={loading}
                     >
-                      <Text style={styles.loginModalButtonText}>
-                        {loading ? 'Вход...' : 'Войти'}
-                      </Text>
+                      <View style={styles.modalButtonContent}>
+                        {loading ? (
+                          <ActivityIndicator color={COLORS.white} />
+                        ) : (
+                          <Text style={styles.loginModalButtonText}>Войти</Text>
+                        )}
+                      </View>
                     </AnimatedPressable>
                   </View>
                 </View>
@@ -476,6 +482,7 @@ const styles = StyleSheet.create({
   modalButtonWrapper: {
     flex: 1,
     minWidth: 0,
+    alignSelf: 'stretch',
   },
   modalButton: {
     width: '100%',
@@ -484,7 +491,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    backgroundColor: COLORS.blue,
+    flexDirection: 'row',
+  },
+  modalButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 6,
   },
   cancelButton: {
     backgroundColor: COLORS.gray,

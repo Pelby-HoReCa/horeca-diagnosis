@@ -7,6 +7,7 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import { Task } from '../utils/recommendationEngine';
+import { getCurrentUserId, loadUserTasks, saveUserTasks } from '../utils/userDataStorage';
 
 const logo = require('../../assets/images/1111.png');
 
@@ -69,12 +70,19 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
       }
 
       // Загружаем задачи для этого блока
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      if (storedTasks) {
-        const allTasks = JSON.parse(storedTasks);
-        const blockTasks = allTasks.filter((t: Task) => t.blockId === blockId);
-        setTasks(blockTasks);
+      let allTasks: Task[] = [];
+      const userId = await getCurrentUserId();
+      if (userId) {
+        allTasks = await loadUserTasks(userId);
       }
+      if ((!userId || allTasks.length === 0)) {
+        const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+        if (storedTasks) {
+          allTasks = JSON.parse(storedTasks);
+        }
+      }
+      const blockTasks = allTasks.filter((t: Task) => t.blockId === blockId);
+      setTasks(blockTasks);
     } catch (error) {
       console.error('Ошибка загрузки данных блока:', error);
     }
@@ -82,17 +90,29 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
 
   const toggleTaskCompletion = async (taskId: string) => {
     try {
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      if (storedTasks) {
-        const allTasks: Task[] = JSON.parse(storedTasks);
-        const updatedTasks = allTasks.map(task => 
+      const userId = await getCurrentUserId();
+      let allTasks: Task[] = [];
+      if (userId) {
+        allTasks = await loadUserTasks(userId);
+      }
+      if ((!userId || allTasks.length === 0)) {
+        const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+        if (storedTasks) {
+          allTasks = JSON.parse(storedTasks);
+        }
+      }
+
+      if (allTasks.length > 0) {
+        const updatedTasks = allTasks.map(task =>
           task.id === taskId ? { ...task, completed: !task.completed } : task
         );
         await AsyncStorage.setItem('actionPlanTasks', JSON.stringify(updatedTasks));
-        
-        // Обновляем локальное состояние
-        setTasks(prevTasks => 
-          prevTasks.map(task => 
+        if (userId) {
+          await saveUserTasks(userId, updatedTasks);
+        }
+
+        setTasks(prevTasks =>
+          prevTasks.map(task =>
             task.id === taskId ? { ...task, completed: !task.completed } : task
           )
         );
@@ -294,14 +314,17 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.gray,
   },
   headerTop: {
-    flexDirection: 'row',
+    position: 'relative',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     minHeight: 60,
     marginBottom: 16,
   },
   backButton: {
+    position: 'absolute',
+    left: 0,
     padding: 8,
+    zIndex: 2,
   },
   backButtonPlaceholder: {
     width: 40,
@@ -318,9 +341,12 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.blue,
+    marginLeft: 12,
+    flexShrink: 1,
+    textAlign: 'center',
   },
   resultContainer: {
     alignItems: 'center',

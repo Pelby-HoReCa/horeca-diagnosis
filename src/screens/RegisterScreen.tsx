@@ -473,7 +473,7 @@ export default function RegisterScreen({
             color={agreePersonalData ? COLORS.orange : (invalidFields.has('agreePersonalData') ? COLORS.red : COLORS.darkGray)}
           />
           <Text style={styles.checkboxLabel}>
-            Я согласен на сбор и обработку персональных данных *
+            Я согласен на сбор и обработку персональных данных*
           </Text>
         </TouchableOpacity>
       </View>
@@ -500,7 +500,7 @@ export default function RegisterScreen({
             color={agreePrivacy ? COLORS.orange : (invalidFields.has('agreePrivacy') ? COLORS.red : COLORS.darkGray)}
           />
           <Text style={styles.checkboxLabel}>
-            Я согласен с политикой конфиденциальности *
+            Я согласен с политикой конфиденциальности*
           </Text>
         </TouchableOpacity>
       </View>
