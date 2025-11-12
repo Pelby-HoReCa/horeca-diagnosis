@@ -6,17 +6,10 @@ import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import AnimatedPressable from '../components/AnimatedPressable';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
+import { palette, radii, spacing, typography } from '../styles/theme';
+import { getCurrentUserId, loadUserBlocks, saveUserBlocks } from '../utils/userDataStorage';
 
 const logo = require('../../assets/images/1111.png');
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-};
 
 export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   const [blocks, setBlocks] = useState<DiagnosisBlock[]>([]);
@@ -38,29 +31,61 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   );
 
 
+  const mergeBlocksWithDefaults = (source: DiagnosisBlock[]): DiagnosisBlock[] =>
+    DEFAULT_BLOCKS.map(defaultBlock => {
+      const storedBlock = source.find(block => block.id === defaultBlock.id);
+      return storedBlock ? { ...defaultBlock, ...storedBlock } : defaultBlock;
+    });
+
+  const persistBlocks = async (blocksToSave: DiagnosisBlock[]) => {
+    try {
+      await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(blocksToSave));
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await saveUserBlocks(userId, blocksToSave);
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения блоков:', error);
+    }
+  };
+
+  const fetchBlocks = async (): Promise<DiagnosisBlock[]> => {
+    let blocksSource: DiagnosisBlock[] = [];
+
+    try {
+      const userId = await getCurrentUserId();
+
+      if (userId) {
+        const userBlocks = await loadUserBlocks(userId);
+        if (Array.isArray(userBlocks) && userBlocks.length) {
+          blocksSource = userBlocks;
+        }
+      }
+
+      if (!blocksSource.length) {
+        const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+        if (storedBlocks) {
+          blocksSource = JSON.parse(storedBlocks);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка получения блоков:', error);
+    }
+
+    if (!blocksSource.length) {
+      return DEFAULT_BLOCKS;
+    }
+
+    return mergeBlocksWithDefaults(blocksSource);
+  };
+
   const loadBlocksWithoutClearing = async () => {
     try {
       console.log('Загружаем блоки без очистки...');
-      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      
-      if (storedBlocks) {
-        const parsedBlocks = JSON.parse(storedBlocks);
-        console.log('Найдены блоки в хранилище:', parsedBlocks.length);
-        console.log('Статус блоков:', parsedBlocks.map((b: DiagnosisBlock) => ({ id: b.id, completed: b.completed })));
-        // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
-        const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
-          const foundBlock = parsedBlocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
-          return foundBlock || defaultBlock;
-        });
-        setBlocks(allBlocks);
-        console.log('Блоки обновлены в состоянии:', allBlocks.length);
-      } else {
-        console.log('Блоки не найдены в хранилище');
-        // Если блоков нет, инициализируем по умолчанию
-        setBlocks(DEFAULT_BLOCKS);
-        await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(DEFAULT_BLOCKS));
-        console.log('Инициализированы блоки по умолчанию');
-      }
+      const allBlocks = await fetchBlocks();
+      setBlocks(allBlocks);
+      await persistBlocks(allBlocks);
+      console.log('Блоки обновлены в состоянии:', allBlocks.length);
     } catch (error) {
       console.error('Ошибка загрузки блоков:', error);
     }
@@ -77,27 +102,10 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   const loadBlocks = async () => {
     try {
       console.log('Загружаем блоки диагностики...');
-      
-      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      
-      if (storedBlocks) {
-        const parsedBlocks = JSON.parse(storedBlocks);
-        console.log('Найдены блоки в хранилище:', parsedBlocks.length);
-        console.log('Статус блоков:', parsedBlocks.map((b: DiagnosisBlock) => ({ id: b.id, completed: b.completed })));
-        // Объединяем загруженные блоки с дефолтными, чтобы показать все блоки
-        const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
-          const foundBlock = parsedBlocks.find((b: DiagnosisBlock) => b.id === defaultBlock.id);
-          return foundBlock || defaultBlock;
-        });
-        setBlocks(allBlocks);
-        console.log('Блоки загружены из хранилища');
-      } else {
-        console.log('Блоки не найдены в хранилище, инициализируем по умолчанию');
-        setBlocks(DEFAULT_BLOCKS);
-        await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(DEFAULT_BLOCKS));
-        console.log('Инициализированы блоки по умолчанию (все неактивные)');
-      }
-      
+      const allBlocks = await fetchBlocks();
+      setBlocks(allBlocks);
+      await persistBlocks(allBlocks);
+      console.log('Блоки загружены и сохранены');
     } catch (error) {
       console.error('Ошибка загрузки блоков:', error);
       // В случае ошибки показываем блоки по умолчанию
@@ -106,15 +114,6 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
       setLoading(false);
     }
   };
-
-  const saveBlocks = async (updatedBlocks: DiagnosisBlock[]) => {
-    try {
-      await AsyncStorage.setItem('diagnosisBlocks', JSON.stringify(updatedBlocks));
-    } catch (error) {
-      console.error('Ошибка сохранения блоков:', error);
-    }
-  };
-
   const handleBlockPress = (block: DiagnosisBlock) => {
     console.log('Нажата карточка блока:', block.title);
     // Переходим сразу к вопросам блока
@@ -123,18 +122,17 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
 
   const getEfficiencyColor = (efficiency?: number): { bg: string; text: string; border?: string } => {
     if (efficiency === undefined || efficiency === null) {
-      return { bg: COLORS.gray, text: COLORS.darkGray };
+      return { bg: palette.gray200, text: palette.gray500 };
     }
-    
-    // Чем ниже эффективность, тем тревожнее цвет (та же логика, что на дашборде)
+
     if (efficiency >= 80) {
-      return { bg: '#E8F5E9', text: '#00AA00', border: '#81C784' };
+      return { bg: '#E6F7F1', text: palette.success, border: '#81C784' };
     } else if (efficiency >= 60) {
-      return { bg: '#E3F2FD', text: COLORS.blue, border: '#64B5F6' };
+      return { bg: '#E5EBFF', text: palette.primaryBlue, border: '#A7B5FF' };
     } else if (efficiency >= 40) {
-      return { bg: '#FFF3E0', text: '#F57C00', border: '#FFB74D' };
+      return { bg: '#FFF4E6', text: palette.primaryOrange, border: '#FFBE7B' };
     } else {
-      return { bg: '#FFEBEE', text: '#D32F2F', border: '#E57373' };
+      return { bg: '#FFE9EC', text: palette.error, border: '#FF9AA4' };
     }
   };
 
@@ -146,9 +144,10 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         style={[
           styles.blockCard,
           { 
-            backgroundColor: item.completed ? colors.bg : COLORS.gray,
-            borderLeftWidth: item.completed ? 4 : 0,
-            borderLeftColor: colors.border || colors.text
+            backgroundColor: palette.white,
+            borderColor: item.completed ? (colors.border || colors.text) : palette.gray200,
+            borderLeftWidth: item.completed ? 6 : 1,
+            borderLeftColor: colors.border || palette.gray300
           }
         ]}
         onPress={() => handleBlockPress(item)}
@@ -156,7 +155,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         <View style={styles.blockHeader}>
           <Text style={styles.blockTitle}>{item.title}</Text>
           {item.completed && (
-            <Ionicons name="checkmark-circle" size={24} color={COLORS.orange} />
+            <Ionicons name="checkmark-circle" size={22} color={palette.primaryOrange} />
           )}
         </View>
         <Text style={styles.blockDescription}>{item.description}</Text>
@@ -169,8 +168,8 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
           </View>
         ) : (
           <View style={styles.efficiencyContainer}>
-            <Text style={[styles.efficiencyValue, { color: COLORS.darkGray }]}>—</Text>
-            <Text style={[styles.efficiencyLabel, { color: COLORS.darkGray }]}>не пройдено</Text>
+            <Text style={[styles.efficiencyValue, { color: palette.gray500 }]}>—</Text>
+            <Text style={[styles.efficiencyLabel, { color: palette.gray500 }]}>не пройдено</Text>
           </View>
         )}
       </AnimatedPressable>
@@ -234,30 +233,31 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   loadingText: {
     fontSize: 16,
-    color: COLORS.blue,
+    color: palette.primaryBlue,
   },
   header: {
-    padding: 12,
-    paddingTop: 40,
-    backgroundColor: COLORS.gray,
-    marginBottom: 8,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    backgroundColor: palette.background,
+    marginBottom: spacing.sm,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 60,
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -267,73 +267,79 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 28,
     height: 28,
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
+    ...typography.heading2,
+    color: palette.primaryBlue,
   },
   startButtonContainer: {
     position: 'relative',
-    marginTop: 8,
+    marginTop: spacing.xs,
   },
   progress: {
-    fontSize: 12,
-    color: COLORS.orange,
+    fontSize: 14,
+    color: palette.primaryOrange,
     fontWeight: '600',
     textAlign: 'right',
-    marginTop: 8,
-    paddingRight: 4,
+    marginTop: spacing.sm,
+    paddingRight: spacing.xs,
   },
   emptyText: {
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: palette.gray600,
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: spacing.lg,
   },
   listContainer: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
   },
   blockCard: {
-    backgroundColor: COLORS.gray,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 0,
-    minHeight: 110,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 4,
+    minHeight: 120,
   },
   blockHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.sm,
   },
   blockTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.blue,
+    ...typography.heading3,
+    color: palette.primaryBlue,
     flex: 1,
   },
   blockDescription: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    lineHeight: 16,
-    marginBottom: 6,
+    fontSize: 14,
+    color: palette.gray600,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
   },
   efficiencyContainer: {
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: spacing.xs,
   },
   efficiencyValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 2,
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
   },
   efficiencyLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
     textTransform: 'uppercase',
+    color: palette.gray600,
+    letterSpacing: 0.5,
   },
 });

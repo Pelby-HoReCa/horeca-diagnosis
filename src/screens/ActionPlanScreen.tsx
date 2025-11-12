@@ -8,19 +8,9 @@ import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
 import { getTasksByBlock, Task } from '../utils/recommendationEngine';
 import { getCurrentUserId, loadUserTasks, saveUserTasks } from '../utils/userDataStorage';
+import { palette, radii, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/1111.png');
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-  green: '#00AA00',
-  red: '#FF0000',
-};
 
 // Task interface теперь импортируется из recommendationEngine
 
@@ -190,10 +180,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return COLORS.red;
-      case 'medium': return COLORS.orange;
-      case 'low': return COLORS.blue;
-      default: return COLORS.darkGray;
+      case 'high':
+        return palette.error;
+      case 'medium':
+        return palette.primaryOrange;
+      case 'low':
+        return palette.primaryBlue;
+      default:
+        return palette.gray500;
     }
   };
 
@@ -263,7 +257,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
               style={styles.clearButton}
               onPress={clearAllTasks}
             >
-              <Ionicons name="trash-outline" size={20} color={COLORS.red} />
+              <Ionicons name="trash-outline" size={20} color={palette.error} />
             </AnimatedPressable>
           </View>
         )}
@@ -388,16 +382,16 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                   <View style={styles.recommendationStats}>
                     {blockPriority.highPriorityTasks > 0 && (
                       <View style={styles.recommendationStat}>
-                        <Ionicons name="alert-circle" size={14} color={COLORS.red} />
-                        <Text style={[styles.recommendationStatText, { color: COLORS.red }]}>
+                        <Ionicons name="alert-circle" size={14} color={palette.error} />
+                        <Text style={[styles.recommendationStatText, { color: palette.error }]}>
                           {blockPriority.highPriorityTasks} высокий приоритет
                         </Text>
                       </View>
                     )}
                     {blockPriority.mediumPriorityTasks > 0 && (
                       <View style={styles.recommendationStat}>
-                        <Ionicons name="information-circle" size={14} color={COLORS.orange} />
-                        <Text style={[styles.recommendationStatText, { color: COLORS.orange }]}>
+                        <Ionicons name="information-circle" size={14} color={palette.primaryOrange} />
+                        <Text style={[styles.recommendationStatText, { color: palette.primaryOrange }]}>
                           {blockPriority.mediumPriorityTasks} средний приоритет
                         </Text>
                       </View>
@@ -421,7 +415,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   scrollView: {
     flex: 1,
@@ -430,23 +424,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   loadingText: {
     fontSize: 16,
-    color: COLORS.blue,
+    color: palette.primaryBlue,
   },
   header: {
-    padding: 12,
-    paddingTop: 40,
-    backgroundColor: COLORS.gray,
+    backgroundColor: palette.white,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.06,
+    shadowRadius: 18,
+    elevation: 5,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 60,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -456,97 +458,97 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 28,
     height: 28,
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    ...typography.heading2,
+    color: palette.primaryBlue,
   },
   clearButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    marginTop: 8,
-    paddingHorizontal: 12,
+    marginTop: spacing.xs,
   },
   clearButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: COLORS.white,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: palette.white,
     borderWidth: 1,
-    borderColor: COLORS.red,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 8,
+    borderColor: palette.error,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   subtitleContainer: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 4,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.orange,
     fontWeight: '600',
+    color: palette.primaryOrange,
     textAlign: 'center',
   },
   tabsContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.gray,
-    marginHorizontal: 12,
-    marginTop: 8,
-    borderRadius: 8,
-    padding: 3,
+    backgroundColor: palette.gray200,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: radii.pill,
+    padding: spacing.xs,
   },
   tab: {
     flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
     alignItems: 'center',
   },
   activeTab: {
-    backgroundColor: COLORS.orange,
+    backgroundColor: palette.primaryBlue,
   },
   tabText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: COLORS.blue,
+    color: palette.primaryBlue,
   },
   activeTabText: {
-    color: COLORS.white,
+    color: palette.white,
   },
   tasksContainer: {
-    padding: 12,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
   },
   taskCard: {
-    backgroundColor: COLORS.gray,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.blue,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.primaryBlue,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 4,
   },
   taskCardCompleted: {
-    backgroundColor: '#F0F8F0',
-    borderLeftColor: COLORS.green,
+    backgroundColor: '#F0FAF5',
+    borderLeftColor: palette.success,
+    opacity: 0.95,
   },
   taskHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   checkbox: {
-    marginRight: 12,
-    marginTop: 2,
+    marginRight: spacing.sm,
+    marginTop: spacing.xs,
   },
   taskInfo: {
     flex: 1,
@@ -554,18 +556,18 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: COLORS.darkGray,
+    color: palette.gray500,
   },
   taskDescription: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    marginBottom: 6,
-    lineHeight: 16,
+    fontSize: 13,
+    color: palette.gray600,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
   },
   taskMeta: {
     flexDirection: 'row',
@@ -573,171 +575,177 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+    backgroundColor: palette.background,
   },
   priorityText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
-    color: COLORS.white,
+    color: palette.primaryBlue,
   },
   dueDate: {
     fontSize: 12,
-    color: COLORS.darkGray,
+    color: palette.gray600,
   },
   deleteButton: {
-    padding: 8,
-    marginLeft: 8,
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: spacing.xxl,
   },
   emptyText: {
     fontSize: 16,
-    color: COLORS.darkGray,
-    marginTop: 12,
+    color: palette.gray600,
+    marginTop: spacing.sm,
     textAlign: 'center',
+    fontWeight: '600',
   },
   emptySubtext: {
     fontSize: 14,
-    color: COLORS.darkGray,
-    marginTop: 8,
+    color: palette.gray500,
+    marginTop: spacing.xs,
     textAlign: 'center',
     lineHeight: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.lg,
   },
   blocksContainer: {
-    margin: 20,
-    backgroundColor: COLORS.gray,
-    padding: 16,
-    borderRadius: 12,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 4,
   },
   blocksTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 16,
+    ...typography.heading3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.md,
   },
   blockProgress: {
-    marginBottom: 12,
-    backgroundColor: COLORS.white,
-    padding: 12,
-    borderRadius: 8,
+    marginBottom: spacing.md,
+    backgroundColor: palette.white,
+    padding: spacing.sm,
+    borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: COLORS.blue,
+    borderColor: palette.gray200,
   },
   blockHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   blockTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.blue,
+    color: palette.primaryBlue,
     flex: 1,
   },
   blockProgressText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.orange,
+    color: palette.primaryOrange,
   },
   progressBar: {
     height: 8,
-    backgroundColor: COLORS.white,
-    borderRadius: 4,
+    backgroundColor: palette.gray200,
+    borderRadius: radii.sm,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: COLORS.orange,
-    borderRadius: 4,
+    backgroundColor: palette.primaryOrange,
+    borderRadius: radii.sm,
   },
   recommendationsContainer: {
-    padding: 12,
-    marginTop: 8,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   recommendationsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 8,
+    ...typography.heading3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
   },
   recommendationsSubtitle: {
     fontSize: 14,
-    color: COLORS.darkGray,
-    marginBottom: 16,
+    color: palette.gray600,
+    marginBottom: spacing.md,
     lineHeight: 20,
   },
   recommendationCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: COLORS.blue,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -2,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 4,
   },
   recommendationNumber: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.orange,
+    width: 44,
+    height: 44,
+    borderRadius: radii.lg,
+    backgroundColor: palette.primaryOrange,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: spacing.md,
   },
   recommendationNumberText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: '700',
+    color: palette.white,
   },
   recommendationContent: {
     flex: 1,
   },
   recommendationBlockTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 8,
+    fontWeight: '600',
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
   },
   recommendationStats: {
-    gap: 6,
+    gap: spacing.xs,
   },
   recommendationStat: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.xs,
   },
   recommendationStatText: {
     fontSize: 12,
     fontWeight: '600',
+    color: palette.gray600,
   },
   recommendationTotalTasks: {
     fontSize: 12,
-    color: COLORS.darkGray,
-    marginTop: 4,
+    color: palette.gray500,
+    marginTop: spacing.xs,
   },
   emptyRecommendations: {
-    padding: 32,
+    padding: spacing.lg,
     alignItems: 'center',
   },
   emptyRecommendationsText: {
-    fontSize: 16,
-    color: COLORS.darkGray,
+    fontSize: 14,
+    color: palette.gray600,
     textAlign: 'center',
   },
 });

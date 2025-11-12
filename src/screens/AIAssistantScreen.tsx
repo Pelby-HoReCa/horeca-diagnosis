@@ -1,14 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-};
+import { palette, spacing, typography } from '../styles/theme';
 
 export default function AIAssistantScreen() {
   return (
@@ -22,20 +14,20 @@ export default function AIAssistantScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.xl,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 16,
+    ...typography.heading2,
+    color: palette.primaryBlue,
+    marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 16,
-    color: COLORS.darkGray,
+    ...typography.body,
+    color: palette.gray600,
     textAlign: 'center',
+    maxWidth: 320,
   },
 });

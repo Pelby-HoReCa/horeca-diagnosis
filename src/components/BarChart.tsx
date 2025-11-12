@@ -1,16 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { DiagnosisBlock } from '../data/diagnosisBlocks';
-
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-  green: '#00AA00',
-  red: '#FF0000',
-};
+import { palette, radii, spacing } from '../styles/theme';
 
 interface BarChartProps {
   blocks: DiagnosisBlock[];
@@ -34,11 +25,11 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
   const chartHeight = 150;
 
   const getBarColor = (efficiency: number) => {
-    if (efficiency === 0 || efficiency === undefined) return COLORS.gray;
-    if (efficiency >= 80) return COLORS.green;
-    if (efficiency >= 60) return COLORS.blue;
-    if (efficiency >= 40) return COLORS.orange;
-    return COLORS.red;
+    if (efficiency === 0 || efficiency === undefined) return palette.gray300;
+    if (efficiency >= 80) return palette.success;
+    if (efficiency >= 60) return palette.primaryBlue;
+    if (efficiency >= 40) return palette.primaryOrange;
+    return palette.error;
   };
 
   const chartData = displayData.map(block => {
@@ -159,29 +150,26 @@ export default function BarChart({ blocks, isAuthenticated }: BarChartProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: palette.white,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderWidth: 2,
-    borderColor: COLORS.blue,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -2,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: palette.primaryBlue,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
   },
   chartFrame: {
     position: 'relative',
     height: 150,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: COLORS.gray,
-    borderRadius: 8,
-    backgroundColor: COLORS.white,
+    borderColor: palette.gray300,
+    borderRadius: radii.md,
+    backgroundColor: palette.white,
     overflow: 'hidden',
   },
   gridContainer: {
@@ -197,7 +185,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: COLORS.gray,
+    backgroundColor: palette.gray200,
     opacity: 0.5,
   },
   verticalGridContainer: {
@@ -212,7 +200,7 @@ const styles = StyleSheet.create({
   verticalGridLine: {
     flex: 1,
     borderRightWidth: 1,
-    borderRightColor: COLORS.gray,
+    borderRightColor: palette.gray200,
     opacity: 0.3,
   },
   verticalGridLineLast: {
@@ -227,8 +215,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'flex-end',
-    paddingHorizontal: 4,
-    paddingBottom: 2,
+    paddingHorizontal: spacing.xs,
+    paddingBottom: spacing.xs,
     zIndex: 2,
   },
   barWrapper: {
@@ -245,16 +233,13 @@ const styles = StyleSheet.create({
   bar: {
     width: '75%',
     minHeight: 15,
-    borderRadius: 4,
+    borderRadius: radii.sm,
     justifyContent: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   barValue: {
     fontSize: 10,
@@ -267,7 +252,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.darkGray,
+    borderBottomColor: palette.gray400,
     borderStyle: 'dashed',
     position: 'relative',
     opacity: 0.5,
@@ -279,21 +264,15 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.darkGray,
+    backgroundColor: palette.gray400,
     marginLeft: -3,
     marginBottom: -3,
   },
   zeroBarText: {
     fontSize: 8,
     fontWeight: '600',
-    color: COLORS.darkGray,
+    color: palette.gray500,
     marginTop: 4,
-  },
-  valuesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 6,
-    paddingHorizontal: 4,
   },
   valueWrapper: {
     flex: 1,
@@ -317,17 +296,17 @@ const styles = StyleSheet.create({
   labelsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginTop: 8,
-    paddingHorizontal: 4,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
   labelWrapper: {
     flex: 1,
     alignItems: 'center',
-    marginHorizontal: 2,
+    marginHorizontal: spacing.xxs,
   },
   barLabel: {
     fontSize: 8,
-    color: COLORS.blue,
+    color: palette.primaryBlue,
     textAlign: 'center',
     fontWeight: '600',
     lineHeight: 11,

@@ -11,15 +11,7 @@ import {
   saveUserBlocks,
   saveUserTasks,
 } from '../utils/userDataStorage';
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-};
+import { palette, radii, spacing, typography } from '../styles/theme';
 
 interface Question {
   id: string;
@@ -335,7 +327,7 @@ export default function BlockQuestionsScreen({
             }
           }}
         >
-          <Ionicons name="arrow-back-outline" size={20} color={COLORS.blue} />
+          <Ionicons name="arrow-back-outline" size={20} color={palette.primaryBlue} />
         </AnimatedPressable>
         
         <AnimatedPressable
@@ -347,7 +339,7 @@ export default function BlockQuestionsScreen({
           onPress={handleNextQuestion}
           disabled={!answers[currentQuestion.id]}
         >
-          <Ionicons name="arrow-forward-outline" size={20} color={COLORS.white} />
+          <Ionicons name="arrow-forward-outline" size={20} color={palette.white} />
         </AnimatedPressable>
       </View>
 
@@ -412,49 +404,57 @@ export default function BlockQuestionsScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   header: {
-    backgroundColor: COLORS.gray,
-    padding: 20,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    backgroundColor: palette.background,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray,
+    borderBottomColor: palette.gray200,
   },
   blockTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 8,
+    ...typography.heading2,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
   },
   progress: {
-    fontSize: 16,
-    color: COLORS.orange,
+    fontSize: 14,
+    color: palette.primaryOrange,
     fontWeight: '600',
   },
   content: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
   questionText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 16,
+    color: palette.primaryBlue,
+    marginBottom: spacing.md,
     lineHeight: 22,
   },
   optionsContainer: {
-    gap: 10,
+    gap: spacing.sm,
   },
   optionButton: {
-    backgroundColor: COLORS.gray,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: palette.white,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   selectedOption: {
+    borderColor: palette.primaryOrange,
     backgroundColor: '#FFF4E6',
-    borderColor: COLORS.orange,
   },
   optionContent: {
     flexDirection: 'row',
@@ -465,76 +465,75 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: COLORS.blue,
-    marginRight: 12,
+    borderColor: palette.primaryBlue,
+    marginRight: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
   selectedRadio: {
-    borderColor: COLORS.orange,
+    borderColor: palette.primaryOrange,
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.orange,
+    backgroundColor: palette.primaryOrange,
   },
   optionText: {
     fontSize: 14,
-    color: COLORS.blue,
+    color: palette.primaryBlue,
     flex: 1,
   },
   selectedOptionText: {
-    color: COLORS.orange,
+    color: palette.primaryOrange,
     fontWeight: '600',
   },
   navigationContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 12,
-    padding: 12,
-    backgroundColor: COLORS.white,
+    gap: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: palette.white,
     borderTopWidth: 1,
-    borderTopColor: COLORS.gray,
+    borderTopColor: palette.gray200,
   },
   navButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    width: 90,
-    flexShrink: 0,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    minWidth: 110,
   },
   backButton: {
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.white,
     borderWidth: 2,
-    borderColor: COLORS.blue,
+    borderColor: palette.primaryBlue,
   },
   backButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: COLORS.blue,
+    color: palette.primaryBlue,
     textAlign: 'center',
   },
   nextButton: {
-    backgroundColor: COLORS.orange,
+    backgroundColor: palette.primaryOrange,
     justifyContent: 'center',
   },
   disabledButton: {
-    backgroundColor: COLORS.darkGray,
+    backgroundColor: palette.gray400,
   },
   nextButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: COLORS.white,
+    color: palette.white,
     textAlign: 'center',
   },
   errorText: {
-    fontSize: 16,
-    color: COLORS.darkGray,
+    fontSize: 14,
+    color: palette.error,
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: spacing.xl,
   },
   modalOverlay: {
     flex: 1,
@@ -544,7 +543,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.white,
     borderRadius: 16,
     padding: 24,
     width: '100%',
@@ -559,15 +558,15 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: typography.h6,
     fontWeight: 'bold',
-    color: COLORS.blue,
+    color: palette.primaryBlue,
     marginBottom: 12,
     textAlign: 'center',
   },
   modalText: {
-    fontSize: 16,
-    color: COLORS.darkGray,
+    fontSize: typography.body2,
+    color: palette.gray600,
     marginBottom: 24,
     textAlign: 'center',
     lineHeight: 22,
@@ -587,21 +586,21 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   continueButton: {
-    backgroundColor: COLORS.blue,
+    backgroundColor: palette.primaryBlue,
   },
   resultsButton: {
-    backgroundColor: COLORS.orange,
+    backgroundColor: palette.warning.main,
   },
   continueButtonText: {
-    fontSize: 16,
+    fontSize: typography.body2,
     fontWeight: '600',
-    color: COLORS.white,
+    color: palette.white,
     textAlign: 'center',
   },
   resultsButtonText: {
-    fontSize: 16,
+    fontSize: typography.body2,
     fontWeight: '600',
-    color: COLORS.white,
+    color: palette.white,
     textAlign: 'center',
   },
 });

@@ -1,13 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  white: '#FFFFFF',
-};
+import { palette, radii, shadows, spacing } from '../styles/theme';
 
 interface ScrollToTopButtonProps {
   onPress: () => void;
@@ -82,7 +76,7 @@ export default function ScrollToTopButton({ onPress, visible }: ScrollToTopButto
         style={styles.touchable}
       >
         <View style={styles.circle}>
-          <Ionicons name="arrow-up" size={24} color={COLORS.blue} />
+          <Ionicons name="arrow-up" size={22} color={palette.primaryBlue} />
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -92,31 +86,24 @@ export default function ScrollToTopButton({ onPress, visible }: ScrollToTopButto
 const styles = StyleSheet.create({
   button: {
     position: 'absolute',
-    bottom: 30,
-    right: 20,
+    bottom: spacing.lg,
+    right: spacing.md,
     zIndex: 1000,
   },
   touchable: {
-    width: 50,
-    height: 50,
+    width: 56,
+    height: 56,
   },
   circle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.white,
+    width: 56,
+    height: 56,
+    borderRadius: radii.xl,
+    backgroundColor: palette.white,
     borderWidth: 2,
-    borderColor: COLORS.blue,
+    borderColor: palette.primaryBlue,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...shadows.floating,
   },
 });
 

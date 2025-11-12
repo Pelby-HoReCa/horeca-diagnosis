@@ -4,17 +4,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { Task } from '../utils/recommendationEngine';
+import { getCurrentUserId, loadUserBlocks, loadUserTasks } from '../utils/userDataStorage';
+import { palette, radii, shadows, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/1111.png');
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-};
 
 interface DiagnosisResult {
   id: string;
@@ -46,31 +39,11 @@ export default function HistoryScreen() {
   const loadResultsWithoutClearing = async () => {
     try {
       console.log('Загружаем результаты без очистки...');
-      
-      // Загружаем блоки
-      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      if (storedBlocks) {
-        const blocks = JSON.parse(storedBlocks);
-        // Показываем только завершенные блоки
-        const completedBlocks = blocks.filter((block: DiagnosisResult) => block.completed);
-        setResults(completedBlocks);
-        console.log('Загружены результаты:', completedBlocks.length);
-      } else {
-        setResults([]);
-        console.log('Результатов нет');
-      }
-      
-      // Загружаем задачи
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
-        setTasks(parsedTasks);
-        console.log('Загружены задачи:', parsedTasks.length);
-      } else {
-        setTasks([]);
-        console.log('Задач нет');
-      }
-      
+      const { completedBlocks, tasksList } = await fetchBlocksAndTasks();
+      setResults(completedBlocks);
+      setTasks(tasksList);
+      console.log('Загружены результаты:', completedBlocks.length);
+      console.log('Загружены задачи:', tasksList.length);
     } catch (error) {
       console.error('Ошибка загрузки результатов:', error);
       setResults([]);
@@ -81,30 +54,11 @@ export default function HistoryScreen() {
   const loadResults = async () => {
     try {
       console.log('Загружаем результаты диагностики...');
-      
-      // Загружаем существующие результаты
-      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
-      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
-      
-      if (storedBlocks) {
-        const parsedBlocks = JSON.parse(storedBlocks);
-        const completedBlocks = parsedBlocks.filter((block: any) => block.completed);
-        setResults(completedBlocks);
-        console.log('Загружены завершенные блоки:', completedBlocks.length);
-      } else {
-        setResults([]);
-        console.log('Завершенных блоков нет');
-      }
-      
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
-        setTasks(parsedTasks);
-        console.log('Загружены задачи:', parsedTasks.length);
-      } else {
-        setTasks([]);
-        console.log('Задач нет');
-      }
-      
+      const { completedBlocks, tasksList } = await fetchBlocksAndTasks();
+      setResults(completedBlocks);
+      setTasks(tasksList);
+      console.log('Загружены завершенные блоки:', completedBlocks.length);
+      console.log('Загружены задачи:', tasksList.length);
     } catch (error) {
       console.error('Ошибка загрузки результатов:', error);
       setResults([]);
@@ -112,6 +66,49 @@ export default function HistoryScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchBlocksAndTasks = async (): Promise<{ completedBlocks: DiagnosisResult[]; tasksList: Task[] }> => {
+    let blocksSource: DiagnosisResult[] = [];
+    let tasksSource: Task[] = [];
+
+    try {
+      const userId = await getCurrentUserId();
+
+      if (userId) {
+        const userBlocks = await loadUserBlocks(userId);
+        if (Array.isArray(userBlocks)) {
+          blocksSource = userBlocks.filter((block: any) => block.completed);
+        }
+
+        const userTasks = await loadUserTasks(userId);
+        if (Array.isArray(userTasks)) {
+          tasksSource = userTasks;
+        }
+      }
+
+      if (blocksSource.length === 0) {
+        const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+        if (storedBlocks) {
+          const parsedBlocks = JSON.parse(storedBlocks);
+          blocksSource = parsedBlocks.filter((block: any) => block.completed);
+        }
+      }
+
+      if (tasksSource.length === 0) {
+        const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+        if (storedTasks) {
+          tasksSource = JSON.parse(storedTasks);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка получения данных для истории:', error);
+    }
+
+    return {
+      completedBlocks: blocksSource,
+      tasksList: tasksSource,
+    };
   };
 
   const renderResult = ({ item }: { item: DiagnosisResult }) => (
@@ -146,10 +143,14 @@ export default function HistoryScreen() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return '#FF0000';
-      case 'medium': return COLORS.orange;
-      case 'low': return COLORS.blue;
-      default: return COLORS.darkGray;
+      case 'high':
+        return palette.error;
+      case 'medium':
+        return palette.primaryOrange;
+      case 'low':
+        return palette.primaryBlue;
+      default:
+        return palette.gray500;
     }
   };
 
@@ -181,75 +182,73 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
-    <ScrollView 
-      ref={scrollViewRef} 
-      style={styles.scrollView} 
-      showsVerticalScrollIndicator={false}
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
-    >
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerTitleContainer}>
-            <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
-            <Text style={styles.headerTitle} numberOfLines={1}>Результаты диагностики</Text>
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerTitleContainer}>
+              <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
+              <Text style={styles.headerTitle} numberOfLines={1}>
+                Результаты диагностики
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Завершенные блоки */}
-      {results.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Завершенные блоки</Text>
-          {results.map((item) => (
-            <View key={item.id} style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <Text style={styles.resultTitle}>{item.title}</Text>
-                <View style={styles.completedBadge}>
-                  <Text style={styles.completedText}>✓ Завершено</Text>
+        {results.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Завершенные блоки</Text>
+            {results.map(item => (
+              <View key={item.id} style={styles.resultCard}>
+                <View style={styles.resultHeader}>
+                  <Text style={styles.resultTitle}>{item.title}</Text>
+                  <View style={styles.completedBadge}>
+                    <Text style={styles.completedText}>✓ Завершено</Text>
+                  </View>
                 </View>
+                <Text style={styles.resultDescription}>{item.description}</Text>
+                {item.completedAt && (
+                  <Text style={styles.completedAt}>Завершено: {item.completedAt}</Text>
+                )}
               </View>
-              <Text style={styles.resultDescription}>{item.description}</Text>
-              {item.completedAt && (
-                <Text style={styles.completedAt}>Завершено: {item.completedAt}</Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {/* Задачи */}
-      {tasks.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Сгенерированные задачи</Text>
-          {tasks.map((item) => (
-            <View key={item.id} style={[styles.taskCard, item.completed && styles.taskCardCompleted]}>
-              <View style={styles.taskHeader}>
-                <Text style={[styles.taskTitle, item.completed && styles.taskTitleCompleted]}>
-                  {item.title}
-                </Text>
-                <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) }]}>
-                  <Text style={styles.priorityText}>{getPriorityText(item.priority)}</Text>
+        {tasks.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Сгенерированные задачи</Text>
+            {tasks.map(item => (
+              <View key={item.id} style={[styles.taskCard, item.completed && styles.taskCardCompleted]}>
+                <View style={styles.taskHeader}>
+                  <Text style={[styles.taskTitle, item.completed && styles.taskTitleCompleted]}>
+                    {item.title}
+                  </Text>
+                  <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.priority) }]}>
+                    <Text style={styles.priorityText}>{getPriorityText(item.priority)}</Text>
+                  </View>
                 </View>
+                <Text style={styles.taskDescription}>{item.description}</Text>
+                <Text style={styles.taskBlock}>Блок: {item.blockTitle}</Text>
               </View>
-              <Text style={styles.taskDescription}>{item.description}</Text>
-              <Text style={styles.taskBlock}>Блок: {item.blockTitle}</Text>
-            </View>
-          ))}
-        </View>
-      )}
+            ))}
+          </View>
+        )}
 
-      {/* Пустое состояние */}
-      {results.length === 0 && tasks.length === 0 && (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>Пока нет результатов</Text>
-          <Text style={styles.emptySubtext}>
-            Пройдите диагностику в разделе "Диагностика"
-          </Text>
-        </View>
-      )}
-    </ScrollView>
-    <ScrollToTopButton onPress={scrollToTop} visible={showScrollButton} />
+        {results.length === 0 && tasks.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Пока нет результатов</Text>
+            <Text style={styles.emptySubtext}>Пройдите диагностику в разделе "Диагностика"</Text>
+          </View>
+        )}
+      </ScrollView>
+      <ScrollToTopButton onPress={scrollToTop} visible={showScrollButton} />
     </View>
   );
 }
@@ -257,24 +256,26 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
+  },
   header: {
-    padding: 12,
-    paddingTop: 40,
-    backgroundColor: COLORS.gray,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    backgroundColor: palette.background,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 60,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -284,145 +285,137 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 28,
     height: 28,
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.orange,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 8,
+    ...typography.heading2,
+    color: palette.primaryBlue,
   },
   loadingText: {
-    fontSize: 16,
-    color: COLORS.blue,
+    ...typography.body,
+    color: palette.primaryBlue,
     textAlign: 'center',
+    marginTop: spacing.xxl,
   },
-  listContainer: {
-    padding: 12,
+  section: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
+  },
+  sectionTitle: {
+    ...typography.heading3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.sm,
   },
   resultCard: {
-    backgroundColor: COLORS.gray,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.orange,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.primaryOrange,
+    ...shadows.card,
   },
   resultHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   resultTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.blue,
+    ...typography.heading3,
+    color: palette.primaryBlue,
     flex: 1,
+    marginRight: spacing.sm,
   },
   completedBadge: {
-    backgroundColor: COLORS.orange,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: palette.primaryOrange,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radii.pill,
   },
   completedText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.white,
+    color: palette.white,
   },
   resultDescription: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    lineHeight: 16,
-    marginBottom: 6,
+    ...typography.body,
+    fontSize: 14,
+    color: palette.gray600,
+    marginBottom: spacing.xs,
   },
   completedAt: {
-    fontSize: 11,
-    color: COLORS.darkGray,
+    ...typography.caption,
+    color: palette.gray500,
     fontStyle: 'italic',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.xl,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 8,
+    ...typography.heading3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 12,
-    color: COLORS.darkGray,
+    ...typography.body,
+    fontSize: 14,
+    color: palette.gray600,
     textAlign: 'center',
-    lineHeight: 18,
-  },
-  section: {
-    margin: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 10,
   },
   taskCard: {
-    backgroundColor: COLORS.gray,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.blue,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: palette.primaryBlue,
+    ...shadows.card,
   },
   taskCardCompleted: {
-    backgroundColor: '#F0F8F0',
-    borderLeftColor: '#00AA00',
+    backgroundColor: '#F3FFF6',
+    borderLeftColor: palette.success,
   },
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.xs,
   },
   taskTitle: {
-    fontSize: 14,
+    ...typography.body,
     fontWeight: '600',
-    color: COLORS.blue,
+    color: palette.primaryBlue,
     flex: 1,
+    marginRight: spacing.sm,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: COLORS.darkGray,
-  },
-  taskDescription: {
-    fontSize: 12,
-    color: COLORS.darkGray,
-    marginBottom: 6,
-    lineHeight: 16,
-  },
-  taskBlock: {
-    fontSize: 11,
-    color: COLORS.orange,
-    fontWeight: '600',
+    color: palette.gray500,
   },
   priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radii.pill,
   },
   priorityText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
-    color: COLORS.white,
+    color: palette.white,
+  },
+  taskDescription: {
+    ...typography.body,
+    fontSize: 14,
+    color: palette.gray600,
+    marginBottom: spacing.xs,
+  },
+  taskBlock: {
+    ...typography.caption,
+    color: palette.gray600,
+    fontStyle: 'italic',
   },
 });

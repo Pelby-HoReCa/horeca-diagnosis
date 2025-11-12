@@ -8,18 +8,9 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import { useAppContext } from '../components/AppWrapper';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { deleteAccount, getUserData, logout, User } from '../utils/api';
+import { palette, radii, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/1111.png');
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-  red: '#FF0000',
-};
 
 interface ProfileScreenProps {
   navigation: any;
@@ -261,6 +252,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
@@ -284,17 +276,17 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                   {avatarUri ? (
                     <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
                   ) : (
-                    <Ionicons name="person-circle" size={80} color={COLORS.blue} />
+                    <Ionicons name="person-circle" size={80} color={palette.primaryBlue} />
                   )}
                   <AnimatedPressable
                     style={styles.avatarEditButton}
                     onPress={handlePickImage}
                   >
-                    <Ionicons name="add" size={20} color={COLORS.white} />
+                    <Ionicons name="add" size={20} color={palette.white} />
                   </AnimatedPressable>
                 </View>
               ) : (
-                <Ionicons name="person-circle-outline" size={80} color={COLORS.darkGray} />
+                <Ionicons name="person-circle-outline" size={80} color={palette.gray600} />
               )}
             </View>
             
@@ -352,9 +344,9 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                   console.log('Редактирование профиля');
                 }}
               >
-                <Ionicons name="person-outline" size={24} color={COLORS.blue} />
+                <Ionicons name="person-outline" size={24} color={palette.primaryBlue} />
                 <Text style={styles.menuItemText}>Редактировать профиль</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.darkGray} />
+                <Ionicons name="chevron-forward" size={20} color={palette.gray600} />
               </AnimatedPressable>
 
               <AnimatedPressable
@@ -363,9 +355,9 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                   navigation.navigate('Результаты');
                 }}
               >
-                <Ionicons name="time-outline" size={24} color={COLORS.blue} />
+                <Ionicons name="time-outline" size={24} color={palette.primaryBlue} />
                 <Text style={styles.menuItemText}>История диагностик</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.darkGray} />
+                <Ionicons name="chevron-forward" size={20} color={palette.gray600} />
               </AnimatedPressable>
 
               <AnimatedPressable
@@ -375,9 +367,9 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                   console.log('Настройки уведомлений');
                 }}
               >
-                <Ionicons name="notifications-outline" size={24} color={COLORS.blue} />
+                <Ionicons name="notifications-outline" size={24} color={palette.primaryBlue} />
                 <Text style={styles.menuItemText}>Уведомления</Text>
-                <Ionicons name="chevron-forward" size={20} color={COLORS.darkGray} />
+                <Ionicons name="chevron-forward" size={20} color={palette.gray600} />
               </AnimatedPressable>
             </View>
 
@@ -387,7 +379,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                 style={[styles.menuItem, styles.logoutItem]}
                 onPress={handleLogout}
               >
-                <Ionicons name="log-out-outline" size={24} color={COLORS.red} />
+                <Ionicons name="log-out-outline" size={24} color={palette.error} />
                 <Text style={[styles.menuItemText, styles.logoutText]}>Выйти из аккаунта</Text>
               </AnimatedPressable>
 
@@ -395,7 +387,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                 style={[styles.menuItem, styles.logoutItem]}
                 onPress={handleDeleteAccount}
               >
-                <Ionicons name="trash-outline" size={24} color={COLORS.red} />
+                <Ionicons name="trash-outline" size={24} color={palette.error} />
                 <Text style={[styles.menuItemText, styles.logoutText]}>Удалить аккаунт</Text>
               </AnimatedPressable>
             </View>
@@ -416,30 +408,32 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: spacing.xxl,
+  },
   loadingText: {
-    fontSize: 16,
-    color: COLORS.blue,
+    ...typography.body,
+    color: palette.primaryBlue,
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: spacing.xxl,
   },
   header: {
-    padding: 12,
-    paddingTop: 40,
-    backgroundColor: COLORS.gray,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    backgroundColor: palette.background,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 60,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   headerTitleContainer: {
     flexDirection: 'row',
@@ -449,33 +443,37 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 28,
     height: 28,
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginLeft: 10,
+    ...typography.heading2,
+    color: palette.primaryBlue,
+    marginLeft: spacing.sm,
   },
   section: {
-    margin: 20,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 16,
+    ...typography.heading3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.sm,
   },
   userCard: {
-    backgroundColor: COLORS.gray,
-    borderRadius: 12,
-    padding: 24,
+    backgroundColor: palette.white,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
     alignItems: 'stretch',
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.orange,
+    borderLeftColor: palette.primaryOrange,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
   },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: spacing.md,
     position: 'relative',
     alignSelf: 'center',
   },
@@ -486,7 +484,9 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.white,
+    borderWidth: 2,
+    borderColor: palette.primaryBlue,
   },
   avatarEditButton: {
     position: 'absolute',
@@ -495,97 +495,105 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: COLORS.orange,
+    backgroundColor: palette.primaryOrange,
     borderWidth: 2,
-    borderColor: COLORS.white,
+    borderColor: palette.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
   userEmail: {
-    fontSize: 18,
+    ...typography.heading3,
     fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 8,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
     textAlign: 'left',
   },
   userName: {
-    fontSize: 16,
-    color: COLORS.darkGray,
-    marginBottom: 8,
-    textAlign: 'left',
+    ...typography.body,
     fontWeight: '600',
+    color: palette.gray600,
+    marginBottom: spacing.xs,
+    textAlign: 'left',
   },
   userInfo: {
+    ...typography.body,
     fontSize: 14,
-    color: COLORS.darkGray,
-    marginBottom: 4,
+    color: palette.gray600,
+    marginBottom: spacing.xs,
     textAlign: 'left',
   },
   userDate: {
-    fontSize: 14,
-    color: COLORS.darkGray,
+    ...typography.caption,
+    color: palette.gray600,
     fontStyle: 'italic',
     textAlign: 'left',
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   notAuthorizedText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-    marginBottom: 8,
+    ...typography.heading3,
     textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   notAuthorizedSubtext: {
-    fontSize: 14,
-    color: COLORS.darkGray,
+    ...typography.body,
     textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
+    marginBottom: spacing.lg,
   },
   loginButton: {
-    backgroundColor: COLORS.orange,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
-    marginTop: 8,
+    backgroundColor: palette.primaryOrange,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.md,
+    marginTop: spacing.sm,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 4,
   },
   loginButtonText: {
-    fontSize: 16,
+    ...typography.body,
     fontWeight: '600',
-    color: COLORS.white,
+    color: palette.white,
+    textAlign: 'center',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray,
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: palette.white,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
   },
   menuItemText: {
     flex: 1,
-    fontSize: 16,
-    color: COLORS.blue,
-    marginLeft: 12,
+    ...typography.body,
+    color: palette.primaryBlue,
+    marginLeft: spacing.sm,
     fontWeight: '500',
   },
   logoutItem: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: '#FEEBEC',
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.red,
+    borderLeftColor: palette.error,
   },
   logoutText: {
-    color: COLORS.red,
+    color: palette.error,
   },
   appVersion: {
-    fontSize: 14,
-    color: COLORS.darkGray,
+    ...typography.caption,
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   appInfo: {
-    fontSize: 12,
-    color: COLORS.darkGray,
+    ...typography.caption,
     textAlign: 'center',
     fontStyle: 'italic',
   },

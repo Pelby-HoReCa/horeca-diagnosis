@@ -8,19 +8,9 @@ import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import { Task } from '../utils/recommendationEngine';
 import { getCurrentUserId, loadUserTasks, saveUserTasks } from '../utils/userDataStorage';
+import { palette, radii, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/1111.png');
-
-// Фирменные цвета
-const COLORS = {
-  orange: '#E84411',
-  blue: '#112677',
-  gray: '#F0F0F0',
-  white: '#FFFFFF',
-  darkGray: '#666666',
-  green: '#00AA00',
-  red: '#FF0000',
-};
 
 interface BlockDetailScreenProps {
   route: any;
@@ -125,13 +115,13 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
-        return COLORS.red;
+        return palette.error;
       case 'medium':
-        return COLORS.orange;
+        return palette.primaryOrange;
       case 'low':
-        return COLORS.blue;
+        return palette.primaryBlue;
       default:
-        return COLORS.darkGray;
+        return palette.gray500;
     }
   };
 
@@ -189,7 +179,7 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
               style={styles.backButton}
               onPress={() => navigation.goBack()}
             >
-              <Ionicons name="arrow-back" size={24} color={COLORS.blue} />
+              <Ionicons name="arrow-back" size={24} color={palette.primaryBlue} />
             </AnimatedPressable>
             <View style={styles.headerTitleContainer}>
               <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
@@ -204,7 +194,7 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
             </Text>
             {tasks.length > 0 && pendingTasks.length > 0 && potentialGrowth > 0 && (
               <View style={styles.potentialGrowthContainer}>
-                <Ionicons name="trending-up" size={16} color={COLORS.green} />
+                <Ionicons name="trending-up" size={16} color={palette.success} />
                 <Text style={styles.potentialGrowthText}>
                   +{potentialGrowth}% эффективности при выполнении всех задач в блоке
                 </Text>
@@ -234,7 +224,7 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
                     <Ionicons 
                       name={task.completed ? 'checkmark-circle' : 'ellipse-outline'} 
                       size={24} 
-                      color={task.completed ? COLORS.green : COLORS.blue} 
+                      color={task.completed ? palette.success : palette.primaryBlue} 
                     />
                     <View style={styles.taskTitleContainer}>
                       <Text 
@@ -271,7 +261,7 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
                 
                 {task.completed && (
                   <View style={styles.completedIndicator}>
-                    <Ionicons name="checkmark" size={16} color={COLORS.green} />
+                    <Ionicons name="checkmark" size={16} color={palette.success} />
                     <Text style={styles.completedText}>Выполнено</Text>
                   </View>
                 )}
@@ -295,35 +285,34 @@ export default function BlockDetailScreen({ route, navigation }: BlockDetailScre
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: palette.background,
   },
   scrollView: {
     flex: 1,
   },
   errorText: {
     fontSize: 16,
-    color: COLORS.darkGray,
+    color: palette.primaryOrange,
     textAlign: 'center',
-    marginTop: 50,
+    marginTop: spacing.xxl,
   },
   header: {
-    padding: 12,
-    paddingTop: 40,
-    backgroundColor: COLORS.gray,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    backgroundColor: palette.background,
   },
   headerTop: {
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 60,
-    marginBottom: 16,
+    marginBottom: spacing.md,
   },
   backButton: {
     position: 'absolute',
     left: 0,
-    padding: 8,
+    padding: spacing.xs,
     zIndex: 2,
   },
   backButtonPlaceholder: {
@@ -338,164 +327,158 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: 28,
     height: 28,
-    marginRight: 10,
+    marginRight: spacing.sm,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginLeft: 12,
+    ...typography.heading2,
+    color: palette.primaryBlue,
     flexShrink: 1,
     textAlign: 'center',
   },
   resultContainer: {
     alignItems: 'center',
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.blue,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -2,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: palette.white,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
   },
   resultLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 8,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
   },
   resultValue: {
     fontSize: 48,
-    fontWeight: 'bold',
-    color: COLORS.orange,
+    fontWeight: '700',
+    color: palette.primaryOrange,
+    marginBottom: spacing.sm,
   },
   potentialGrowthContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray,
-    justifyContent: 'center',
+    backgroundColor: '#E6F7F1',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.md,
   },
   potentialGrowthText: {
-    fontSize: 14,
+    fontSize: 12,
+    color: palette.success,
+    marginLeft: spacing.xs,
     fontWeight: '600',
-    color: COLORS.green,
-    marginLeft: 6,
-    textAlign: 'center',
   },
   tasksSection: {
-    padding: 12,
+    marginTop: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.blue,
-    marginBottom: 16,
+    ...typography.heading3,
+    color: palette.primaryBlue,
+    marginBottom: spacing.sm,
   },
   taskCard: {
-    backgroundColor: COLORS.white,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: COLORS.blue,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: -2,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: palette.white,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: palette.gray200,
+    shadowColor: palette.midnightBlue,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 4,
   },
   taskCardCompleted: {
-    backgroundColor: '#F0F8F0',
-    borderColor: COLORS.green,
-    opacity: 0.9,
+    backgroundColor: '#F0FAF5',
+    borderColor: palette.success,
+    opacity: 0.95,
   },
   taskHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.sm,
   },
   taskHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     flex: 1,
-    marginRight: 12,
+    marginRight: spacing.sm,
   },
   taskTitleContainer: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: spacing.sm,
   },
   taskTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.blue,
+    fontWeight: '600',
+    color: palette.primaryBlue,
     lineHeight: 22,
   },
   taskTitleCompleted: {
     textDecorationLine: 'line-through',
-    color: COLORS.darkGray,
+    color: palette.gray500,
   },
   priorityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
     alignSelf: 'flex-start',
+    backgroundColor: palette.background,
   },
   priorityText: {
     fontSize: 12,
     fontWeight: '600',
+    color: palette.primaryBlue,
   },
   taskDescription: {
     fontSize: 14,
-    color: COLORS.darkGray,
+    color: palette.gray600,
     lineHeight: 20,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   taskDescriptionCompleted: {
     textDecorationLine: 'line-through',
-    color: COLORS.darkGray,
+    color: palette.gray600,
     opacity: 0.7,
   },
   completedIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: COLORS.green,
+    borderTopColor: palette.success,
   },
   completedText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.green,
-    marginLeft: 6,
+    color: palette.success,
+    marginLeft: spacing.xs,
   },
   emptyState: {
     alignItems: 'center',
-    padding: 32,
+    padding: spacing.lg,
   },
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.blue,
-    marginBottom: 8,
+    color: palette.primaryBlue,
+    marginBottom: spacing.xs,
   },
   emptySubtext: {
     fontSize: 14,
-    color: COLORS.darkGray,
+    color: palette.gray600,
     textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
