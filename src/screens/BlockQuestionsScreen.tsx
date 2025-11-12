@@ -3,10 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import AnimatedPressable from '../components/AnimatedPressable';
+import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { generateTasksFromAnswers, Task } from '../utils/recommendationEngine';
 import {
   getCurrentUserId,
+  loadUserBlocks,
   loadUserTasks,
   saveUserBlocks,
   saveUserTasks,
@@ -54,6 +56,14 @@ export default function BlockQuestionsScreen({
   const currentQuestion = blockQuestions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === blockQuestions.length - 1;
   const allQuestionsAnswered = Object.keys(answers).length === blockQuestions.length;
+
+  // Сбрасываем состояние при изменении blockId
+  React.useEffect(() => {
+    console.log('Блок изменился, сбрасываем состояние. Новый blockId:', blockId);
+    setAnswers({});
+    setCurrentQuestionIndex(0);
+    setShowCompletionModal(false);
+  }, [blockId]);
 
   const handleAnswerSelect = async (questionId: string, answerValue: string) => {
     const newAnswers = {
@@ -264,6 +274,84 @@ export default function BlockQuestionsScreen({
     }
   };
 
+  const findNextUncompletedBlock = async (currentBlockId: string): Promise<DiagnosisBlock | null> => {
+    try {
+      console.log('=== ПОИСК СЛЕДУЮЩЕГО НЕПРОЙДЕННОГО БЛОКА ===');
+      console.log('Текущий blockId:', currentBlockId);
+      
+      // Загружаем блоки из хранилища
+      const userId = await getCurrentUserId();
+      let storedBlocks: DiagnosisBlock[] = [];
+      
+      if (userId) {
+        storedBlocks = await loadUserBlocks(userId) || [];
+        console.log('Загружены блоки пользователя:', storedBlocks.length);
+      } else {
+        const blocksJson = await AsyncStorage.getItem('diagnosisBlocks');
+        if (blocksJson) {
+          storedBlocks = JSON.parse(blocksJson);
+          console.log('Загружены глобальные блоки:', storedBlocks.length);
+        }
+      }
+
+      // Объединяем DEFAULT_BLOCKS с сохраненными данными
+      const allBlocks = DEFAULT_BLOCKS.map(defaultBlock => {
+        const foundBlock = storedBlocks.find(b => b.id === defaultBlock.id);
+        if (foundBlock) {
+          return {
+            ...defaultBlock,
+            ...foundBlock,
+            title: defaultBlock.title,
+            description: defaultBlock.description,
+          };
+        }
+        return defaultBlock;
+      });
+
+      console.log('Всего блоков:', allBlocks.length);
+      console.log('Статус блоков:', allBlocks.map(b => ({ id: b.id, title: b.title, completed: b.completed })));
+
+      // Находим индекс текущего блока
+      const currentIndex = allBlocks.findIndex(b => b.id === currentBlockId);
+      console.log('Индекс текущего блока:', currentIndex);
+      
+      if (currentIndex === -1) {
+        // Если текущий блок не найден, возвращаем первый непройденный
+        console.log('Текущий блок не найден, ищем первый непройденный');
+        const firstUncompleted = allBlocks.find(b => !b.completed);
+        if (firstUncompleted) {
+          console.log('Найден первый непройденный блок:', firstUncompleted.id, firstUncompleted.title);
+        }
+        return firstUncompleted || null;
+      }
+
+      // Ищем следующий непройденный блок после текущего
+      console.log('Ищем следующий непройденный блок после индекса', currentIndex);
+      for (let i = currentIndex + 1; i < allBlocks.length; i++) {
+        if (!allBlocks[i].completed) {
+          console.log('Найден следующий непройденный блок:', allBlocks[i].id, allBlocks[i].title);
+          return allBlocks[i];
+        }
+      }
+
+      // Если после текущего блока все пройдены, ищем с начала
+      console.log('После текущего блока все пройдены, ищем с начала');
+      for (let i = 0; i < currentIndex; i++) {
+        if (!allBlocks[i].completed) {
+          console.log('Найден непройденный блок с начала:', allBlocks[i].id, allBlocks[i].title);
+          return allBlocks[i];
+        }
+      }
+
+      // Все блоки пройдены
+      console.log('Все блоки пройдены');
+      return null;
+    } catch (error) {
+      console.error('Ошибка поиска следующего блока:', error);
+      return null;
+    }
+  };
+
   if (!currentQuestion) {
     return (
       <View style={styles.container}>
@@ -362,36 +450,47 @@ export default function BlockQuestionsScreen({
               })()}
             </Text>
             <View style={styles.modalButtons}>
-        <AnimatedPressable
-          style={[styles.modalButton, styles.continueButton]}
-          onPress={() => {
-            setShowCompletionModal(false);
-            console.log('Нажата кнопка "Продолжить самодиагностику" - возвращаемся к блокам');
-            // Явно переходим на экран списка блоков
-            navigation.navigate('SelfDiagnosisBlocks');
-          }}
-        >
-          <Text style={styles.continueButtonText}>Продолжить самодиагностику</Text>
-        </AnimatedPressable>
+              <AnimatedPressable
+                style={[styles.modalButton, styles.continueButton]}
+                onPress={async () => {
+                  setShowCompletionModal(false);
+                  console.log('=== НАЖАТА КНОПКА "ПРОДОЛЖИТЬ ДИАГНОСТИКУ" ===');
+                  console.log('Текущий blockId:', blockId);
+                  
+                  const nextBlock = await findNextUncompletedBlock(blockId);
+                  
+                  if (nextBlock) {
+                    console.log('Найден следующий непройденный блок:');
+                    console.log('  - ID:', nextBlock.id);
+                    console.log('  - Title:', nextBlock.title);
+                    console.log('  - Completed:', nextBlock.completed);
+                    
+                    // Переходим к следующему непройденному блоку
+                    // Используем replace вместо navigate, чтобы очистить стек навигации
+                    navigation.replace('BlockQuestions', {
+                      blockId: nextBlock.id,
+                      blockTitle: nextBlock.title,
+                    });
+                  } else {
+                    console.log('Все блоки пройдены - возвращаемся к списку блоков');
+                    // Все блоки пройдены, возвращаемся к списку блоков
+                    navigation.navigate('SelfDiagnosisBlocks');
+                  }
+                }}
+              >
+                <Text style={styles.continueButtonText}>Продолжить диагностику</Text>
+              </AnimatedPressable>
               <AnimatedPressable
                 style={[styles.modalButton, styles.resultsButton]}
                 onPress={() => {
                   setShowCompletionModal(false);
-                  console.log('Нажата кнопка "Перейти к рекомендациям" - переходим к результатам');
+                  console.log('Нажата кнопка "Результаты диагностики" - переходим к результатам');
                   
-                  // Сбрасываем стек навигации к экрану блоков, затем переходим к рекомендациям
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'SelfDiagnosisBlocks' }],
-                  });
-                  
-                  // Небольшая задержка для завершения сброса стека
-                  setTimeout(() => {
-                    navigation.navigate('Результаты');
-                  }, 100);
+                  // Переходим на экран результатов
+                  navigation.navigate('Результаты');
                 }}
               >
-                <Text style={styles.resultsButtonText}>Перейти к рекомендациям</Text>
+                <Text style={styles.resultsButtonText}>Результаты диагностики</Text>
               </AnimatedPressable>
             </View>
           </View>
@@ -558,14 +657,14 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalTitle: {
-    fontSize: typography.h6,
+    fontSize: typography.heading3.fontSize,
     fontWeight: 'bold',
     color: palette.primaryBlue,
     marginBottom: 12,
     textAlign: 'center',
   },
   modalText: {
-    fontSize: typography.body2,
+    fontSize: typography.body.fontSize,
     color: palette.gray600,
     marginBottom: 24,
     textAlign: 'center',
@@ -589,16 +688,16 @@ const styles = StyleSheet.create({
     backgroundColor: palette.primaryBlue,
   },
   resultsButton: {
-    backgroundColor: palette.warning.main,
+    backgroundColor: palette.primaryOrange,
   },
   continueButtonText: {
-    fontSize: typography.body2,
+    fontSize: typography.body.fontSize,
     fontWeight: '600',
     color: palette.white,
     textAlign: 'center',
   },
   resultsButtonText: {
-    fontSize: typography.body2,
+    fontSize: typography.body.fontSize,
     fontWeight: '600',
     color: palette.white,
     textAlign: 'center',

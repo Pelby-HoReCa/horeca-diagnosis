@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -110,6 +111,34 @@ export default function AppNavigator() {
             />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Если уже на табе "Главная", сбрасываем стек навигации до корневого экрана
+            const state = navigation.getState();
+            const mainTabRoute = state.routes.find(r => r.name === 'Главная');
+            
+            if (mainTabRoute && mainTabRoute.state && mainTabRoute.state.index > 0) {
+              // Если в стеке есть экраны кроме корневого, сбрасываем стек
+              e.preventDefault();
+              
+              // Сбрасываем стек навигации внутри таба "Главная"
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: 'Главная',
+                      state: {
+                        routes: [{ name: 'DashboardMain' }],
+                        index: 0,
+                      },
+                    },
+                  ],
+                })
+              );
+            }
+          },
+        })}
       />
       <Tab.Screen 
         name="Задачи" 

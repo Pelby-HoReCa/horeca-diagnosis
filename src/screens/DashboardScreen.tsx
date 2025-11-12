@@ -30,7 +30,7 @@ const COLORS = {
 
 // Фирменные цвета
 interface Comparison {
-  previous: number;
+  previous: number | null; // null означает, что это первое прохождение
   current: number;
   change?: number; // Изменение в процентах (положительное = рост, отрицательное = падение)
 }
@@ -38,7 +38,7 @@ interface Comparison {
 export default function DashboardScreen({ navigation }: any) {
   const [restaurantName, setRestaurantName] = useState('Название ресторана');
   const [blockResults, setBlockResults] = useState<DiagnosisBlock[]>([]);
-  const [comparison, setComparison] = useState<Comparison>({ previous: 0, current: 0 });
+  const [comparison, setComparison] = useState<Comparison>({ previous: null, current: 0 });
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -149,23 +149,23 @@ export default function DashboardScreen({ navigation }: any) {
           );
           
           const wasAllCompleted = allBlocksCompleted === 'true';
-          const previousValue = storedPrevious ? parseInt(storedPrevious, 10) : 0;
+          const previousValue = storedPrevious ? parseInt(storedPrevious, 10) : null;
           const currentValue = storedCurrent ? parseInt(storedCurrent, 10) : 0;
           
           if (!wasAllCompleted) {
-            // Первое прохождение всех блоков - ПРЕДЫДУЩИЙ и ТЕКУЩИЙ равны
+            // Первое прохождение всех блоков - сохраняем только ТЕКУЩИЙ, ПРЕДЫДУЩИЙ не сохраняем
             if (userId) {
               await saveUserDashboardData(userId, {
                 allBlocksCompleted: 'true',
-                previousResult: avgEfficiency.toString(),
                 currentResult: avgEfficiency.toString(),
+                // previousResult не сохраняем при первом прохождении
               });
             } else {
               await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
-              await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
               await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+              // previousResult не сохраняем при первом прохождении
             }
-            setComparison({ previous: avgEfficiency, current: avgEfficiency, change: 0 });
+            setComparison({ previous: null, current: avgEfficiency, change: undefined });
           } else {
             // Последующие прохождения - проверяем, изменился ли результат
             if (avgEfficiency !== currentValue) {
@@ -186,22 +186,22 @@ export default function DashboardScreen({ navigation }: any) {
               setComparison({ previous: newPrevious, current: newCurrent, change });
             } else {
               // Результат не изменился - используем сохраненные значения
-              const change = currentValue !== previousValue ? currentValue - previousValue : 0;
+              const change = previousValue !== null && currentValue !== previousValue ? currentValue - previousValue : undefined;
               setComparison({ previous: previousValue, current: currentValue, change });
             }
           }
         } else {
-          // Не все блоки завершены - ПРЕДЫДУЩИЙ = 0, ТЕКУЩИЙ = среднее по завершенным блокам (или 0)
+          // Не все блоки завершены - ПРЕДЫДУЩИЙ = null, ТЕКУЩИЙ = среднее по завершенным блокам (или 0)
           const avgEfficiency = completedBlocks.length > 0 
             ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
             : 0;
-          setComparison({ previous: 0, current: avgEfficiency, change: 0 });
+          setComparison({ previous: null, current: avgEfficiency, change: undefined });
           setAllBlocksFinished(false);
         }
       } else {
         // Если блоков нет, показываем дефолтные
         setBlockResults(DEFAULT_BLOCKS);
-        setComparison({ previous: 0, current: 0, change: 0 });
+        setComparison({ previous: null, current: 0, change: undefined });
         setAllBlocksFinished(false);
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
@@ -303,23 +303,23 @@ export default function DashboardScreen({ navigation }: any) {
           );
           
           const wasAllCompleted = allBlocksCompleted === 'true';
-          const previousValue = storedPrevious ? parseInt(storedPrevious, 10) : 0;
+          const previousValue = storedPrevious ? parseInt(storedPrevious, 10) : null;
           const currentValue = storedCurrent ? parseInt(storedCurrent, 10) : 0;
           
           if (!wasAllCompleted) {
-            // Первое прохождение всех блоков - ПРЕДЫДУЩИЙ и ТЕКУЩИЙ равны
+            // Первое прохождение всех блоков - сохраняем только ТЕКУЩИЙ, ПРЕДЫДУЩИЙ не сохраняем
             if (userId) {
               await saveUserDashboardData(userId, {
                 allBlocksCompleted: 'true',
-                previousResult: avgEfficiency.toString(),
                 currentResult: avgEfficiency.toString(),
+                // previousResult не сохраняем при первом прохождении
               });
             } else {
               await AsyncStorage.setItem('dashboardAllBlocksCompleted', 'true');
-              await AsyncStorage.setItem('dashboardPreviousResult', avgEfficiency.toString());
               await AsyncStorage.setItem('dashboardCurrentResult', avgEfficiency.toString());
+              // previousResult не сохраняем при первом прохождении
             }
-            setComparison({ previous: avgEfficiency, current: avgEfficiency, change: 0 });
+            setComparison({ previous: null, current: avgEfficiency, change: undefined });
           } else {
             // Последующие прохождения - проверяем, изменился ли результат
             if (avgEfficiency !== currentValue) {
@@ -340,22 +340,22 @@ export default function DashboardScreen({ navigation }: any) {
               setComparison({ previous: newPrevious, current: newCurrent, change });
             } else {
               // Результат не изменился - используем сохраненные значения
-              const change = currentValue !== previousValue ? currentValue - previousValue : 0;
+              const change = previousValue !== null && currentValue !== previousValue ? currentValue - previousValue : undefined;
               setComparison({ previous: previousValue, current: currentValue, change });
             }
           }
         } else {
-          // Не все блоки завершены - ПРЕДЫДУЩИЙ = 0, ТЕКУЩИЙ = среднее по завершенным блокам (или 0)
+          // Не все блоки завершены - ПРЕДЫДУЩИЙ = null, ТЕКУЩИЙ = среднее по завершенным блокам (или 0)
           const avgEfficiency = completedBlocks.length > 0 
             ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
             : 0;
-          setComparison({ previous: 0, current: avgEfficiency, change: 0 });
+          setComparison({ previous: null, current: avgEfficiency, change: undefined });
           setAllBlocksFinished(false);
         }
       } else {
         // Если блоков нет, показываем дефолтные
         setBlockResults(DEFAULT_BLOCKS);
-        setComparison({ previous: 0, current: 0, change: 0 });
+        setComparison({ previous: null, current: 0, change: undefined });
         setAllBlocksFinished(false);
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
@@ -463,12 +463,12 @@ export default function DashboardScreen({ navigation }: any) {
       </View>
 
       {/* Общий результат - сверху */}
-      <View style={styles.section}>
+      <View style={[styles.section, styles.overallResultSection]}>
         <Text style={styles.sectionTitle}>Общий результат</Text>
         <View style={styles.comparisonContainer}>
           <View style={styles.comparisonItem}>
             <Text style={[styles.comparisonValue, { color: COLORS.red }]}>
-              {allBlocksFinished ? `${comparison.previous}%` : '—'}
+              {allBlocksFinished && comparison.previous !== null ? `${comparison.previous}%` : '—'}
             </Text>
             <Text style={styles.comparisonLabel}>ПРЕДЫДУЩИЙ</Text>
           </View>
@@ -502,7 +502,7 @@ export default function DashboardScreen({ navigation }: any) {
       </View>
 
       {/* Столбчатая диаграмма */}
-      <View style={styles.section}>
+      <View style={[styles.section, styles.chartSection]}>
         <Text style={styles.sectionTitle}>Результаты диагностики</Text>
         <BarChart blocks={blockResults} isAuthenticated={isAuthenticated} />
       </View>
@@ -552,9 +552,10 @@ const styles = StyleSheet.create({
   },
   restaurantNameContainer: {
     backgroundColor: palette.white,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     marginTop: spacing.xxl,
+    marginBottom: spacing.xl,
     marginHorizontal: spacing.md,
     borderRadius: radii.xl,
     alignItems: 'center',
@@ -567,14 +568,14 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   restaurantName: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '700',
     color: palette.primaryOrange,
     letterSpacing: 0.5,
   },
   section: {
     marginHorizontal: spacing.md,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     ...typography.heading3,
@@ -636,20 +637,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     color: palette.gray600,
   },
+  overallResultSection: {
+    marginTop: 0,
+    marginBottom: spacing.xl,
+  },
+  chartSection: {
+    marginTop: 0,
+    marginBottom: spacing.xl,
+  },
   comparisonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: palette.white,
-    paddingVertical: spacing.lg,
+    paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: palette.gray200,
+    borderRadius: radii.xl,
+    borderWidth: 2,
+    borderColor: palette.primaryBlue,
     shadowColor: palette.midnightBlue,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 6,
   },
   comparisonItem: {
     alignItems: 'center',
@@ -660,7 +669,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   comparisonValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     marginBottom: spacing.xs,
   },

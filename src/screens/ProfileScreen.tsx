@@ -8,6 +8,7 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import { useAppContext } from '../components/AppWrapper';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { deleteAccount, getUserData, logout, User } from '../utils/api';
+import { getCurrentUserId } from '../utils/userDataStorage';
 import { palette, radii, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/1111.png');
@@ -230,6 +231,81 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
     }
   };
 
+  const handleResetResults = async () => {
+    // В веб-версии Alert может не работать, поэтому используем confirm
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Вы уверены, что хотите сбросить все результаты диагностики? Это действие необратимо. Профиль пользователя не будет изменен.');
+      if (!confirmed) return;
+    } else {
+      Alert.alert(
+        'Сброс результатов',
+        'Вы уверены, что хотите сбросить все результаты диагностики? Это действие необратимо. Профиль пользователя не будет изменен.',
+        [
+          { text: 'Отмена', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Сбросить',
+            style: 'destructive',
+            onPress: () => performResetResults(),
+          },
+        ]
+      );
+      return;
+    }
+    
+    // Если веб или после confirm, выполняем сброс
+    performResetResults();
+  };
+
+  const performResetResults = async () => {
+    try {
+      console.log('Выполняется сброс результатов диагностики...');
+      
+      const userId = await getCurrentUserId();
+      
+      // Очищаем глобальные ключи (для неавторизованных пользователей)
+      const globalKeys = [
+        'diagnosisBlocks',
+        'actionPlanTasks',
+        'dashboardAllBlocksCompleted',
+        'dashboardPreviousResult',
+        'dashboardCurrentResult',
+        'userDiagnosisHistory',
+      ];
+      
+      await Promise.all(globalKeys.map(key => AsyncStorage.removeItem(key)));
+      console.log('Глобальные данные результатов очищены');
+      
+      // Очищаем пользовательские ключи (для авторизованных пользователей)
+      if (userId) {
+        const userKeys = [
+          `user_${userId}_diagnosisBlocks`,
+          `user_${userId}_actionPlanTasks`,
+          `user_${userId}_dashboardAllBlocksCompleted`,
+          `user_${userId}_dashboardPreviousResult`,
+          `user_${userId}_dashboardCurrentResult`,
+        ];
+        
+        await Promise.all(userKeys.map(key => AsyncStorage.removeItem(key)));
+        console.log(`Данные результатов пользователя ${userId} очищены`);
+      }
+      
+      console.log('Результаты диагностики успешно сброшены');
+      
+      if (Platform.OS !== 'web') {
+        Alert.alert('Успешно', 'Все результаты диагностики сброшены. Профиль пользователя не изменен.');
+      } else {
+        alert('Успешно: Все результаты диагностики сброшены. Профиль пользователя не изменен.');
+      }
+    } catch (error) {
+      console.error('Ошибка сброса результатов:', error);
+      if (Platform.OS !== 'web') {
+        Alert.alert('Ошибка', 'Не удалось сбросить результаты. Попробуйте снова.');
+      } else {
+        alert('Ошибка: Не удалось сбросить результаты. Попробуйте снова.');
+      }
+    }
+  };
+
   const scrollToTop = () => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
@@ -370,6 +446,19 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                 <Ionicons name="notifications-outline" size={24} color={palette.primaryBlue} />
                 <Text style={styles.menuItemText}>Уведомления</Text>
                 <Ionicons name="chevron-forward" size={20} color={palette.gray600} />
+              </AnimatedPressable>
+            </View>
+
+            {/* Временные функции */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Временные функции</Text>
+              
+              <AnimatedPressable
+                style={[styles.menuItem, styles.resetItem]}
+                onPress={handleResetResults}
+              >
+                <Ionicons name="refresh-outline" size={24} color={palette.warning} />
+                <Text style={[styles.menuItemText, styles.resetText]}>Сбросить результаты</Text>
               </AnimatedPressable>
             </View>
 
@@ -578,6 +667,14 @@ const styles = StyleSheet.create({
     color: palette.primaryBlue,
     marginLeft: spacing.sm,
     fontWeight: '500',
+  },
+  resetItem: {
+    backgroundColor: '#FFF8E1',
+    borderLeftWidth: 4,
+    borderLeftColor: palette.warning,
+  },
+  resetText: {
+    color: palette.warning,
   },
   logoutItem: {
     backgroundColor: '#FEEBEC',

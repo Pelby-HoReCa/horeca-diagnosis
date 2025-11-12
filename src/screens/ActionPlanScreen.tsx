@@ -17,7 +17,6 @@ const logo = require('../../assets/images/1111.png');
 export default function ActionPlanScreen({ route, navigation }: { route?: any; navigation?: any }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'completed'>('all');
   const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -75,9 +74,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 
   // Обрабатываем параметры навигации
   useEffect(() => {
-    if (route?.params?.activeTab) {
-      setActiveTab(route.params.activeTab);
-    }
     if (route?.params?.newTasks) {
       console.log('Получены новые задачи:', route.params.newTasks);
       // Перезагружаем задачи
@@ -200,23 +196,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     }
   };
 
-  const filteredTasks = tasks.filter(task => {
-    switch (activeTab) {
-      case 'pending': return !task.completed;
-      case 'completed': return task.completed;
-      default: return true;
-    }
-  });
-
   const tasksByBlock = getTasksByBlock(tasks);
-
-  const getTabCount = (tab: string) => {
-    switch (tab) {
-      case 'pending': return tasks.filter(task => !task.completed).length;
-      case 'completed': return tasks.filter(task => task.completed).length;
-      default: return tasks.length;
-    }
-  };
 
   if (loading) {
     return (
@@ -251,51 +231,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
             <Text style={styles.headerTitle} numberOfLines={1}>План действий</Text>
           </View>
         </View>
-        {tasks.length > 0 && (
-          <View style={styles.clearButtonContainer}>
-            <AnimatedPressable
-              style={styles.clearButton}
-              onPress={clearAllTasks}
-            >
-              <Ionicons name="trash-outline" size={20} color={palette.error} />
-            </AnimatedPressable>
-          </View>
-        )}
-      </View>
-
-      {/* Табы */}
-      <View style={styles.tabsContainer}>
-        <AnimatedPressable
-          style={[styles.tab, activeTab === 'all' && styles.activeTab]}
-          onPress={() => setActiveTab('all')}
-        >
-          <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-            Все ({getTabCount('all')})
-          </Text>
-        </AnimatedPressable>
-        <AnimatedPressable
-          style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
-          onPress={() => setActiveTab('pending')}
-        >
-          <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-            В работе ({getTabCount('pending')})
-          </Text>
-        </AnimatedPressable>
-        <AnimatedPressable
-          style={[styles.tab, activeTab === 'completed' && styles.activeTab]}
-          onPress={() => setActiveTab('completed')}
-        >
-          <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>
-            Выполнены ({getTabCount('completed')})
-          </Text>
-        </AnimatedPressable>
-      </View>
-
-      {/* Подзаголовок под табами */}
-      <View style={styles.subtitleContainer}>
-        <Text style={styles.subtitle}>
-          Всего задач: {tasks.length} | Выполнено: {tasks.filter(t => t.completed).length}
-        </Text>
       </View>
 
       {/* Блоки с прогрессом */}
@@ -463,62 +398,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     ...typography.heading2,
     color: palette.primaryBlue,
-  },
-  clearButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  clearButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.md,
-    backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: palette.error,
-    shadowColor: palette.midnightBlue,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  subtitleContainer: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: palette.primaryOrange,
-    textAlign: 'center',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    backgroundColor: palette.gray200,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    borderRadius: radii.pill,
-    padding: spacing.xs,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.pill,
-    alignItems: 'center',
-  },
-  activeTab: {
-    backgroundColor: palette.primaryBlue,
-  },
-  tabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: palette.primaryBlue,
-  },
-  activeTabText: {
-    color: palette.white,
   },
   tasksContainer: {
     paddingHorizontal: spacing.md,
