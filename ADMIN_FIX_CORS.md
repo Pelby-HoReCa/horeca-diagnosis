@@ -27,11 +27,22 @@
 2. Выберите сервис `horeca-backend`
 3. Перейдите в **Environment**
 4. Найдите переменную `CORS_ORIGIN`
-5. Добавьте URL админки (через запятую, если уже есть другие):
+5. Добавьте URL админки. У вас есть три домена:
+   - `horeca-diagnosis-p35v.vercel.app` - основной production
+   - `horeca-diagnosis-p35v-git-main-pelby1.vercel.app` - preview для main
+   - `horeca-diagnosis-p35v-b5p5ziesw-pelby1.vercel.app` - preview для коммита
+   
+   **Рекомендуется добавить все три через запятую:**
    ```
-   https://horeca-diagnosis-p35v.vercel.app,https://horeca-diagnosis-xxxxx.vercel.app
+   https://horeca-diagnosis-p35v.vercel.app,https://horeca-diagnosis-p35v-git-main-pelby1.vercel.app,https://horeca-diagnosis-p35v-b5p5ziesw-pelby1.vercel.app
    ```
-   Или используйте `*` для разрешения всех доменов (для тестирования):
+   
+   **Или только основной (production):**
+   ```
+   https://horeca-diagnosis-p35v.vercel.app
+   ```
+   
+   **Или используйте `*` для разрешения всех доменов (для тестирования):**
    ```
    *
    ```
@@ -40,8 +51,7 @@
 
 ### Шаг 3: Проверить работу
 
-1. Откройте админку: https://horeca-diagnosis-p35v.vercel.app
-2. Откройте консоль браузера (F12)
+1. Откройте админку: https://horeca-diagnosis-p35v.vercel.appчраузера (F12)
 3. Введите логин: `Sergo1289`, пароль: `1289`
 4. Нажмите "Войти"
 5. Проверьте логи в консоли

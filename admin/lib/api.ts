@@ -1,7 +1,6 @@
 // Получаем API URL - в Next.js переменные NEXT_PUBLIC_* доступны в браузере
-const API_URL = typeof window !== 'undefined' 
-  ? (process.env.NEXT_PUBLIC_API_URL || 'https://horeca-backend-6zl1.onrender.com')
-  : (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'https://horeca-backend-6zl1.onrender.com');
+// Используем явный fallback для надежности
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://horeca-backend-6zl1.onrender.com';
 
 export interface AdminUser {
   id: string;
@@ -90,6 +89,14 @@ const apiRequest = async <T>(
     return data;
   } catch (error: any) {
     console.error('Ошибка fetch:', error);
+    console.error('URL запроса:', url);
+    console.error('Тип ошибки:', error.name);
+    
+    // Более детальная обработка ошибок
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error(`Не удалось подключиться к серверу. Проверьте CORS настройки на бэкенде. URL: ${url}`);
+    }
+    
     if (error.message) {
       throw error;
     }
