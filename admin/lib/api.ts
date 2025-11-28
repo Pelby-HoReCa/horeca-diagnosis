@@ -74,12 +74,12 @@ const apiRequest = async <T>(
 };
 
 // Авторизация админа
-export const adminLogin = async (email: string, password: string) => {
+export const adminLogin = async (login: string, password: string) => {
   const response = await apiRequest<{ success: boolean; token: string; admin: any }>(
     '/api/admin/login',
     {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: login, password }), // Бэкенд ожидает email, но это логин
     }
   );
 

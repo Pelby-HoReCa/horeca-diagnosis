@@ -19,11 +19,11 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        error: 'Email и пароль обязательны'
+        error: 'Логин и пароль обязательны'
       });
     }
 
-    // Проверяем, что это админ
+    // Проверяем, что это админ (email используется как логин)
     if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
       return res.status(403).json({
         success: false,
@@ -35,7 +35,7 @@ router.post('/login', async (req, res) => {
     if (password !== ADMIN_PASSWORD) {
       return res.status(401).json({
         success: false,
-        error: 'Неверный email или пароль'
+        error: 'Неверный логин или пароль'
       });
     }
 

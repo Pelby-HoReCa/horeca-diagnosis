@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { adminLogin } from '@/lib/api';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,12 +17,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await adminLogin(email, password);
+      const response = await adminLogin(login, password);
       
       if (response.success) {
         router.push('/dashboard');
       } else {
-        setError('Неверный email или пароль');
+        setError('Неверный логин или пароль');
       }
     } catch (err: any) {
       setError(err.message || 'Ошибка авторизации');
@@ -50,18 +50,18 @@ export default function LoginPage() {
           )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email
+              <label htmlFor="login" className="sr-only">
+                Логин
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
+                id="login"
+                name="login"
+                type="text"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-primary-blue focus:border-primary-blue focus:z-10 sm:text-sm"
-                placeholder="Email админа"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Логин админа"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
               />
             </div>
             <div>
