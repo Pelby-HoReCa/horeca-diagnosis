@@ -71,7 +71,36 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   const handlePickImage = async () => {
     try {
-      // Запрашиваем разрешение на доступ к галерее
+      if (Platform.OS === 'web') {
+        // Для веба используем стандартный input file
+        if (typeof document !== 'undefined') {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/*';
+          input.style.display = 'none';
+          document.body.appendChild(input);
+          
+          input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const dataUrl = event.target?.result as string;
+                setAvatarUri(dataUrl);
+                AsyncStorage.setItem('userAvatar', dataUrl);
+                console.log('Фото профиля загружено (веб):', dataUrl);
+              };
+              reader.readAsDataURL(file);
+            }
+            document.body.removeChild(input);
+          };
+          
+          input.click();
+        }
+        return;
+      }
+
+      // Для мобильных устройств используем expo-image-picker
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== 'granted') {
@@ -83,7 +112,6 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         return;
       }
 
-      // Открываем галерею
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -94,16 +122,14 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       if (!result.canceled && result.assets[0]) {
         const uri = result.assets[0].uri;
         setAvatarUri(uri);
-        
-        // Сохраняем URI в локальное хранилище
         await AsyncStorage.setItem('userAvatar', uri);
-        
-        // TODO: Здесь будет загрузка на сервер
         console.log('Фото профиля загружено:', uri);
       }
     } catch (error) {
       console.error('Ошибка загрузки фото:', error);
-      Alert.alert('Ошибка', 'Не удалось загрузить фото. Попробуйте снова.');
+      if (Platform.OS !== 'web') {
+        Alert.alert('Ошибка', 'Не удалось загрузить фото. Попробуйте снова.');
+      }
     }
   };
 

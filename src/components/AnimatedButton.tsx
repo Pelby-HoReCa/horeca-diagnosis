@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import React, { useRef } from 'react';
-import { Animated, TouchableOpacity, ViewStyle } from 'react-native';
+import { Animated, Platform, TouchableOpacity, ViewStyle } from 'react-native';
 
 interface AnimatedButtonProps {
   children: React.ReactNode;
@@ -27,7 +27,7 @@ export default function AnimatedButton({
       useNativeDriver: true,
     }).start();
 
-    if (hapticFeedback) {
+    if (hapticFeedback && Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
