@@ -51,9 +51,9 @@ const apiRequest = async <T>(
 ): Promise<T> => {
   const token = getToken();
   
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
