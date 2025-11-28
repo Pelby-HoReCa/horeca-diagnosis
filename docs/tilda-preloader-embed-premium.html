@@ -1,0 +1,250 @@
+<!-- 
+    ПРЕЛОАДЕР ДЛЯ ТИЛЬДЫ - ПРЕМИУМ ВЕРСИЯ (стекло точно как в Prisma)
+    Скопируйте весь код ниже и вставьте в блок "HTML код" в Тильде
+    Рекомендуется вставить в самом начале страницы (первый блок)
+-->
+
+<style>
+    #royalty-preloader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #242834;
+        animation: royaltyFadeOut 0.5s ease-out 4.5s forwards;
+        overflow: hidden;
+    }
+
+    @keyframes royaltyFadeOut {
+        to {
+            opacity: 0;
+            visibility: hidden;
+        }
+    }
+
+    .royalty-preloader-content {
+        text-align: center;
+        animation: royaltyFadeIn 1.5s ease-in;
+        position: relative;
+        z-index: 1;
+    }
+
+    @keyframes royaltyFadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .royalty-logo-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    /* Royalty Teams - точная копия стиля Prisma */
+    .royalty-logo-main {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: clamp(80px, 14vw, 200px);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        position: relative;
+        display: inline-block;
+        line-height: 1;
+        margin: 0;
+    }
+
+    /* Основной слой - темное стекло (черное/темно-серое) */
+    .royalty-logo-main {
+        color: #000000;
+        background: 
+            linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.95) 50%, rgba(0, 0, 0, 1) 100%),
+            linear-gradient(90deg, rgba(19, 19, 19, 0.98) 0%, rgba(36, 40, 52, 0.95) 50%, rgba(19, 19, 19, 0.98) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* Слой глубины - темная тень сзади */
+    .royalty-logo-main::after {
+        content: attr(data-text);
+        position: absolute;
+        top: 4px;
+        left: 3px;
+        width: 100%;
+        height: 100%;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: clamp(80px, 14vw, 200px);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        line-height: 1;
+        background: linear-gradient(135deg, 
+            rgba(0, 0, 0, 0.8) 0%,
+            rgba(19, 19, 19, 0.7) 50%,
+            rgba(0, 0, 0, 0.8) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: blur(3px);
+        opacity: 0.6;
+        z-index: -1;
+    }
+
+    /* Внутренние отражения - синий (внизу/слева) */
+    .royalty-logo-main::before {
+        content: attr(data-text);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: clamp(80px, 14vw, 200px);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        line-height: 1;
+        background: 
+            /* Синий градиент снизу/слева */
+            linear-gradient(135deg, 
+                rgba(0, 150, 255, 0.6) 0%,
+                rgba(70, 130, 255, 0.5) 20%,
+                rgba(100, 150, 255, 0.4) 35%,
+                rgba(125, 81, 254, 0.35) 50%,
+                rgba(180, 100, 255, 0.3) 65%,
+                rgba(255, 20, 147, 0.25) 80%,
+                rgba(255, 105, 180, 0.2) 90%,
+                rgba(255, 255, 255, 0.15) 100%
+            );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        transform: translateY(3px) translateX(-3px);
+        filter: blur(1px);
+        opacity: 1;
+        z-index: 2;
+        mix-blend-mode: screen;
+    }
+
+    /* Внутренние отражения - фиолетовый/розовый (вверху/справа) */
+    .royalty-logo-container::before {
+        content: attr(data-text);
+        position: absolute;
+        top: -3px;
+        left: 3px;
+        width: 100%;
+        height: 100%;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: clamp(80px, 14vw, 200px);
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        text-transform: none;
+        line-height: 1;
+        background: 
+            /* Розовый/фиолетовый градиент сверху/справа */
+            linear-gradient(135deg, 
+                rgba(255, 255, 255, 0.4) 0%,
+                rgba(255, 182, 193, 0.45) 10%,
+                rgba(255, 105, 180, 0.5) 20%,
+                rgba(255, 20, 147, 0.45) 35%,
+                rgba(180, 100, 255, 0.4) 50%,
+                rgba(125, 81, 254, 0.35) 65%,
+                rgba(100, 150, 255, 0.3) 80%,
+                rgba(0, 150, 255, 0.25) 100%
+            );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        transform: translateY(-3px) translateX(3px);
+        filter: blur(0.8px);
+        opacity: 1;
+        z-index: 3;
+        mix-blend-mode: screen;
+    }
+
+    /* Белые блики на острых краях и объем - точно как в Prisma */
+    .royalty-logo-main {
+        text-shadow: 
+            /* Верхние белые блики на острых краях */
+            0 -1px 3px rgba(255, 255, 255, 0.6),
+            0 -2px 6px rgba(255, 255, 255, 0.4),
+            0 -3px 9px rgba(255, 182, 193, 0.3),
+            /* Розовые блики */
+            0 -1px 2px rgba(255, 105, 180, 0.4),
+            /* Внутренние тени для объема */
+            0 1px 3px rgba(0, 0, 0, 0.7),
+            0 2px 6px rgba(0, 0, 0, 0.5),
+            0 3px 9px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .royalty-logo-main,
+        .royalty-logo-main::before,
+        .royalty-logo-main::after,
+        .royalty-logo-container::before {
+            font-size: clamp(60px, 20vw, 140px);
+        }
+    }
+
+    /* Блокируем скролл во время прелоадера */
+    body.royalty-preloader-active {
+        overflow: hidden !important;
+    }
+</style>
+
+<div id="royalty-preloader">
+    <div class="royalty-preloader-content">
+        <div class="royalty-logo-container" data-text="Royalty Teams">
+            <div class="royalty-logo-main" data-text="Royalty Teams">Royalty Teams</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Блокируем скролл
+    document.body.classList.add('royalty-preloader-active');
+    
+    // Удаляем прелоадер через 5 секунд
+    setTimeout(function() {
+        const preloader = document.getElementById('royalty-preloader');
+        if (preloader) {
+            preloader.style.display = 'none';
+            document.body.classList.remove('royalty-preloader-active');
+        }
+    }, 5000);
+
+    // Дополнительная проверка на случай, если страница загрузилась раньше
+    if (document.readyState === 'complete') {
+        setTimeout(function() {
+            const preloader = document.getElementById('royalty-preloader');
+            if (preloader) {
+                preloader.style.display = 'none';
+                document.body.classList.remove('royalty-preloader-active');
+            }
+        }, 5000);
+    } else {
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const preloader = document.getElementById('royalty-preloader');
+                if (preloader) {
+                    preloader.style.display = 'none';
+                    document.body.classList.remove('royalty-preloader-active');
+                }
+            }, 5000);
+        });
+    }
+})();
+</script>

@@ -1,7 +1,45 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Базовый URL API (будет настроен позже)
-const API_BASE_URL = 'https://api.pelby.ru'; // TODO: Заменить на реальный URL
+// Базовый URL API - используйте переменную окружения или укажите ваш URL
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+
+// Флаг для переключения между локальным и серверным режимом
+const USE_SERVER_API = process.env.EXPO_PUBLIC_USE_SERVER_API === 'true' || false;
+
+// Вспомогательная функция для API запросов
+const apiRequest = async (
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<any> => {
+  const token = await AsyncStorage.getItem('authToken');
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return data;
+  } catch (error: any) {
+    console.error(`API request failed: ${endpoint}`, error);
+    throw error;
+  }
+};
 
 export interface User {
   id: string;
@@ -34,77 +72,90 @@ export interface PasswordResetResponse {
 }
 
 /**
- * Авторизация пользователя (локальная)
+ * Авторизация пользователя
  */
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
   try {
-    // Импортируем функции для работы с пользователями
-    const { findUserByEmail } = await import('./usersStorage');
-    const { migrateUserData } = await import('./userDataStorage');
-    
-    // Ищем пользователя по email
-    const user = await findUserByEmail(email);
-    
-    if (!user) {
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.success && response.token && response.user) {
+        // Сохраняем данные авторизации
+        await AsyncStorage.setItem('authToken', response.token);
+        await AsyncStorage.setItem('userEmail', response.user.email);
+        await AsyncStorage.setItem('isAuthenticated', 'true');
+        await AsyncStorage.setItem('userId', response.user.id);
+      }
+
+      return response;
+    } else {
+      // Локальный режим (fallback)
+      const { findUserByEmail } = await import('./usersStorage');
+      const { migrateUserData } = await import('./userDataStorage');
+      
+      const user = await findUserByEmail(email);
+      
+      if (!user) {
+        return {
+          success: false,
+          error: 'Пользователь с таким email не найден',
+        };
+      }
+
+      if (user.password !== password) {
+        return {
+          success: false,
+          error: 'Неверный пароль',
+        };
+      }
+
+      const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('userEmail', email);
+      await AsyncStorage.setItem('isAuthenticated', 'true');
+      await AsyncStorage.setItem('userId', user.id);
+
+      await migrateUserData(user.id);
+
+      const userData: User = {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        position: user.position,
+        phone: user.phone,
+        socialLink: user.socialLink,
+        projectName: user.projectName,
+        outletsCount: user.outletsCount,
+        workFormat: user.workFormat,
+        city: user.city,
+        address: user.address,
+        projectLink: user.projectLink,
+        restaurantName: user.projectName,
+        createdAt: user.registeredAt,
+      };
+
       return {
-        success: false,
-        error: 'Пользователь с таким email не найден',
+        success: true,
+        token: token,
+        user: userData,
       };
     }
-
-    // Проверяем пароль
-    if (user.password !== password) {
-      return {
-        success: false,
-        error: 'Неверный пароль',
-      };
-    }
-
-    // Создаем токен
-    const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-    // Сохраняем данные авторизации
-    await AsyncStorage.setItem('authToken', token);
-    await AsyncStorage.setItem('userEmail', email);
-    await AsyncStorage.setItem('isAuthenticated', 'true');
-    await AsyncStorage.setItem('userId', user.id);
-
-    // Мигрируем данные из глобальных ключей (если есть)
-    await migrateUserData(user.id);
-
-    const userData: User = {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      position: user.position,
-      phone: user.phone,
-      socialLink: user.socialLink,
-      projectName: user.projectName,
-      outletsCount: user.outletsCount,
-      workFormat: user.workFormat,
-      city: user.city,
-      address: user.address,
-      projectLink: user.projectLink,
-      restaurantName: user.projectName,
-      createdAt: user.registeredAt,
-    };
-
-    return {
-      success: true,
-      token: token,
-      user: userData,
-    };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка авторизации:', error);
     return {
       success: false,
-      error: 'Ошибка авторизации. Попробуйте снова.',
+      error: error.message || 'Ошибка авторизации. Попробуйте снова.',
     };
   }
 };
 
 /**
- * Регистрация нового пользователя (локальная)
+ * Регистрация нового пользователя
  */
 export const register = async (
   email: string,
@@ -125,65 +176,81 @@ export const register = async (
   }
 ): Promise<AuthResponse> => {
   try {
-    // Импортируем функции для работы с пользователями
-    const { findUserByEmail, saveUser } = await import('./usersStorage');
-    const { migrateUserData } = await import('./userDataStorage');
-    
-    // Проверяем, не существует ли пользователь
-    const existingUser = await findUserByEmail(email);
-    if (existingUser) {
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const response = await apiRequest('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          email,
+          password,
+          ...additionalData,
+        }),
+      });
+
+      if (response.success && response.token && response.user) {
+        await AsyncStorage.setItem('authToken', response.token);
+        await AsyncStorage.setItem('userEmail', response.user.email);
+        await AsyncStorage.setItem('isAuthenticated', 'true');
+        await AsyncStorage.setItem('userId', response.user.id);
+      }
+
+      return response;
+    } else {
+      // Локальный режим (fallback)
+      const { findUserByEmail, saveUser } = await import('./usersStorage');
+      const { migrateUserData } = await import('./userDataStorage');
+      
+      const existingUser = await findUserByEmail(email);
+      if (existingUser) {
+        return {
+          success: false,
+          error: 'Пользователь с таким email уже зарегистрирован',
+        };
+      }
+
+      const newUser = await saveUser({
+        email,
+        password,
+        ...(additionalData || {}),
+      });
+
+      const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('userEmail', email);
+      await AsyncStorage.setItem('isAuthenticated', 'true');
+      await AsyncStorage.setItem('userId', newUser.id);
+
+      await migrateUserData(newUser.id);
+
+      const userData: User = {
+        id: newUser.id,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        position: newUser.position,
+        phone: newUser.phone,
+        socialLink: newUser.socialLink,
+        projectName: newUser.projectName,
+        outletsCount: newUser.outletsCount,
+        workFormat: newUser.workFormat,
+        city: newUser.city,
+        address: newUser.address,
+        projectLink: newUser.projectLink,
+        restaurantName: newUser.projectName,
+        createdAt: newUser.registeredAt,
+      };
+
       return {
-        success: false,
-        error: 'Пользователь с таким email уже зарегистрирован',
+        success: true,
+        token: token,
+        user: userData,
       };
     }
-
-    // Создаем нового пользователя с дополнительными данными
-    const newUser = await saveUser({
-      email,
-      password,
-      ...(additionalData || {}),
-    });
-
-    // Создаем токен
-    const token = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-    // Сохраняем данные авторизации
-    await AsyncStorage.setItem('authToken', token);
-    await AsyncStorage.setItem('userEmail', email);
-    await AsyncStorage.setItem('isAuthenticated', 'true');
-    await AsyncStorage.setItem('userId', newUser.id);
-
-    // Мигрируем данные из глобальных ключей (если есть)
-    await migrateUserData(newUser.id);
-
-    const userData: User = {
-      id: newUser.id,
-      email: newUser.email,
-      fullName: newUser.fullName,
-      position: newUser.position,
-      phone: newUser.phone,
-      socialLink: newUser.socialLink,
-      projectName: newUser.projectName,
-      outletsCount: newUser.outletsCount,
-      workFormat: newUser.workFormat,
-      city: newUser.city,
-      address: newUser.address,
-      projectLink: newUser.projectLink,
-      restaurantName: newUser.projectName,
-      createdAt: newUser.registeredAt,
-    };
-
-    return {
-      success: true,
-      token: token,
-      user: userData,
-    };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Ошибка регистрации:', error);
     return {
       success: false,
-      error: 'Ошибка регистрации. Попробуйте снова.',
+      error: error.message || 'Ошибка регистрации. Попробуйте снова.',
     };
   }
 };
@@ -222,40 +289,48 @@ export const resetPassword = async (email: string): Promise<PasswordResetRespons
 
 /**
  * Получение данных пользователя
- * TODO: Заменить на реальный API вызов
  */
 export const getUserData = async (): Promise<User | null> => {
   try {
     const token = await AsyncStorage.getItem('authToken');
     if (!token) return null;
 
-    const email = await AsyncStorage.getItem('userEmail');
-    const userId = await AsyncStorage.getItem('userId');
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const response = await apiRequest('/api/users/me');
+      if (response.success && response.user) {
+        return response.user;
+      }
+      return null;
+    } else {
+      // Локальный режим (fallback)
+      const email = await AsyncStorage.getItem('userEmail');
+      const userId = await AsyncStorage.getItem('userId');
 
-    if (!email || !userId) return null;
+      if (!email || !userId) return null;
 
-    // Загружаем полные данные пользователя из хранилища
-    const { findUserByEmail } = await import('./usersStorage');
-    const userData = await findUserByEmail(email);
+      const { findUserByEmail } = await import('./usersStorage');
+      const userData = await findUserByEmail(email);
 
-    if (!userData) return null;
+      if (!userData) return null;
 
-    return {
-      id: userData.id,
-      email: userData.email,
-      fullName: userData.fullName,
-      position: userData.position,
-      phone: userData.phone,
-      socialLink: userData.socialLink,
-      projectName: userData.projectName,
-      outletsCount: userData.outletsCount,
-      workFormat: userData.workFormat,
-      city: userData.city,
-      address: userData.address,
-      projectLink: userData.projectLink,
-      restaurantName: userData.projectName, // Для обратной совместимости
-      createdAt: userData.registeredAt,
-    };
+      return {
+        id: userData.id,
+        email: userData.email,
+        fullName: userData.fullName,
+        position: userData.position,
+        phone: userData.phone,
+        socialLink: userData.socialLink,
+        projectName: userData.projectName,
+        outletsCount: userData.outletsCount,
+        workFormat: userData.workFormat,
+        city: userData.city,
+        address: userData.address,
+        projectLink: userData.projectLink,
+        restaurantName: userData.projectName,
+        createdAt: userData.registeredAt,
+      };
+    }
   } catch (error) {
     console.error('Ошибка получения данных пользователя:', error);
     return null;
@@ -264,33 +339,30 @@ export const getUserData = async (): Promise<User | null> => {
 
 /**
  * Сохранение истории диагностики на сервер
- * TODO: Заменить на реальный API вызов
  */
 export const saveDiagnosisHistory = async (data: any): Promise<boolean> => {
   try {
     const token = await AsyncStorage.getItem('authToken');
     if (!token) return false;
 
-    // TODO: Реальный API вызов
-    // const response = await fetch(`${API_BASE_URL}/diagnosis/history`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${token}`,
-    //   },
-    //   body: JSON.stringify(data),
-    // });
-
-    // Пока сохраняем локально
-    const existingHistory = await AsyncStorage.getItem('userDiagnosisHistory');
-    const history = existingHistory ? JSON.parse(existingHistory) : [];
-    history.push({
-      ...data,
-      timestamp: new Date().toISOString(),
-    });
-    await AsyncStorage.setItem('userDiagnosisHistory', JSON.stringify(history));
-
-    return true;
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const response = await apiRequest('/api/diagnosis/history', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      return response.success || false;
+    } else {
+      // Локальный режим (fallback)
+      const existingHistory = await AsyncStorage.getItem('userDiagnosisHistory');
+      const history = existingHistory ? JSON.parse(existingHistory) : [];
+      history.push({
+        ...data,
+        timestamp: new Date().toISOString(),
+      });
+      await AsyncStorage.setItem('userDiagnosisHistory', JSON.stringify(history));
+      return true;
+    }
   } catch (error) {
     console.error('Ошибка сохранения истории:', error);
     return false;
@@ -299,24 +371,21 @@ export const saveDiagnosisHistory = async (data: any): Promise<boolean> => {
 
 /**
  * Получение истории диагностики пользователя
- * TODO: Заменить на реальный API вызов
  */
 export const getDiagnosisHistory = async (): Promise<any[]> => {
   try {
     const token = await AsyncStorage.getItem('authToken');
     if (!token) return [];
 
-    // TODO: Реальный API вызов
-    // const response = await fetch(`${API_BASE_URL}/diagnosis/history`, {
-    //   headers: {
-    //     'Authorization': `Bearer ${token}`,
-    //   },
-    // });
-    // const data = await response.json();
-
-    // Пока получаем из локального хранилища
-    const history = await AsyncStorage.getItem('userDiagnosisHistory');
-    return history ? JSON.parse(history) : [];
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const response = await apiRequest('/api/diagnosis/history');
+      return response.success ? response.history || [] : [];
+    } else {
+      // Локальный режим (fallback)
+      const history = await AsyncStorage.getItem('userDiagnosisHistory');
+      return history ? JSON.parse(history) : [];
+    }
   } catch (error) {
     console.error('Ошибка получения истории:', error);
     return [];
@@ -347,43 +416,56 @@ export const logout = async (): Promise<void> => {
  */
 export const updateUserData = async (updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> => {
   try {
-    const userId = await AsyncStorage.getItem('userId');
-    if (!userId) {
-      throw new Error('Пользователь не найден');
-    }
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const userDataUpdates: any = { ...updates };
+      if (updates.restaurantName) {
+        userDataUpdates.projectName = updates.restaurantName;
+      }
 
-    // Импортируем функцию обновления пользователя
-    const { updateUser } = await import('./usersStorage');
-    
-    // Преобразуем User в UserData формат
-    const userDataUpdates: any = { ...updates };
-    if (updates.restaurantName) {
-      userDataUpdates.projectName = updates.restaurantName;
-    }
-    
-    const updatedUser = await updateUser(userId, userDataUpdates);
-    
-    if (!updatedUser) {
-      throw new Error('Не удалось обновить данные пользователя');
-    }
+      const response = await apiRequest('/api/users/me', {
+        method: 'PUT',
+        body: JSON.stringify(userDataUpdates),
+      });
 
-    // Возвращаем обновленные данные в формате User
-    return {
-      id: updatedUser.id,
-      email: updatedUser.email,
-      fullName: updatedUser.fullName,
-      position: updatedUser.position,
-      phone: updatedUser.phone,
-      socialLink: updatedUser.socialLink,
-      projectName: updatedUser.projectName,
-      outletsCount: updatedUser.outletsCount,
-      workFormat: updatedUser.workFormat,
-      city: updatedUser.city,
-      address: updatedUser.address,
-      projectLink: updatedUser.projectLink,
-      restaurantName: updatedUser.projectName,
-      createdAt: updatedUser.registeredAt,
-    };
+      return response.success ? response.user : null;
+    } else {
+      // Локальный режим (fallback)
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('Пользователь не найден');
+      }
+
+      const { updateUser } = await import('./usersStorage');
+      
+      const userDataUpdates: any = { ...updates };
+      if (updates.restaurantName) {
+        userDataUpdates.projectName = updates.restaurantName;
+      }
+      
+      const updatedUser = await updateUser(userId, userDataUpdates);
+      
+      if (!updatedUser) {
+        throw new Error('Не удалось обновить данные пользователя');
+      }
+
+      return {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName: updatedUser.fullName,
+        position: updatedUser.position,
+        phone: updatedUser.phone,
+        socialLink: updatedUser.socialLink,
+        projectName: updatedUser.projectName,
+        outletsCount: updatedUser.outletsCount,
+        workFormat: updatedUser.workFormat,
+        city: updatedUser.city,
+        address: updatedUser.address,
+        projectLink: updatedUser.projectLink,
+        restaurantName: updatedUser.projectName,
+        createdAt: updatedUser.registeredAt,
+      };
+    }
   } catch (error) {
     console.error('Ошибка обновления данных пользователя:', error);
     throw error;
@@ -395,34 +477,46 @@ export const updateUserData = async (updates: Partial<Omit<User, 'id' | 'created
  */
 export const deleteAccount = async (): Promise<boolean> => {
   try {
-    const userId = await AsyncStorage.getItem('userId');
-    if (!userId) {
-      throw new Error('Пользователь не найден');
-    }
+    if (USE_SERVER_API) {
+      // Серверный режим
+      const response = await apiRequest('/api/users/me', {
+        method: 'DELETE',
+      });
 
-    // Импортируем функцию удаления пользователя
-    const { deleteUser } = await import('./usersStorage');
-    const { clearUserData } = await import('./userDataStorage');
-    
-    // Удаляем данные пользователя
-    await clearUserData(userId);
-    
-    // Удаляем пользователя из хранилища
-    const deleted = await deleteUser(userId);
-    
-    if (!deleted) {
-      throw new Error('Не удалось удалить пользователя');
-    }
+      if (response.success) {
+        await AsyncStorage.removeItem('authToken');
+        await AsyncStorage.removeItem('isAuthenticated');
+        await AsyncStorage.removeItem('userEmail');
+        await AsyncStorage.removeItem('userId');
+        await AsyncStorage.removeItem('userAvatar');
+      }
 
-    // Очищаем данные авторизации
-    await AsyncStorage.removeItem('authToken');
-    await AsyncStorage.removeItem('isAuthenticated');
-    await AsyncStorage.removeItem('userEmail');
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('userAvatar');
-    
-    console.log('Аккаунт удален успешно');
-    return true;
+      return response.success || false;
+    } else {
+      // Локальный режим (fallback)
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('Пользователь не найден');
+      }
+
+      const { deleteUser } = await import('./usersStorage');
+      const { clearUserData } = await import('./userDataStorage');
+      
+      await clearUserData(userId);
+      const deleted = await deleteUser(userId);
+      
+      if (!deleted) {
+        throw new Error('Не удалось удалить пользователя');
+      }
+
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('isAuthenticated');
+      await AsyncStorage.removeItem('userEmail');
+      await AsyncStorage.removeItem('userId');
+      await AsyncStorage.removeItem('userAvatar');
+      
+      return true;
+    }
   } catch (error) {
     console.error('Ошибка удаления аккаунта:', error);
     throw error;

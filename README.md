@@ -1,50 +1,94 @@
-# Welcome to your Expo app 👋
+# Horeca Diagnosis - Приложение самодиагностики бизнеса ХОРЕКА
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Приложение для самодиагностики бизнеса в сфере HoReCa, построенное на Expo/React Native.
 
-## Get started
+## 🚀 Быстрый старт
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### Установка зависимостей
 
 ```bash
-npm run reset-project
+npm install
+cd backend && npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Запуск в режиме разработки
 
-## Learn more
+```bash
+# Фронтенд
+npm start
 
-To learn more about developing your project with Expo, look at the following resources:
+# Бэкенд (в отдельном терминале)
+cd backend
+npm run dev
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## 📱 Развертывание на сервере
 
-## Join the community
+Приложение готово к развертыванию на сервере с поддержкой:
+- ✅ Серверного API для регистрации и хранения данных
+- ✅ OTA обновлений через Expo EAS Update
+- ✅ PWA для работы по ссылке в браузере
 
-Join our community of developers creating universal apps.
+### Документация по развертыванию
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **[QUICK_START.md](./QUICK_START.md)** - Быстрый старт
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Подробная инструкция
+- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Чеклист развертывания
+- **[DEPLOYMENT_SUMMARY.md](./DEPLOYMENT_SUMMARY.md)** - Резюме изменений
+
+### Основные шаги
+
+1. **Настройте переменные окружения:**
+   - Создайте `.env` в корне проекта
+   - Создайте `backend/.env`
+
+2. **Настройте EAS Update:**
+   ```bash
+   npm install -g eas-cli
+   eas login
+   eas update:configure
+   ```
+
+3. **Задеплойте:**
+   - Бэкенд: Railway или другой хостинг
+   - Фронтенд: Vercel
+
+4. **Создайте обновление:**
+   ```bash
+   npm run update:app
+   ```
+
+## 🏗️ Структура проекта
+
+```
+horeca-diagnosis/
+├── backend/              # Бэкенд API (Node.js/Express)
+├── src/                  # Исходный код приложения
+├── app/                  # Expo Router файлы
+└── assets/               # Ресурсы (изображения, иконки)
+```
+
+## 📚 Дополнительная информация
+
+- [Expo документация](https://docs.expo.dev/)
+- [Expo EAS Update](https://docs.expo.dev/eas-update/introduction/)
+- [React Navigation](https://reactnavigation.org/)
+
+## 🔧 Разработка
+
+### Доступные команды
+
+```bash
+npm start          # Запуск Expo dev server
+npm run web        # Запуск веб-версии
+npm run web:build  # Сборка для веба
+npm run update:app # Создать OTA обновление
+```
+
+### Технологии
+
+- **Frontend:** React Native, Expo, TypeScript
+- **Backend:** Node.js, Express, TypeScript
+- **Navigation:** React Navigation
+- **Storage:** AsyncStorage (локально), Server API (production)
+- **Updates:** Expo EAS Update

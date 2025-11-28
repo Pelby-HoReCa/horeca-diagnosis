@@ -1,0 +1,155 @@
+<!-- 
+    АНИМИРОВАННАЯ СФЕРА для Zero блока в Тильде
+    Скопируйте весь код ниже и вставьте в Zero блок
+    Требуется подключение Three.js библиотеки
+-->
+
+<style>
+    /* Контейнер для сферы */
+    .sphere-container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        min-height: 600px;
+        overflow: hidden;
+        background: transparent;
+    }
+    
+    /* Canvas для Three.js */
+    #sphere-canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+<!-- Контейнер для сферы -->
+<div class="sphere-container">
+    <canvas id="sphere-canvas"></canvas>
+</div>
+
+<!-- Подключение Three.js библиотеки -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Получаем canvas элемент
+    const canvas = document.getElementById('sphere-canvas');
+    const container = canvas.parentElement;
+    
+    // Создаем сцену
+    const scene = new THREE.Scene();
+    
+    // Создаем камеру
+    const camera = new THREE.PerspectiveCamera(
+        75, // поле зрения (FOV)
+        container.clientWidth / container.clientHeight, // соотношение сторон
+        0.1, // ближняя плоскость отсечения
+        1000 // дальняя плоскость отсечения
+    );
+    
+    // Создаем рендерер
+    const renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        alpha: true, // прозрачный фон
+        antialias: true // сглаживание
+    });
+    
+    // Устанавливаем размер рендерера
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // Создаем геометрию сферы
+    const geometry = new THREE.SphereGeometry(
+        2, // радиус
+        64, // количество сегментов по ширине
+        64  // количество сегментов по высоте
+    );
+    
+    // Создаем материал с градиентом
+    const material = new THREE.ShaderMaterial({
+        uniforms: {
+            time: { value: 0 },
+            color1: { value: new THREE.Color(0x7d51fe) }, // ваш фиолетовый
+            color2: { value: new THREE.Color(0xb6ff00) }  // ваш зеленый
+        },
+        vertexShader: `
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+            
+            void main() {
+                vPosition = position;
+                vNormal = normalize(normalMatrix * normal);
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float time;
+            uniform vec3 color1;
+            uniform vec3 color2;
+            varying vec3 vPosition;
+            varying vec3 vNormal;
+            
+            void main() {
+                vec3 normal = normalize(vNormal);
+                float fresnel = pow(1.0 - dot(normal, vec3(0.0, 0.0, 1.0)), 2.0);
+                
+                vec3 color = mix(color1, color2, fresnel);
+                color += vec3(0.1) * sin(time + vPosition.y * 5.0);
+                
+                gl_FragColor = vec4(color, 0.8);
+            }
+        `,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    
+    // Создаем меш (объект) сферы
+    const sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
+    
+    // Позиционируем камеру
+    camera.position.z = 5;
+    
+    // Переменная для времени анимации
+    let time = 0;
+    
+    // Функция анимации
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        // Увеличиваем время
+        time += 0.01;
+        material.uniforms.time.value = time;
+        
+        // Вращаем сферу
+        sphere.rotation.x += 0.005;
+        sphere.rotation.y += 0.01;
+        
+        // Рендерим сцену
+        renderer.render(scene, camera);
+    }
+    
+    // Обработка изменения размера окна
+    function handleResize() {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        
+        renderer.setSize(width, height);
+    }
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Запускаем анимацию
+    animate();
+    
+    // Инициализация размера
+    handleResize();
+})();
+</script>
+

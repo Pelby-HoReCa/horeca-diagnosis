@@ -1,0 +1,91 @@
+<!-- 
+    СКРИПТ ДЛЯ ИЗВЛЕЧЕНИЯ СТИЛЕЙ ФОНА Hero BG Decoration
+    Откройте консоль браузера (F12) на странице https://ego-prisma-tmpl.framer.website/
+    Вставьте этот код в консоль и нажмите Enter
+-->
+
+<script>
+(function() {
+    // Находим элемент
+    const element = document.querySelector('.framer-1xrlc9b[data-framer-name="Hero BG Decoration"]') || 
+                    document.querySelector('.framer-1xrlc9b') ||
+                    document.querySelector('[data-framer-name="Hero BG Decoration"]');
+    
+    if (!element) {
+        console.log('Элемент не найден. Попробуйте найти его вручную и выполните:');
+        console.log('const el = document.querySelector(\'[data-framer-name="Hero BG Decoration"]\');');
+        console.log('const styles = window.getComputedStyle(el);');
+        console.log('console.log(styles.background);');
+        return;
+    }
+    
+    const styles = window.getComputedStyle(element);
+    
+    // Извлекаем все свойства фона
+    const bgInfo = {
+        background: styles.background,
+        backgroundImage: styles.backgroundImage,
+        backgroundColor: styles.backgroundColor,
+        backgroundSize: styles.backgroundSize,
+        backgroundPosition: styles.backgroundPosition,
+        backgroundRepeat: styles.backgroundRepeat,
+        backgroundAttachment: styles.backgroundAttachment,
+        width: styles.width,
+        height: styles.height,
+        position: styles.position,
+        top: styles.top,
+        left: styles.left,
+        right: styles.right,
+        bottom: styles.bottom,
+        zIndex: styles.zIndex,
+        opacity: styles.opacity,
+        transform: styles.transform,
+        filter: styles.filter,
+        mixBlendMode: styles.mixBlendMode,
+        allClasses: element.className,
+        allStyles: element.getAttribute('style')
+    };
+    
+    console.log('=== СТИЛИ ФОНА Hero BG Decoration ===');
+    console.log(JSON.stringify(bgInfo, null, 2));
+    
+    // Генерируем CSS
+    const css = `
+/* Hero BG Decoration - извлеченные стили */
+.hero-bg-decoration {
+    background: ${styles.background};
+    background-image: ${styles.backgroundImage};
+    background-color: ${styles.backgroundColor};
+    background-size: ${styles.backgroundSize};
+    background-position: ${styles.backgroundPosition};
+    background-repeat: ${styles.backgroundRepeat};
+    background-attachment: ${styles.backgroundAttachment};
+    width: ${styles.width};
+    height: ${styles.height};
+    position: ${styles.position};
+    top: ${styles.top};
+    left: ${styles.left};
+    right: ${styles.right};
+    bottom: ${styles.bottom};
+    z-index: ${styles.zIndex};
+    opacity: ${styles.opacity};
+    transform: ${styles.transform};
+    filter: ${styles.filter};
+    mix-blend-mode: ${styles.mixBlendMode};
+}
+    `;
+    
+    console.log('\n=== CSS КОД ===');
+    console.log(css);
+    
+    // Копируем в буфер обмена (если возможно)
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(css).then(() => {
+            console.log('\n✓ CSS скопирован в буфер обмена!');
+        });
+    }
+    
+    return bgInfo;
+})();
+</script>
+

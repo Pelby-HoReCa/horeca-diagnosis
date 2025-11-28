@@ -1,0 +1,587 @@
+/* 
+ * CSS стили на основе референса Prisma Template
+ * Адаптировано под корпоративные цвета
+ */
+
+/* ============================================
+   ЦВЕТОВАЯ ПАЛИТРА (Корпоративные цвета)
+   ============================================ */
+:root {
+  /* Корпоративные цвета */
+  --color-white: #ffffff;
+  --color-white-smoke: #f0f0f0;
+  --color-pattens-blue: #cfe1ed;
+  --color-spring-bud: #b6ff00;
+  --color-medium-slate-blue: #7d51fe;
+  --color-midnight-express: #242834;
+  
+  /* Цвета из референса (для справки) */
+  --ref-black: #000000;
+  --ref-purple-light: #9c80f4;
+  --ref-purple-dark: #7034e4;
+  --ref-link-blue: #0000ee;
+  
+  /* Адаптированные цвета */
+  --bg-primary: var(--color-midnight-express);
+  --bg-secondary: var(--color-white-smoke);
+  --bg-card: var(--color-pattens-blue);
+  --text-primary: var(--color-white);
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --accent-primary: var(--color-medium-slate-blue);
+  --accent-cta: var(--color-spring-bud);
+  --link-color: var(--color-medium-slate-blue);
+}
+
+/* ============================================
+   ТИПОГРАФИКА
+   ============================================ */
+
+/* Подключение шрифтов (Google Fonts) */
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@600&family=Lexend:wght@400&family=Inter:wght@400;500&display=swap');
+
+/* Базовые стили */
+body {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  margin: 0;
+  padding: 0;
+}
+
+/* Заголовки */
+h1 {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 48px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+h2 {
+  font-family: 'Lexend', sans-serif;
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 48px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+h3 {
+  font-family: 'Lexend', sans-serif;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 35.2px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+h3.card-title {
+  font-size: 24px;
+  line-height: 28.8px;
+}
+
+h4 {
+  font-family: 'Lexend', sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 28.8px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+p {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+p.small {
+  font-size: 14px;
+}
+
+p.large {
+  font-size: 18px;
+}
+
+/* ============================================
+   НАВИГАЦИЯ
+   ============================================ */
+.navigation {
+  background-color: transparent;
+  padding: 16px 20px 0;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-link {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--link-color);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: rgba(125, 81, 254, 0.1);
+}
+
+/* ============================================
+   КНОПКИ
+   ============================================ */
+
+/* Primary CTA Button */
+.btn-primary {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--bg-primary);
+  background-color: var(--color-white);
+  padding: 12px 24px;
+  border-radius: 64px;
+  border: none;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-cta);
+  color: var(--bg-primary);
+  transform: translateY(-2px);
+}
+
+/* Secondary Button */
+.btn-secondary {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--link-color);
+  background-color: transparent;
+  padding: 12px 24px;
+  border-radius: 100px;
+  border: 1px solid var(--link-color);
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--link-color);
+  color: var(--color-white);
+}
+
+/* CTA с корпоративным цветом */
+.btn-cta {
+  background-color: var(--accent-cta);
+  color: var(--bg-primary);
+}
+
+.btn-cta:hover {
+  background-color: var(--color-white);
+}
+
+/* ============================================
+   СЕКЦИИ
+   ============================================ */
+.section {
+  padding: 80px 0;
+  margin: 0;
+}
+
+.section-large {
+  padding: 160px 0;
+}
+
+.section-medium {
+  padding: 120px 0;
+}
+
+.section-small {
+  padding: 80px 0 32px;
+}
+
+/* ============================================
+   HERO СЕКЦИЯ
+   ============================================ */
+.hero {
+  position: relative;
+  padding: 160px 0;
+  background: radial-gradient(200% 184% at 50% 5%, 
+    var(--color-midnight-express) 31.31%, 
+    var(--color-medium-slate-blue) 47.50%, 
+    var(--color-pattens-blue) 58.40%, 
+    var(--color-white) 85.77%);
+  overflow: hidden;
+}
+
+.hero-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.hero h1 {
+  margin-bottom: 24px;
+}
+
+.hero p {
+  font-size: 18px;
+  margin-bottom: 32px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ============================================
+   КАРТОЧКИ
+   ============================================ */
+.card {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 32px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(125, 81, 254, 0.2);
+}
+
+.card-title {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.card-subtitle {
+  font-size: 18px;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+
+.card-description {
+  font-size: 16px;
+  margin-bottom: 24px;
+  color: var(--text-secondary);
+}
+
+/* Карточка решения (Solution Card) */
+.solution-card {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 40px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.solution-card:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-primary);
+}
+
+.solution-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+/* ============================================
+   СТАТИСТИКА
+   ============================================ */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 48px;
+  text-align: center;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-number {
+  font-family: 'Lexend', sans-serif;
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 48px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.stat-symbol {
+  font-size: 24px;
+  color: var(--accent-primary);
+}
+
+.stat-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   ОТЗЫВЫ
+   ============================================ */
+.review-card {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.review-text {
+  font-size: 18px;
+  font-style: italic;
+  margin-bottom: 24px;
+  color: var(--text-primary);
+}
+
+.review-author {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.review-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.review-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.review-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.review-company {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   FAQ (Аккордеон)
+   ============================================ */
+.faq-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 24px 0;
+}
+
+.faq-question {
+  font-family: 'Inter', sans-serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.faq-question:hover {
+  color: var(--accent-primary);
+}
+
+.faq-answer {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-top: 16px;
+  padding-right: 32px;
+  line-height: 1.6;
+}
+
+.faq-icon {
+  transition: transform 0.3s ease;
+}
+
+.faq-item.active .faq-icon {
+  transform: rotate(180deg);
+}
+
+/* ============================================
+   ФОРМА ПОДПИСКИ
+   ============================================ */
+.subscribe-form {
+  display: flex;
+  gap: 16px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.subscribe-input {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  padding: 12px 24px;
+  border-radius: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.subscribe-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.subscribe-input::placeholder {
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   ФУТЕР
+   ============================================ */
+.footer {
+  background-color: rgba(0, 0, 0, 0.3);
+  padding: 80px 0 32px;
+  margin-top: 120px;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 48px;
+}
+
+.footer-section h5 {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.footer-link {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: block;
+  margin-bottom: 8px;
+  transition: color 0.2s ease;
+}
+
+.footer-link:hover {
+  color: var(--accent-primary);
+}
+
+/* ============================================
+   УТИЛИТЫ
+   ============================================ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mb-24 {
+  margin-bottom: 24px;
+}
+
+.mb-32 {
+  margin-bottom: 32px;
+}
+
+.mt-48 {
+  margin-top: 48px;
+}
+
+.grid {
+  display: grid;
+  gap: 24px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  
+  h1 {
+    font-size: 36px;
+    line-height: 40px;
+  }
+  
+  h2 {
+    font-size: 32px;
+    line-height: 40px;
+  }
+  
+  .section-large {
+    padding: 80px 0;
+  }
+  
+  .subscribe-form {
+    flex-direction: column;
+  }
+}
+
+

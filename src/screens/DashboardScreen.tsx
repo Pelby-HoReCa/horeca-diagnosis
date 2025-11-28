@@ -7,6 +7,7 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import BarChart from '../components/BarChart';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
+import { palette, radii, spacing, typography } from '../styles/theme';
 import { Task } from '../utils/recommendationEngine';
 import {
   getCurrentUserId,
@@ -16,7 +17,6 @@ import {
   loadUserTasks,
   saveUserDashboardData
 } from '../utils/userDataStorage';
-import { palette, radii, spacing, typography } from '../styles/theme';
 
 const COLORS = {
   gray: palette.gray200,

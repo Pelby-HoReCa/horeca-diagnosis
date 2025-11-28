@@ -1,0 +1,1446 @@
+<div id="telegram-posts-container">
+
+  <div class="loading">Загрузка постов...</div>
+
+</div>
+
+
+
+<style>
+
+/* ============================================
+
+   ОСНОВНОЙ КОНТЕЙНЕР
+
+   ============================================ */
+
+#telegram-posts-container {
+
+  max-width: 100%; /* ИЗМЕНЕНО: 100% вместо 1200px чтобы не выходило за экран */
+
+  margin: 0 auto;
+
+  padding: 10px 15px; /* ИЗМЕНЕНО: добавлен горизонтальный padding */
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+
+  height: 450px; /* ИЗМЕНЕНО: увеличена высота блока для новых карточек */
+
+  overflow: hidden;
+
+  background: #EAF3FF; /* ФОН КОНТЕЙНЕРА - меняйте на нужный цвет, например: #f5f5f5 */
+
+  box-sizing: border-box; /* ИЗМЕНЕНО: учитываем padding в ширине */
+
+}
+
+
+
+/* ============================================
+
+   СООБЩЕНИЕ ЗАГРУЗКИ
+
+   ============================================ */
+
+.loading {
+
+  text-align: center;
+
+  padding: 60px 20px;
+
+  color: #666; /* ЦВЕТ ТЕКСТА "Загрузка..." - меняйте здесь */
+
+  font-size: 18px;
+
+}
+
+
+
+.loading::after {
+
+  content: '...';
+
+  animation: dots 1.5s steps(4, end) infinite;
+
+}
+
+
+
+@keyframes dots {
+
+  0%, 20% { content: '.'; }
+
+  40% { content: '..'; }
+
+  60%, 100% { content: '...'; }
+
+}
+
+
+
+/* ============================================
+
+   СООБЩЕНИЕ ОБ ОШИБКЕ
+
+   ============================================ */
+
+.error {
+
+  text-align: center;
+
+  padding: 40px 20px;
+
+  color: #d32f2f; /* ЦВЕТ ТЕКСТА ОШИБКИ - меняйте здесь */
+
+  background: #ffebee; /* ФОН БЛОКА ОШИБКИ - меняйте здесь */
+
+  border-radius: 12px;
+
+  margin: 20px 0;
+
+  border: 1px solid #ffcdd2; /* ЦВЕТ РАМКИ ОШИБКИ - меняйте здесь */
+
+}
+
+
+
+.error strong {
+
+  display: block;
+
+  margin-bottom: 10px;
+
+  font-size: 18px;
+
+}
+
+
+
+.error small {
+
+  display: block;
+
+  margin-top: 10px;
+
+  color: #999; /* ЦВЕТ МЕЛКОГО ТЕКСТА - меняйте здесь */
+
+  font-size: 14px;
+
+}
+
+
+
+/* ============================================
+
+   СООБЩЕНИЕ "ПОСТОВ НЕТ"
+
+   ============================================ */
+
+.no-posts {
+
+  text-align: center;
+
+  padding: 60px 20px;
+
+  color: #01133d; /* ЦВЕТ ТЕКСТА - меняйте здесь */
+
+  font-size: 16px;
+
+}
+
+
+
+/* ============================================
+
+   СЕТКА КАРТОЧЕК (GRID)
+
+   ============================================ */
+
+.posts-grid {
+
+  display: grid;
+
+  grid-template-columns: repeat(4, 1fr); /* 4 КОЛОНКИ - меняйте на repeat(3, 1fr) для 3 колонок */
+
+  gap: 15px; /* РАССТОЯНИЕ МЕЖДУ КАРТОЧКАМИ - меняйте здесь */
+
+  height: 100%;
+
+  width: 100%; /* ИЗМЕНЕНО: явно указываем ширину */
+
+  box-sizing: border-box; /* ИЗМЕНЕНО: учитываем padding */
+
+}
+
+
+
+/* ============================================
+
+   КАРТОЧКА ПОСТА
+
+   ============================================ */
+
+.telegram-post {
+
+  background: #EAF3FF; /* ФОН КАРТОЧКИ - меняйте здесь (например: #f9f9f9) */
+
+  border: 2px solid #01143C; /* РАМКА КАРТОЧКИ - меняйте цвет и толщину здесь */
+
+  border-radius: 14px; /* СКРУГЛЕНИЕ УГЛОВ - меняйте здесь */
+
+  padding: 12px; /* ВНУТРЕННИЙ ОТСТУП КАРТОЧКИ - меняйте здесь */
+
+  box-shadow: 1px 1px 3px rgba(1,19,61,1); /* ТЕНЬ КАРТОЧКИ - меняйте здесь (0 2px 6px - смещение, размытие, цвет) */
+
+  transition: all 0.3s ease;
+
+  position: relative;
+
+  overflow: hidden; /* Скрываем переполнение, но высота достаточна для всех элементов */
+
+  display: flex;
+
+  flex-direction: column;
+
+  height: 270px; /* ИЗМЕНЕНО: увеличена высота карточки для видимости кнопки и рамки */
+
+  box-sizing: border-box; /* ИЗМЕНЕНО: учитываем padding и border в высоте */
+
+  min-width: 0; /* ИЗМЕНЕНО: предотвращаем переполнение */
+
+}
+
+
+
+/* ============================================
+
+   ЦВЕТНАЯ ПОЛОСКА СЛЕВА НА КАРТОЧКЕ
+
+   ============================================ */
+
+.telegram-post::before {
+
+  content: '';
+
+  position: absolute;
+
+  top: 0;
+
+  left: 0;
+
+  width: 1px; /* ШИРИНА ПОЛОСКИ - меняйте здесь */
+
+  height: 100%;
+
+  background: #01133D; /* ЦВЕТ ПОЛОСКИ - меняйте здесь (например: #ff0000 для красного) */
+
+}
+
+
+
+/* ============================================
+
+   ЭФФЕКТ ПРИ НАВЕДЕНИИ НА КАРТОЧКУ
+
+   ============================================ */
+
+.telegram-post:hover {
+
+  transform: translateY(-3px); /* ПОДЪЕМ КАРТОЧКИ ПРИ НАВЕДЕНИИ - меняйте здесь */
+
+  box-shadow: 2px 2px 5px rgba(35,94,199,1); /* ТЕНЬ ПРИ НАВЕДЕНИИ - меняйте здесь */
+
+  border-color: #235EC7; /* ЦВЕТ РАМКИ ПРИ НАВЕДЕНИИ - меняйте здесь */
+
+}
+
+
+
+/* ============================================
+
+   ОБЕРТКА ДЛЯ ИЗОБРАЖЕНИЯ
+
+   ============================================ */
+
+.post-image-wrapper {
+
+  width: 100%;
+
+  height: 130px; /* ИЗМЕНЕНО: увеличена высота изображения */
+
+  overflow: hidden;
+
+  border-radius: 8px; /* СКРУГЛЕНИЕ УГЛОВ ИЗОБРАЖЕНИЯ - меняйте здесь */
+
+  margin-bottom: 10px; /* ОТСТУП СНИЗУ ОТ ИЗОБРАЖЕНИЯ - меняйте здесь */
+
+  background: #eaf3ff; /* ФОН ПЛЕЙСХОЛДЕРА (когда нет изображения) - меняйте здесь */
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+
+}
+
+
+
+/* ============================================
+
+   САМО ИЗОБРАЖЕНИЕ
+
+   ============================================ */
+
+.post-image {
+
+  width: 100%;
+
+  height: 100%;
+
+  object-fit: cover; /* КАК ИЗОБРАЖЕНИЕ ЗАПОЛНЯЕТ ОБЛАСТЬ - меняйте на: contain, fill, scale-down */
+
+  transition: transform 0.3s ease;
+
+}
+
+
+
+/* ============================================
+
+   ЭФФЕКТ УВЕЛИЧЕНИЯ ИЗОБРАЖЕНИЯ ПРИ НАВЕДЕНИИ
+
+   ============================================ */
+
+.telegram-post:hover .post-image {
+
+  transform: scale(1.05); /* КОЭФФИЦИЕНТ УВЕЛИЧЕНИЯ - меняйте здесь (1.1 = больше, 1.0 = без эффекта) */
+
+}
+
+
+
+/* ============================================
+
+   ПЛЕЙСХОЛДЕР ИЗОБРАЖЕНИЯ (когда нет фото)
+
+   ============================================ */
+
+.post-image-placeholder {
+
+  width: 100%;
+
+  height: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color: #999; /* ЦВЕТ ЭМОДЗИ/ИКОНКИ - меняйте здесь */
+
+  font-size: 32px; /* РАЗМЕР ЭМОДЗИ - меняйте здесь */
+
+}
+
+
+
+/* ============================================
+
+   ДАТА ПОСТА
+
+   ============================================ */
+
+.post-date {
+
+  color: #01133d; /* ЦВЕТ ДАТЫ - меняйте здесь */
+
+  font-size: 10px; /* ИЗМЕНЕНО: уменьшен размер даты */
+
+  margin-bottom: 6px !important; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  font-weight: 500; /* ЖИРНОСТЬ ШРИФТА - меняйте здесь (400 = normal, 600 = bold) */
+
+  flex-shrink: 0;
+
+}
+
+
+
+/* ============================================
+
+   ТЕКСТ ПОСТА
+
+   ============================================ */
+
+.post-text {
+
+  line-height: 1.4 !important; /* МЕЖСТРОЧНЫЙ ИНТЕРВАЛ - меняйте здесь */
+
+  color: #000000 !important; /* ЦВЕТ ТЕКСТА - меняйте здесь */
+
+  font-size: 12px !important; /* РАЗМЕР ШРИФТА - меняйте здесь */
+
+  margin-bottom: 6px !important; /* ИЗМЕНЕНО: уменьшен отступ снизу */
+
+  word-wrap: break-word;
+
+  flex-grow: 1;
+
+  overflow: hidden;
+
+  display: block !important; /* ИЗМЕНЕНО: используем block вместо -webkit-box для надежности */
+
+  max-height: 58px; /* ИЗМЕНЕНО: высота для примерно 3 строк (12px * 1.4 * 3.5) */
+
+  min-height: 40px; /* ИЗМЕНЕНО: минимальная высота для видимости текста */
+
+  position: relative;
+
+  visibility: visible !important; /* ИЗМЕНЕНО: принудительно делаем видимым */
+
+  opacity: 1 !important; /* ИЗМЕНЕНО: принудительно делаем непрозрачным */
+
+}
+
+
+
+/* ИСПРАВЛЕНО: Стили для текста внутри .post-text */
+
+.post-text * {
+
+  color: #000000 !important;
+
+  font-size: 12px !important;
+
+  line-height: 1.4 !important;
+
+}
+
+
+
+.post-text br {
+
+  display: block;
+
+  content: "";
+
+  margin: 2px 0;
+
+}
+
+
+
+/* ============================================
+
+   ССЫЛКИ В ТЕКСТЕ ПОСТА (чтобы не были оранжевыми)
+
+   ============================================ */
+
+.post-text a,
+
+.post-text span {
+
+  color: #000000 !important; /* ЦВЕТ ССЫЛОК В ТЕКСТЕ - меняйте здесь */
+
+  text-decoration: none !important; /* УБИРАЕМ ПОДЧЕРКИВАНИЕ - меняйте здесь */
+
+}
+
+
+
+.post-text a:hover,
+
+.post-text span:hover {
+
+  color: #000000 !important; /* ЦВЕТ ПРИ НАВЕДЕНИИ - меняйте здесь */
+
+  text-decoration: none !important;
+
+}
+
+
+
+/* ============================================
+
+   КНОПКА "ЧИТАТЬ В TELEGRAM"
+
+   ============================================ */
+
+.post-link {
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color: #FFFFFF !important; /* ИЗМЕНЕНО: белый цвет текста кнопки с !important */
+
+  text-decoration: none !important;
+
+  font-size: 11px; /* ИЗМЕНЕНО: уменьшен размер шрифта кнопки */
+
+  font-weight: 500; /* ЖИРНОСТЬ ШРИФТА - меняйте здесь */
+
+  padding: 6px 12px; /* ИЗМЕНЕНО: уменьшены отступы кнопки */
+
+  border: 2px solid #01133D !important; /* РАМКА КНОПКИ - меняйте толщину и цвет здесь */
+
+  border-radius: 10px; /* СКРУГЛЕНИЕ УГЛОВ КНОПКИ - меняйте здесь */
+
+  transition: all 0.2s ease;
+
+  margin-top: auto;
+
+  flex-shrink: 0;
+
+  background: linear-gradient(0turn,rgba(35,94,199,1) 20%,rgba(0,23,76,1) 98%) !important; /* ФОН КНОПКИ - меняйте на нужный цвет, например: #f0f0f0 */
+
+}
+
+
+
+/* ============================================
+
+   СТРЕЛКА В КНОПКЕ
+
+   ============================================ */
+
+.post-link::after {
+
+  content: '→';
+
+  margin-left: 6px; /* ОТСТУП СТРЕЛКИ ОТ ТЕКСТА - меняйте здесь */
+
+  transition: transform 0.2s ease;
+
+  font-size: 11px; /* РАЗМЕР СТРЕЛКИ - меняйте здесь */
+
+  color: #FFFFFF !important; /* ИЗМЕНЕНО: белый цвет стрелки */
+
+}
+
+
+
+/* ============================================
+
+   ЭФФЕКТ КНОПКИ ПРИ НАВЕДЕНИИ
+
+   ============================================ */
+
+.post-link:hover {
+
+  background: #FFFFFF !important; /* ФОН КНОПКИ ПРИ НАВЕДЕНИИ - меняйте здесь */
+
+  color: #01133D !important; /* ИЗМЕНЕНО: цвет текста при наведении #01133D с !important */
+
+  border-color: #01133D !important; /* ИЗМЕНЕНО: цвет рамки при наведении */
+
+}
+
+
+
+.post-link:hover::after {
+
+  transform: translateX(2px); /* СМЕЩЕНИЕ СТРЕЛКИ ПРИ НАВЕДЕНИИ - меняйте здесь */
+
+  color: #01133D !important; /* ИЗМЕНЕНО: цвет стрелки при наведении #01133D */
+
+}
+
+
+
+/* ============================================
+
+   СКРЫТИЕ НА ПРОМЕЖУТОЧНЫХ ЭКРАНАХ
+
+   ============================================ */
+
+@media (min-width: 481px) and (max-width: 979px) {
+
+  #telegram-posts-container {
+
+    display: none !important; /* СКРЫВАЕМ МЕЖДУ 480px И 980px */
+
+    visibility: hidden !important;
+
+    height: 0 !important;
+
+    padding: 0 !important;
+
+    margin: 0 !important;
+
+    overflow: hidden !important;
+
+  }
+
+}
+
+
+
+/* ============================================
+
+   АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ (средний размер)
+
+   ============================================ */
+
+@media (max-width: 992px) {
+
+  .posts-grid {
+
+    grid-template-columns: repeat(2, 1fr); /* ИЗМЕНЕНО: 2 КОЛОНКИ */
+
+    gap: 10px; /* ИЗМЕНЕНО: уменьшен gap */
+
+  }
+
+  
+
+  #telegram-posts-container {
+
+    padding: 10px;
+
+    height: auto; /* ИЗМЕНЕНО: автоматическая высота на мобильных */
+
+  }
+
+  
+
+  .telegram-post {
+
+    height: auto; /* ИЗМЕНЕНО: автоматическая высота */
+
+    min-height: 90px; /* ИЗМЕНЕНО: уменьшена минимальная высота карточки для мобильных */
+
+    padding: 8px; /* ИЗМЕНЕНО: уменьшен padding */
+
+  }
+
+  
+
+  .post-image-wrapper {
+
+    height: 120px; /* ИЗМЕНЕНО: увеличена высота изображения в 2 раза (60px * 2) */
+
+    margin-bottom: 6px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-date {
+
+    font-size: 9px; /* ИЗМЕНЕНО: уменьшен размер шрифта даты */
+
+    margin-bottom: 4px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-text {
+
+    font-size: 11px; /* ИЗМЕНЕНО: уменьшен размер шрифта текста */
+
+    max-height: 40px; /* ИЗМЕНЕНО: ограничение высоты текста */
+
+    min-height: 30px; /* ИЗМЕНЕНО: минимальная высота текста */
+
+    margin-bottom: 4px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-link {
+
+    font-size: 10px; /* ИЗМЕНЕНО: уменьшен размер шрифта кнопки */
+
+    padding: 4px 8px; /* ИЗМЕНЕНО: уменьшены отступы кнопки */
+
+  }
+
+}
+
+
+
+/* ============================================
+
+   АДАПТИВНОСТЬ ДЛЯ МОБИЛЬНЫХ (малый размер)
+
+   ============================================ */
+
+@media (max-width: 768px) {
+
+  .posts-grid {
+
+    grid-template-columns: repeat(2, 1fr); /* ИЗМЕНЕНО: 2 КОЛОНКИ */
+
+    gap: 10px; /* ИЗМЕНЕНО: уменьшен gap */
+
+  }
+
+  
+
+  #telegram-posts-container {
+
+    padding: 10px; /* ИЗМЕНЕНО: уменьшен padding */
+
+    height: auto; /* АВТОМАТИЧЕСКАЯ ВЫСОТА */
+
+  }
+
+  
+
+  .telegram-post {
+
+    height: auto; /* АВТОМАТИЧЕСКАЯ ВЫСОТА */
+
+    min-height: 90px; /* ИЗМЕНЕНО: уменьшена минимальная высота карточки */
+
+    padding: 8px; /* ИЗМЕНЕНО: уменьшен padding */
+
+  }
+
+  
+
+  .post-image-wrapper {
+
+    height: 120px; /* ИЗМЕНЕНО: увеличена высота изображения в 2 раза (60px * 2) */
+
+    margin-bottom: 6px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-date {
+
+    font-size: 9px; /* ИЗМЕНЕНО: уменьшен размер шрифта даты */
+
+    margin-bottom: 4px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-text {
+
+    max-height: 40px; /* ИЗМЕНЕНО: ограничение высоты текста */
+
+    min-height: 30px; /* ИЗМЕНЕНО: минимальная высота текста */
+
+    font-size: 11px; /* ИЗМЕНЕНО: уменьшен размер шрифта */
+
+    margin-bottom: 4px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-link {
+
+    font-size: 10px; /* ИЗМЕНЕНО: уменьшен размер шрифта кнопки */
+
+    padding: 4px 8px; /* ИЗМЕНЕНО: уменьшены отступы кнопки */
+
+  }
+
+}
+
+
+
+/* ============================================
+
+   АДАПТИВНОСТЬ ДЛЯ ОЧЕНЬ МАЛЫХ ЭКРАНОВ
+
+   ============================================ */
+
+@media (max-width: 480px) {
+
+  .posts-grid {
+
+    grid-template-columns: repeat(2, 1fr); /* ИЗМЕНЕНО: 2 КОЛОНКИ */
+
+    gap: 8px; /* ИЗМЕНЕНО: уменьшен gap */
+
+  }
+
+  
+
+  #telegram-posts-container {
+
+    padding: 8px; /* ИЗМЕНЕНО: уменьшен padding */
+
+    height: auto; /* АВТОМАТИЧЕСКАЯ ВЫСОТА */
+
+  }
+
+  
+
+  .telegram-post {
+
+    padding: 6px; /* ИЗМЕНЕНО: уменьшен padding */
+
+    min-height: 80px; /* ИЗМЕНЕНО: уменьшена минимальная высота карточки */
+
+  }
+
+  
+
+  .post-image-wrapper {
+
+    height: 100px; /* ИЗМЕНЕНО: увеличена высота изображения в 2 раза (50px * 2) */
+
+    margin-bottom: 4px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-date {
+
+    font-size: 8px; /* ИЗМЕНЕНО: уменьшен размер шрифта даты */
+
+    margin-bottom: 3px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-text {
+
+    font-size: 10px; /* ИЗМЕНЕНО: уменьшен размер шрифта */
+
+    max-height: 35px; /* ИЗМЕНЕНО: ограничение высоты текста */
+
+    min-height: 25px; /* ИЗМЕНЕНО: минимальная высота текста */
+
+    margin-bottom: 3px; /* ИЗМЕНЕНО: уменьшен отступ */
+
+  }
+
+  
+
+  .post-link {
+
+    font-size: 9px; /* ИЗМЕНЕНО: уменьшен размер шрифта кнопки */
+
+    padding: 3px 6px; /* ИЗМЕНЕНО: уменьшены отступы кнопки */
+
+  }
+
+}
+
+
+
+</style>
+
+
+
+<script>
+
+(function() {
+
+  'use strict';
+
+  
+
+  // ============================================
+
+  // ВАШИ ДАННЫЕ - ЗАМЕНИТЕ НА СВОИ
+
+  // ============================================
+
+  const BOT_TOKEN = '8388842392:AAGTqje-9B2_8f-FqEnPhuEEIxQHzud0X4Y'; // ТОКЕН БОТА ОТ @BotFather
+
+  const CHANNEL_ID = '-1003353523174'; // ID КАНАЛА (можно получить через getUpdates)
+
+  const CHANNEL_USERNAME = 'testerovsy'; // USERNAME КАНАЛА (без @)
+
+  const POSTS_LIMIT = 4; // СКОЛЬКО ПОСТОВ ПОКАЗЫВАТЬ (последние N)
+
+  // ============================================
+
+  // Получаем контейнер для постов
+  const container = document.getElementById('telegram-posts-container');
+
+  
+
+  // Функция для показа ошибок
+  function showError(message, details) {
+    container.innerHTML = `
+      <div class="error">
+        <strong>${message}</strong>
+        ${details ? '<br>' + details : ''}
+        <small>Откройте консоль браузера (F12) для подробной информации</small>
+      </div>
+    `;
+    console.error('Ошибка загрузки постов:', message, details);
+  }
+
+  
+
+  // Функция для форматирования даты (показывает "2 минуты назад", "сегодня" и т.д.)
+
+  function formatDate(timestamp) {
+
+    try {
+
+      const date = new Date(timestamp * 1000); // Конвертируем timestamp в дату
+
+      const now = new Date(); // Текущая дата
+
+      const diff = now - date; // Разница во времени
+
+      
+
+      // Если меньше минуты назад
+
+      if (diff < 60000) {
+
+        return 'только что';
+
+      }
+
+      
+
+      // Если меньше часа назад - показываем минуты
+
+      if (diff < 3600000) {
+
+        const minutes = Math.floor(diff / 60000);
+
+        return `${minutes} ${minutes === 1 ? 'минуту' : minutes < 5 ? 'минуты' : 'минут'} назад`;
+
+      }
+
+      
+
+      // Если сегодня - показываем время
+
+      if (date.toDateString() === now.toDateString()) {
+
+        return `сегодня в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+
+      }
+
+      
+
+      // Если вчера
+
+      const yesterday = new Date(now);
+
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      if (date.toDateString() === yesterday.toDateString()) {
+
+        return `вчера в ${date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+
+      }
+
+      
+
+      // Обычная дата
+
+      return date.toLocaleDateString('ru-RU', {
+
+        year: 'numeric',
+
+        month: 'short',
+
+        day: 'numeric',
+
+        hour: '2-digit',
+
+        minute: '2-digit'
+
+      });
+
+    } catch (e) {
+
+      return 'дата неизвестна';
+
+    }
+
+  }
+
+  
+
+  // Функция для форматирования текста (обрабатывает ссылки, хештеги, упоминания)
+
+  function formatText(text) {
+
+    if (!text) return '';
+
+    
+
+    // Заменяем переносы строк на <br>
+
+    let formatted = text.replace(/\n/g, '<br>');
+
+    
+
+    // Обрабатываем обычные ссылки (http://, https://) - оставляем как текст, не делаем ссылками
+
+    formatted = formatted.replace(/(https?:\/\/[^\s]+)/g, '<span style="color: #000000 !important; text-decoration: none !important; font-size: 13px;">$1</span>');
+
+    
+
+    // Обрабатываем упоминания (@username) - оставляем как текст
+
+    formatted = formatted.replace(/@(\w+)/g, '<span style="color: #000000 !important; text-decoration: none !important; font-size: 13px;">@$1</span>');
+
+    
+
+    // Обрабатываем хештеги (#hashtag) - оставляем как текст
+
+    formatted = formatted.replace(/#(\w+)/g, '<span style="color: #000000 !important; text-decoration: none !important; font-size: 13px;">#$1</span>');
+
+    
+
+    return formatted;
+
+  }
+
+  
+
+  // Функция для получения URL изображения из Telegram
+
+  async function getImageUrl(fileId) {
+
+    try {
+
+      // Запрашиваем информацию о файле
+
+      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+
+      const data = await response.json();
+
+      
+
+      // Если успешно, формируем URL для скачивания
+
+      if (data.ok && data.result) {
+
+        const filePath = data.result.file_path;
+
+        return `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+
+      }
+
+      return null;
+
+    } catch (error) {
+
+      console.error('Ошибка получения URL изображения:', error);
+
+      return null;
+
+    }
+
+  }
+
+  
+
+  // ПРОСТАЯ ФУНКЦИЯ: Получаем последние 4 поста из Telegram
+  async function getPostsFromTelegram() {
+    try {
+      // СНАЧАЛА: Проверяем сохраненные посты из localStorage
+      let allPosts = [];
+      try {
+        const savedPostsKey = `telegram_posts_${CHANNEL_ID}`;
+        const savedPosts = localStorage.getItem(savedPostsKey);
+        if (savedPosts) {
+          const saved = JSON.parse(savedPosts);
+          if (saved.length > 0) {
+            allPosts = saved;
+            console.log('Загружено из localStorage:', allPosts.length, 'постов');
+          }
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки из localStorage:', e);
+      }
+      
+      // ПРОСТОЙ ЗАПРОС: получаем все непрочитанные обновления
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=100&offset=0`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ошибка: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.ok) {
+        throw new Error(data.description || 'Ошибка Telegram API');
+      }
+      
+      console.log('Получено обновлений из API:', data.result ? data.result.length : 0);
+      
+      if (!data.result || data.result.length === 0) {
+        console.log('Нет обновлений в API, используем сохраненные посты');
+        // Если нет обновлений, но есть сохраненные - возвращаем их
+        if (allPosts.length > 0) {
+          return allPosts.slice(0, POSTS_LIMIT);
+        }
+        return [];
+      }
+      
+      // Фильтруем посты из нужного канала
+      const channelPosts = data.result
+        .filter(update => {
+          if (update.channel_post) {
+            const chatId = update.channel_post.chat.id.toString();
+            const targetId = CHANNEL_ID.toString();
+            return chatId === targetId;
+          }
+          return false;
+        })
+        .map(update => {
+          const post = update.channel_post;
+          return {
+            id: post.message_id,
+            text: post.text || post.caption || '',
+            date: post.date,
+            hasPhoto: !!post.photo,
+            photos: post.photo || [],
+            link: `https://t.me/${CHANNEL_USERNAME}/${post.message_id}`
+          };
+        })
+        .filter(post => post.text || post.hasPhoto);
+      
+      console.log('Найдено постов из канала:', channelPosts.length);
+      
+      // Удаляем дубликаты и сортируем
+      const uniquePosts = [];
+      const seenIds = new Set();
+      for (const post of channelPosts) {
+        if (!seenIds.has(post.id)) {
+          seenIds.add(post.id);
+          uniquePosts.push(post);
+        }
+      }
+      uniquePosts.sort((a, b) => b.date - a.date);
+      
+      // Объединяем новые посты с сохраненными
+      if (uniquePosts.length > 0) {
+        allPosts = [...uniquePosts, ...allPosts];
+        // Удаляем дубликаты
+        const uniqueAll = [];
+        const ids = new Set();
+        for (const p of allPosts) {
+          if (!ids.has(p.id)) {
+            ids.add(p.id);
+            uniqueAll.push(p);
+          }
+        }
+        // Сортируем по дате
+        uniqueAll.sort((a, b) => b.date - a.date);
+        allPosts = uniqueAll;
+      }
+      
+      console.log('Всего постов после объединения:', allPosts.length);
+      
+      // Берем последние 4 поста
+      let finalPosts = allPosts.slice(0, POSTS_LIMIT);
+      
+      console.log('Финальных постов для отображения:', finalPosts.length);
+      
+      // Получаем URL изображений (с таймаутом, чтобы не зависать)
+      for (let post of finalPosts) {
+        if (post.hasPhoto && post.photos.length > 0 && !post.imageUrl) {
+          try {
+            const largestPhoto = post.photos[post.photos.length - 1];
+            const imageUrlPromise = getImageUrl(largestPhoto.file_id);
+            const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), 2000));
+            post.imageUrl = await Promise.race([imageUrlPromise, timeoutPromise]);
+          } catch (e) {
+            post.imageUrl = null;
+          }
+        }
+      }
+      
+      // Сохраняем в localStorage
+      try {
+        const savedPostsKey = `telegram_posts_${CHANNEL_ID}`;
+        if (finalPosts.length > 0) {
+          localStorage.setItem(savedPostsKey, JSON.stringify(finalPosts));
+        }
+      } catch (e) {}
+
+      return finalPosts;
+
+      
+
+    } catch (error) {
+
+      console.error('Ошибка получения постов:', error);
+
+      
+
+      // Обрабатываем разные типы ошибок
+
+      if (error.message.includes('401')) {
+
+        throw new Error('Неверный токен бота. Проверьте BOT_TOKEN.');
+
+      } else if (error.message.includes('400')) {
+
+        throw new Error('Неверный запрос. Проверьте настройки.');
+
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+
+        throw new Error('Не удалось подключиться к Telegram API. Проверьте интернет-соединение.');
+
+      } else {
+
+        throw error;
+
+      }
+
+    }
+
+  }
+
+  
+
+  // Функция для отображения постов на странице
+  function displayPosts(posts) {
+    if (!posts || posts.length === 0) {
+      container.innerHTML = `
+        <div class="no-posts">
+          <p><strong>Постов пока нет</strong></p>
+          <p style="margin-top: 15px; font-size: 14px;">
+            Убедитесь, что:<br>
+            1. Бот добавлен в канал как администратор<br>
+            2. В канале есть сообщения<br>
+            3. Бот имеет права на чтение сообщений
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '<div class="posts-grid"></div>';
+    const grid = container.querySelector('.posts-grid');
+
+    
+
+    // Для каждого поста создаем карточку
+
+    posts.forEach(post => {
+
+      const postDiv = document.createElement('div');
+
+      postDiv.className = 'telegram-post';
+
+      
+
+      let postHTML = '';
+
+      
+
+      // Добавляем изображение (если есть)
+
+      if (post.imageUrl) {
+
+        // Если есть URL изображения - показываем его
+
+        postHTML += `
+
+          <div class="post-image-wrapper">
+
+            <img src="${post.imageUrl}" alt="Изображение поста" class="post-image" loading="lazy">
+
+          </div>
+
+        `;
+
+      } else if (post.hasPhoto) {
+
+        // Если фото есть, но URL не получен - показываем плейсхолдер
+
+        postHTML += `
+
+          <div class="post-image-wrapper">
+
+            <div class="post-image-placeholder">📷</div>
+
+          </div>
+
+        `;
+
+      } else {
+
+        // Если фото нет - показываем другой плейсхолдер
+
+        postHTML += `
+
+          <div class="post-image-wrapper">
+
+            <div class="post-image-placeholder">📄</div>
+
+          </div>
+
+        `;
+
+      }
+
+      
+
+      // Добавляем дату поста
+
+      postHTML += `<div class="post-date">${formatDate(post.date)}</div>`;
+
+      
+
+      // Добавляем текст поста
+
+      if (post.text) {
+
+        postHTML += `<div class="post-text">${formatText(post.text)}</div>`;
+
+      } else {
+
+        postHTML += `<div class="post-text">Нет текста</div>`;
+
+      }
+
+      
+
+      // Добавляем ссылку на канал
+
+      postHTML += `
+
+        <a href="https://t.me/${CHANNEL_USERNAME}/${post.id}" target="_blank" rel="noopener" class="post-link">Читать в Telegram</a>
+
+      `;
+
+      
+
+      // Вставляем HTML в карточку
+
+      postDiv.innerHTML = postHTML;
+
+      
+
+      // Применяем стили кнопки напрямую через JavaScript (чтобы Tilda не перезаписала)
+
+      const link = postDiv.querySelector('.post-link');
+
+      if (link) {
+
+        // Применяем начальные стили
+
+        link.style.setProperty('color', '#FFFFFF', 'important');
+
+        link.style.setProperty('text-decoration', 'none', 'important');
+
+        link.style.setProperty('background', 'linear-gradient(0turn, rgba(35,94,199,1) 20%, rgba(0,23,76,1) 98%)', 'important');
+
+        link.style.setProperty('border-color', '#01133D', 'important');
+
+        
+
+        // Обработчик hover через JavaScript (чтобы гарантировать правильные цвета)
+
+        link.addEventListener('mouseenter', function() {
+
+          this.style.setProperty('background', '#FFFFFF', 'important');
+
+          this.style.setProperty('color', '#01133D', 'important');
+
+          this.style.setProperty('border-color', '#01133D', 'important');
+
+        });
+
+        
+
+        link.addEventListener('mouseleave', function() {
+
+          this.style.setProperty('background', 'linear-gradient(0turn, rgba(35,94,199,1) 20%, rgba(0,23,76,1) 98%)', 'important');
+
+          this.style.setProperty('color', '#FFFFFF', 'important');
+
+          this.style.setProperty('border-color', '#01133D', 'important');
+
+        });
+
+      }
+
+      
+
+      // Добавляем карточку в сетку
+      grid.appendChild(postDiv);
+    });
+  }
+
+  
+
+  // Основная функция загрузки постов
+  async function loadPosts() {
+    try {
+      // Показываем загрузку
+      container.innerHTML = '<div class="loading">Загрузка постов</div>';
+
+      // Получаем посты (внутри функции уже объединяются с сохраненными)
+      const posts = await getPostsFromTelegram();
+      
+      console.log('Получено постов для отображения:', posts ? posts.length : 0);
+      
+      // Отображаем
+      if (posts && posts.length > 0) {
+        displayPosts(posts);
+      } else {
+        // Если постов нет, показываем сообщение
+        container.innerHTML = `
+          <div class="no-posts">
+            <p><strong>Постов пока нет</strong></p>
+            <p style="margin-top: 15px; font-size: 14px;">
+              Убедитесь, что:<br>
+              1. Бот добавлен в канал как администратор<br>
+              2. В канале есть сообщения<br>
+              3. Бот имеет права на чтение сообщений
+            </p>
+          </div>
+        `;
+      }
+      
+    } catch (error) {
+      console.error('Ошибка загрузки постов:', error);
+      let errorMessage = error.message || 'Неизвестная ошибка';
+      let errorDetails = '';
+      if (errorMessage.includes('токен')) {
+        errorDetails = 'Проверьте правильность токена бота в настройках.';
+      } else if (errorMessage.includes('подключиться')) {
+        errorDetails = 'Возможно, проблема с интернет-соединением или Telegram API временно недоступен.';
+      }
+      showError(errorMessage, errorDetails);
+    }
+  }
+
+  
+
+  // Загружаем посты при загрузке страницы
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadPosts);
+  } else {
+    loadPosts();
+  }
+
+  
+
+  // НЕ обновляем автоматически - это вызывает исчезновение постов
+  // setInterval(loadPosts, 5 * 60 * 1000);
+
+  
+
+})();
+
+</script>
+

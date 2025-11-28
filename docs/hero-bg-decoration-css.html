@@ -1,0 +1,71 @@
+<!-- 
+    Hero BG Decoration - Воссозданный фон на основе анализа референса
+    Используйте этот код, если не можете извлечь оригинальные стили
+-->
+
+<style>
+    /* Hero BG Decoration - фон на основе референса */
+    .hero-bg-decoration {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        background: radial-gradient(200% 184% at 50% 5%, 
+            #000000 31.31%,      /* Черный */
+            #7034e4 47.50%,      /* Темно-фиолетовый */
+            #9c80f4 58.40%,      /* Светло-фиолетовый */
+            #ffffff 85.77%       /* Белый */
+        );
+        opacity: 1;
+        pointer-events: none;
+    }
+
+    /* Альтернативный вариант с вашими корпоративными цветами */
+    .hero-bg-decoration-custom {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        background: radial-gradient(200% 184% at 50% 5%, 
+            #242834 31.31%,      /* Midnight Express */
+            #7d51fe 47.50%,      /* Medium Slate Blue */
+            #cfe1ed 58.40%,      /* Pattens Blue */
+            #ffffff 85.77%       /* White */
+        );
+        opacity: 1;
+        pointer-events: none;
+    }
+
+    /* Вариант с глубоким черным и фиолетовым */
+    .hero-bg-decoration-dark {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        background: radial-gradient(200% 184% at 50% 5%, 
+            #000000 31.31%,      /* Глубокий черный */
+            #7d51fe 47.50%,      /* Medium Slate Blue */
+            #9c80f4 58.40%,      /* Светло-фиолетовый */
+            #7034e4 70%,         /* Темно-фиолетовый */
+            #000000 85.77%       /* Глубокий черный */
+        );
+        opacity: 1;
+        pointer-events: none;
+    }
+</style>
+
+<!-- Использование -->
+<div class="hero-bg-decoration"></div>
+
+<!-- Или с корпоративными цветами -->
+<div class="hero-bg-decoration-custom"></div>
+
+<!-- Или темный вариант -->
+<div class="hero-bg-decoration-dark"></div>
+

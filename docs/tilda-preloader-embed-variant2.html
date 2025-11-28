@@ -1,0 +1,265 @@
+<!-- 
+    ПРЕЛОАДЕР ДЛЯ ТИЛЬДЫ - ВАРИАНТ 2 (темно-серый логотип)
+    Скопируйте весь код ниже и вставьте в блок "HTML код" в Тильде
+    Рекомендуется вставить в самом начале страницы (первый блок)
+-->
+
+<style>
+    #royalty-preloader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: radial-gradient(200% 184% at 50% 5%, 
+            #242834 31.31%,      /* Midnight Express */
+            #7d51fe 47.50%,      /* Medium Slate Blue - ваш фиолетовый */
+            #cfe1ed 58.40%,      /* Pattens Blue */
+            #ffffff 85.77%       /* White */
+        );
+        animation: royaltyFadeOut 0.5s ease-out 4.5s forwards;
+    }
+
+    @keyframes royaltyFadeOut {
+        to {
+            opacity: 0;
+            visibility: hidden;
+        }
+    }
+
+    .royalty-preloader-content {
+        text-align: center;
+        animation: royaltyFadeIn 1s ease-in;
+    }
+
+    @keyframes royaltyFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .royalty-logo-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    /* Основной текст ROYALTY TEAMS */
+    .royalty-logo-main {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: clamp(48px, 8vw, 120px);
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        position: relative;
+        color: #242834; /* Midnight Express - темно-серый */
+        background: linear-gradient(135deg, 
+            #242834 0%,          /* Midnight Express */
+            #7d51fe 30%,         /* Medium Slate Blue */
+            #cfe1ed 60%,         /* Pattens Blue */
+            #242834 100%         /* Midnight Express */
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 0 30px rgba(125, 81, 254, 0.5));
+        animation: royaltyGlow 2s ease-in-out infinite alternate;
+        text-shadow: 
+            0 1px 0 rgba(255, 255, 255, 0.2),
+            0 2px 10px rgba(125, 81, 254, 0.3),
+            0 4px 20px rgba(125, 81, 254, 0.2),
+            0 8px 40px rgba(125, 81, 254, 0.1);
+    }
+
+    @keyframes royaltyGlow {
+        from {
+            filter: drop-shadow(0 0 30px rgba(125, 81, 254, 0.5)) 
+                    drop-shadow(0 0 60px rgba(125, 81, 254, 0.3));
+        }
+        to {
+            filter: drop-shadow(0 0 40px rgba(125, 81, 254, 0.7)) 
+                    drop-shadow(0 0 80px rgba(182, 255, 0, 0.4));
+        }
+    }
+
+    /* 3D стеклянный эффект */
+    .royalty-logo-main::before {
+        content: attr(data-text);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, 
+            rgba(255, 255, 255, 0.4) 0%,
+            rgba(125, 81, 254, 0.3) 50%,
+            rgba(182, 255, 0, 0.2) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        transform: translateZ(20px);
+        filter: blur(1px);
+        opacity: 0.7;
+        z-index: -1;
+    }
+
+    .royalty-logo-main::after {
+        content: '';
+        position: absolute;
+        top: -10%;
+        left: -5%;
+        width: 110%;
+        height: 120%;
+        background: linear-gradient(135deg, 
+            transparent 0%,
+            rgba(255, 255, 255, 0.15) 30%,
+            transparent 60%
+        );
+        border-radius: 50%;
+        transform: rotate(-20deg);
+        z-index: -2;
+        animation: royaltyShine 3s ease-in-out infinite;
+    }
+
+    @keyframes royaltyShine {
+        0%, 100% {
+            opacity: 0;
+            transform: rotate(-20deg) translateX(-100%);
+        }
+        50% {
+            opacity: 1;
+            transform: rotate(-20deg) translateX(100%);
+        }
+    }
+
+    /* Подзаголовок ECO-SYSTEM FOR BUSINESS */
+    .royalty-logo-subtitle {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+        font-size: clamp(10px, 1.2vw, 18px);
+        font-weight: 400;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: rgba(36, 40, 52, 0.8); /* Midnight Express с прозрачностью */
+        margin-top: 15px;
+        animation: royaltyFadeInUp 1s ease-out 0.5s both;
+        line-height: 1.6;
+    }
+
+    .royalty-logo-subtitle-line {
+        display: block;
+    }
+
+    @keyframes royaltyFadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Квадратик над Y в ROYALTY (как в оригинальном логотипе) */
+    .royalty-dot {
+        display: inline-block;
+        width: 0.15em;
+        height: 0.15em;
+        background: #7d51fe; /* Medium Slate Blue */
+        margin-left: 0.05em;
+        vertical-align: super;
+        animation: royaltyDotPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes royaltyDotPulse {
+        0%, 100% {
+            opacity: 0.6;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+    }
+
+    /* Адаптивность */
+    @media (max-width: 768px) {
+        .royalty-logo-main {
+            font-size: clamp(36px, 12vw, 80px);
+        }
+        
+        .royalty-logo-subtitle {
+            font-size: clamp(8px, 1.5vw, 14px);
+            margin-top: 12px;
+        }
+    }
+
+    /* Блокируем скролл во время прелоадера */
+    body.royalty-preloader-active {
+        overflow: hidden !important;
+    }
+</style>
+
+<div id="royalty-preloader">
+    <div class="royalty-preloader-content">
+        <div class="royalty-logo-container">
+            <div class="royalty-logo-main" data-text="ROYALTY TEAMS">
+                ROYALT<span class="royalty-dot"></span> TEAMS
+            </div>
+            <div class="royalty-logo-subtitle">
+                <span class="royalty-logo-subtitle-line">ECO-SYSTEM</span>
+                <span class="royalty-logo-subtitle-line">FOR BUSINESS</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    
+    // Блокируем скролл
+    document.body.classList.add('royalty-preloader-active');
+    
+    // Удаляем прелоадер через 5 секунд
+    setTimeout(function() {
+        const preloader = document.getElementById('royalty-preloader');
+        if (preloader) {
+            preloader.style.display = 'none';
+            document.body.classList.remove('royalty-preloader-active');
+        }
+    }, 5000);
+
+    // Дополнительная проверка на случай, если страница загрузилась раньше
+    if (document.readyState === 'complete') {
+        setTimeout(function() {
+            const preloader = document.getElementById('royalty-preloader');
+            if (preloader) {
+                preloader.style.display = 'none';
+                document.body.classList.remove('royalty-preloader-active');
+            }
+        }, 5000);
+    } else {
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const preloader = document.getElementById('royalty-preloader');
+                if (preloader) {
+                    preloader.style.display = 'none';
+                    document.body.classList.remove('royalty-preloader-active');
+                }
+            }, 5000);
+        });
+    }
+})();
+</script>
+
+

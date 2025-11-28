@@ -7,6 +7,7 @@ import { Alert, Image, Platform, ScrollView, StyleSheet, Text, View } from 'reac
 import AnimatedPressable from '../components/AnimatedPressable';
 import { useAppContext } from '../components/AppWrapper';
 import ScrollToTopButton from '../components/ScrollToTopButton';
+import UpdateButton from '../components/UpdateButton';
 import { deleteAccount, getUserData, logout, User } from '../utils/api';
 import { getCurrentUserId } from '../utils/userDataStorage';
 import { palette, radii, spacing, typography } from '../styles/theme';
@@ -447,6 +448,12 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
                 <Text style={styles.menuItemText}>Уведомления</Text>
                 <Ionicons name="chevron-forward" size={20} color={palette.gray600} />
               </AnimatedPressable>
+            </View>
+
+            {/* Обновление приложения */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Обновление приложения</Text>
+              <UpdateButton />
             </View>
 
             {/* Временные функции */}
