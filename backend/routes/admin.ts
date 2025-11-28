@@ -152,26 +152,29 @@ router.get('/stats', authenticateAdmin, async (req, res) => {
       : 0;
 
     // Статистика по блокам
-    const blockStats: Record<string, { count: number; avgEfficiency: number }> = {};
+    const blockStatsTemp: Record<string, { count: number; totalEfficiency: number }> = {};
     diagnosis.forEach(d => {
       if (d.blocks && Array.isArray(d.blocks)) {
         d.blocks.forEach((block: any) => {
           if (block.completed && block.efficiency !== undefined) {
-            if (!blockStats[block.id]) {
-              blockStats[block.id] = { count: 0, avgEfficiency: 0, totalEfficiency: 0 };
+            if (!blockStatsTemp[block.id]) {
+              blockStatsTemp[block.id] = { count: 0, totalEfficiency: 0 };
             }
-            blockStats[block.id].count++;
-            blockStats[block.id].totalEfficiency = (blockStats[block.id].totalEfficiency || 0) + block.efficiency;
+            blockStatsTemp[block.id].count++;
+            blockStatsTemp[block.id].totalEfficiency += block.efficiency;
           }
         });
       }
     });
 
     // Вычисляем среднюю эффективность для каждого блока
-    Object.keys(blockStats).forEach(blockId => {
-      const stat = blockStats[blockId] as any;
-      stat.avgEfficiency = stat.count > 0 ? stat.totalEfficiency / stat.count : 0;
-      delete stat.totalEfficiency;
+    const blockStats: Record<string, { count: number; avgEfficiency: number }> = {};
+    Object.keys(blockStatsTemp).forEach(blockId => {
+      const temp = blockStatsTemp[blockId];
+      blockStats[blockId] = {
+        count: temp.count,
+        avgEfficiency: temp.count > 0 ? temp.totalEfficiency / temp.count : 0
+      };
     });
 
     res.json({
