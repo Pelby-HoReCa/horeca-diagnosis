@@ -1,4 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'https://horeca-backend-6zl1.onrender.com';
+// Получаем API URL - в Next.js переменные NEXT_PUBLIC_* доступны в браузере
+const API_URL = typeof window !== 'undefined' 
+  ? (process.env.NEXT_PUBLIC_API_URL || 'https://horeca-backend-6zl1.onrender.com')
+  : (process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'https://horeca-backend-6zl1.onrender.com');
 
 export interface AdminUser {
   id: string;
