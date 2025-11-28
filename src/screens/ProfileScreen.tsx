@@ -8,9 +8,9 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import { useAppContext } from '../components/AppWrapper';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import UpdateButton from '../components/UpdateButton';
+import { palette, radii, spacing, typography } from '../styles/theme';
 import { deleteAccount, getUserData, logout, User } from '../utils/api';
 import { getCurrentUserId } from '../utils/userDataStorage';
-import { palette, radii, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/1111.png');
 

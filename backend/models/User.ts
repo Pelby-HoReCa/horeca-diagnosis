@@ -102,6 +102,11 @@ export const deleteUser = async (id: string): Promise<boolean> => {
   return true;
 };
 
+// Получение всех пользователей (для админки)
+export const getAllUsers = async (): Promise<UserData[]> => {
+  return loadUsers();
+};
+
 // ПРИМЕЧАНИЕ: Для продакшена замените эту реализацию на реальную БД
 // Пример для PostgreSQL с использованием pg:
 /*

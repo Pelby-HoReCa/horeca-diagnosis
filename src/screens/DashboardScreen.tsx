@@ -9,6 +9,7 @@ import ScrollToTopButton from '../components/ScrollToTopButton';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import { palette, radii, spacing, typography } from '../styles/theme';
 import { Task } from '../utils/recommendationEngine';
+import { saveDiagnosisHistoryAuto } from '../utils/api';
 import {
   getCurrentUserId,
   loadUserBlocks,

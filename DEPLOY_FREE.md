@@ -68,7 +68,7 @@ git push -u origin main
 
 ### Шаг 2.3: Настройка бэкенда
 
-1. Railway покажет список файлов - выберите папку `backend`
+1. Railway покажетч список файлов - выберите папку `backend`
 2. Или в настройках проекта:
    - **Root Directory:** `backend`
    - **Build Command:** `npm install && npm run build`
@@ -126,11 +126,11 @@ JWT_SECRET=ваш-случайный-секретный-ключ-минимум-
 В настройках проекта → Environment Variables добавьте:
 
 ```
-EXPO_PUBLIC_API_URL=https://your-backend-url.railway.app
+EXPO_PUBLIC_API_URL=https://your-backend-url.onrender.com
 EXPO_PUBLIC_USE_SERVER_API=true
 ```
 
-**Важно:** Замените `your-backend-url.railway.app` на реальный URL из Railway!
+**Важно:** Замените `your-backend-url.onrender.com` на реальный URL из Render!
 
 ### Шаг 3.4: Деплой
 
@@ -169,11 +169,11 @@ git push origin main
 
 ## Лимиты бесплатных планов
 
-### Railway (бэкенд)
-- ✅ 500 часов работы в месяц (достаточно для небольшого проекта)
-- ✅ $5 кредитов в месяц
+### Render (бэкенд)
+- ✅ Бесплатный план для веб-сервисов
 - ✅ Автоматические деплои
-- ⚠️ Сервер "засыпает" после неактивности (первый запрос может быть медленным)
+- ✅ HTTPS из коробки
+- ⚠️ Сервис "засыпает" после 15 минут неактивности (первый запрос после пробуждения может занять 30-60 секунд)
 
 ### Vercel (фронтенд)
 - ✅ Неограниченное количество деплоев

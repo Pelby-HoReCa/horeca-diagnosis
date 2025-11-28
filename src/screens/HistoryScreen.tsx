@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ScrollToTopButton from '../components/ScrollToTopButton';
 import { Task } from '../utils/recommendationEngine';
+import { saveDiagnosisHistoryAuto } from '../utils/api';
 import { getCurrentUserId, loadUserBlocks, loadUserTasks } from '../utils/userDataStorage';
 import { palette, radii, shadows, spacing, typography } from '../styles/theme';
 
@@ -59,6 +60,12 @@ export default function HistoryScreen() {
       setTasks(tasksList);
       console.log('Загружены завершенные блоки:', completedBlocks.length);
       console.log('Загружены задачи:', tasksList.length);
+      
+      // Сохраняем историю диагностики, если есть завершенные блоки
+      if (completedBlocks.length > 0) {
+        console.log('Сохраняем историю диагностики...');
+        await saveDiagnosisHistoryAuto();
+      }
     } catch (error) {
       console.error('Ошибка загрузки результатов:', error);
       setResults([]);

@@ -6,6 +6,7 @@ import AnimatedPressable from '../components/AnimatedPressable';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { generateTasksFromAnswers, Task } from '../utils/recommendationEngine';
+import { saveDiagnosisHistoryAuto } from '../utils/api';
 import {
   getCurrentUserId,
   loadUserBlocks,
@@ -473,7 +474,14 @@ export default function BlockQuestionsScreen({
                     });
                   } else {
                     console.log('Все блоки пройдены - возвращаемся к списку блоков');
-                    // Все блоки пройдены, возвращаемся к списку блоков
+                    // Все блоки пройдены - сохраняем историю диагностики
+                    try {
+                      console.log('Сохраняем историю диагностики после завершения всех блоков...');
+                      await saveDiagnosisHistoryAuto();
+                    } catch (error) {
+                      console.error('Ошибка сохранения истории:', error);
+                    }
+                    // Возвращаемся к списку блоков
                     navigation.navigate('SelfDiagnosisBlocks');
                   }
                 }}
@@ -482,9 +490,17 @@ export default function BlockQuestionsScreen({
               </AnimatedPressable>
               <AnimatedPressable
                 style={[styles.modalButton, styles.resultsButton]}
-                onPress={() => {
+                onPress={async () => {
                   setShowCompletionModal(false);
                   console.log('Нажата кнопка "Результаты диагностики" - переходим к результатам');
+                  
+                  // Сохраняем историю диагностики перед переходом к результатам
+                  try {
+                    console.log('Сохраняем историю диагностики перед переходом к результатам...');
+                    await saveDiagnosisHistoryAuto();
+                  } catch (error) {
+                    console.error('Ошибка сохранения истории:', error);
+                  }
                   
                   // Переходим на экран результатов
                   navigation.navigate('Результаты');

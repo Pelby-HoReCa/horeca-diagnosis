@@ -13,9 +13,9 @@ const apiRequest = async (
 ): Promise<any> => {
   const token = await AsyncStorage.getItem('authToken');
   
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
   if (token) {
@@ -340,10 +340,17 @@ export const getUserData = async (): Promise<User | null> => {
 /**
  * Сохранение истории диагностики на сервер
  */
-export const saveDiagnosisHistory = async (data: any): Promise<boolean> => {
+export const saveDiagnosisHistory = async (data: {
+  blocks: any[];
+  tasks: any[];
+  efficiency: number;
+}): Promise<boolean> => {
   try {
     const token = await AsyncStorage.getItem('authToken');
-    if (!token) return false;
+    if (!token) {
+      console.log('Нет токена авторизации, пропускаем сохранение истории');
+      return false;
+    }
 
     if (USE_SERVER_API) {
       // Серверный режим
@@ -351,6 +358,9 @@ export const saveDiagnosisHistory = async (data: any): Promise<boolean> => {
         method: 'POST',
         body: JSON.stringify(data),
       });
+      if (response.success) {
+        console.log('История диагностики успешно сохранена на сервер');
+      }
       return response.success || false;
     } else {
       // Локальный режим (fallback)
@@ -361,10 +371,78 @@ export const saveDiagnosisHistory = async (data: any): Promise<boolean> => {
         timestamp: new Date().toISOString(),
       });
       await AsyncStorage.setItem('userDiagnosisHistory', JSON.stringify(history));
+      console.log('История диагностики сохранена локально');
       return true;
     }
   } catch (error) {
     console.error('Ошибка сохранения истории:', error);
+    return false;
+  }
+};
+
+/**
+ * Сохранение истории диагностики автоматически (сбор данных из хранилища)
+ */
+export const saveDiagnosisHistoryAuto = async (): Promise<boolean> => {
+  try {
+    const { getCurrentUserId } = await import('./userDataStorage');
+    const { loadUserBlocks, loadUserTasks } = await import('./userDataStorage');
+    
+    const userId = await getCurrentUserId();
+    let blocks: any[] = [];
+    let tasks: any[] = [];
+
+    // Загружаем блоки
+    if (userId) {
+      const userBlocks = await loadUserBlocks(userId);
+      if (userBlocks) {
+        blocks = userBlocks.filter((b: any) => b.completed);
+      }
+    }
+    
+    if (blocks.length === 0) {
+      const storedBlocks = await AsyncStorage.getItem('diagnosisBlocks');
+      if (storedBlocks) {
+        const parsedBlocks = JSON.parse(storedBlocks);
+        blocks = parsedBlocks.filter((b: any) => b.completed);
+      }
+    }
+
+    // Загружаем задачи
+    if (userId) {
+      tasks = await loadUserTasks(userId);
+    }
+    
+    if (tasks.length === 0) {
+      const storedTasks = await AsyncStorage.getItem('actionPlanTasks');
+      if (storedTasks) {
+        tasks = JSON.parse(storedTasks);
+      }
+    }
+
+    // Если нет завершенных блоков, не сохраняем
+    if (blocks.length === 0) {
+      console.log('Нет завершенных блоков для сохранения истории');
+      return false;
+    }
+
+    // Вычисляем среднюю эффективность
+    const completedBlocksWithEfficiency = blocks.filter((b: any) => b.efficiency !== undefined);
+    const avgEfficiency = completedBlocksWithEfficiency.length > 0
+      ? Math.round(
+          completedBlocksWithEfficiency.reduce((sum: number, b: any) => sum + (b.efficiency || 0), 0) / 
+          completedBlocksWithEfficiency.length
+        )
+      : 0;
+
+    // Сохраняем историю
+    return await saveDiagnosisHistory({
+      blocks,
+      tasks,
+      efficiency: avgEfficiency,
+    });
+  } catch (error) {
+    console.error('Ошибка автоматического сохранения истории:', error);
     return false;
   }
 };

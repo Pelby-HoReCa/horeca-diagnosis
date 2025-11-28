@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
 import diagnosisRoutes from './routes/diagnosis';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/diagnosis', diagnosisRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

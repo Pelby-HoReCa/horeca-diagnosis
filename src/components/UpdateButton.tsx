@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Updates from 'expo-updates';
 import React, { useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
-import AnimatedPressable from './AnimatedPressable';
 import { palette, radii, spacing, typography } from '../styles/theme';
+import AnimatedPressable from './AnimatedPressable';
 
 interface UpdateButtonProps {
   style?: any;
@@ -16,7 +16,20 @@ export default function UpdateButton({ style }: UpdateButtonProps) {
   // Проверка доступности обновлений (только для production)
   const checkForUpdates = async () => {
     const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
-    if (isDev || Platform.OS === 'web') {
+    
+    // Для web-версии: всегда можно "обновиться" через перезагрузку
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        const confirmed = window.confirm('Проверить обновления? Страница будет перезагружена.');
+        if (confirmed) {
+          window.location.reload();
+        }
+      }
+      return;
+    }
+    
+    // Для мобильных: проверяем development режим
+    if (isDev) {
       Alert.alert(
         'Обновления',
         'Обновления доступны только в production версии приложения',
@@ -81,7 +94,28 @@ export default function UpdateButton({ style }: UpdateButtonProps) {
   // Принудительное обновление (для админов)
   const forceUpdate = async () => {
     const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
-    if (isDev || Platform.OS === 'web') {
+    
+    // Для web-версии: просто перезагружаем страницу
+    if (Platform.OS === 'web') {
+      if (isDev) {
+        // В development режиме на web просто перезагружаем
+        if (typeof window !== 'undefined' && window.confirm('Обновить приложение? Страница будет перезагружена.')) {
+          window.location.reload();
+        }
+        return;
+      }
+      
+      // В production на web: перезагружаем с очисткой кэша
+      if (typeof window !== 'undefined' && window.confirm('Обновить приложение? Страница будет перезагружена для получения последней версии.')) {
+        setIsUpdating(true);
+        // Hard reload для очистки кэша
+        window.location.reload();
+      }
+      return;
+    }
+    
+    // Для мобильных: проверяем development режим
+    if (isDev) {
       Alert.alert(
         'Обновление приложения',
         'В development режиме обновления недоступны. Используйте production сборку.',

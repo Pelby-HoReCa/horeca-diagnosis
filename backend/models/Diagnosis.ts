@@ -67,6 +67,11 @@ export const getDiagnosisHistory = async (userId: string): Promise<DiagnosisHist
   return allDiagnosis.filter(d => d.userId === userId);
 };
 
+// Получение всех диагностик (для админки)
+export const getAllDiagnosis = async (): Promise<DiagnosisHistory[]> => {
+  return loadDiagnosis();
+};
+
 // ПРИМЕЧАНИЕ: Для продакшена замените на реальную БД
 // Пример для PostgreSQL:
 /*
