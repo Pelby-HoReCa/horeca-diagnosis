@@ -2,93 +2,154 @@
 
 Приложение для самодиагностики бизнеса в сфере HoReCa, построенное на Expo/React Native.
 
-## 🚀 Быстрый старт
+## 🚀 Статус проекта
 
-### Установка зависимостей
+✅ **Приложение развернуто в онлайне:**
+- **Фронтенд:** Vercel (PWA)
+- **Бэкенд:** Render (Node.js/Express API)
+- **Админка:** Vercel (Next.js)
+
+✅ **Функциональность:**
+- Регистрация и авторизация пользователей
+- Самодиагностика по блокам
+- Сохранение данных на сервере
+- История диагностик
+- План действий с задачами
+- OTA обновления приложения
+- Админ-панель для управления
+
+## 📱 Быстрый старт
+
+### Локальная разработка
 
 ```bash
+# Установка зависимостей
 npm install
 cd backend && npm install
-```
 
-### Запуск в режиме разработки
-
-```bash
-# Фронтенд
+# Запуск фронтенда
 npm start
 
-# Бэкенд (в отдельном терминале)
+# Запуск бэкенда (в отдельном терминале)
 cd backend
 npm run dev
 ```
 
-## 📱 Развертывание на сервере
+### Онлайн версия
 
-Приложение готово к развертыванию на сервере с поддержкой:
-- ✅ Серверного API для регистрации и хранения данных
-- ✅ OTA обновлений через Expo EAS Update
-- ✅ PWA для работы по ссылке в браузере
+Приложение доступно по ссылке (после деплоя):
+- **Фронтенд:** https://horeca-diagnosis-xxxxx.vercel.app
+- **Бэкенд:** https://horeca-backend-6zl1.onrender.com
+- **Админка:** https://horeca-admin-xxxxx.vercel.app
 
-### Документация по развертыванию
+## 🔐 Учетные данные
 
+### Админ-панель
+- **Логин:** `Sergo1289`
+- **Пароль:** `1289`
+
+## 📚 Документация
+
+### Развертывание
 - **[QUICK_START.md](./QUICK_START.md)** - Быстрый старт
 - **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Подробная инструкция
-- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Чеклист развертывания
-- **[DEPLOYMENT_SUMMARY.md](./DEPLOYMENT_SUMMARY.md)** - Резюме изменений
+- **[DEPLOY_VERCEL_STEP_BY_STEP.md](./DEPLOY_VERCEL_STEP_BY_STEP.md)** - Деплой фронтенда на Vercel
+- **[DEPLOY_RENDER.md](./DEPLOY_RENDER.md)** - Деплой бэкенда на Render
+- **[ADMIN_QUICK_START.md](./ADMIN_QUICK_START.md)** - Быстрый старт админки
 
-### Основные шаги
+### Техническая документация
+- **[DATA_ARCHITECTURE.md](./DATA_ARCHITECTURE.md)** - Архитектура данных
+- **[DATA_SAVING_ANALYSIS.md](./DATA_SAVING_ANALYSIS.md)** - Анализ сохранения данных
+- **[DEPLOYMENT_STATUS.md](./DEPLOYMENT_STATUS.md)** - Статус деплоя и процесс обновлений
+- **[ADMIN_PLAN.md](./ADMIN_PLAN.md)** - План и структура админки
 
-1. **Настройте переменные окружения:**
-   - Создайте `.env` в корне проекта
-   - Создайте `backend/.env`
-
-2. **Настройте EAS Update:**
-   ```bash
-   npm install -g eas-cli
-   eas login
-   eas update:configure
-   ```
-
-3. **Задеплойте:**
-   - Бэкенд: Railway или другой хостинг
-   - Фронтенд: Vercel
-
-4. **Создайте обновление:**
-   ```bash
-   npm run update:app
-   ```
+### Отчеты по задачам
+- **[TASK_1_REPORT.md](./TASK_1_REPORT.md)** - Прямой доступ к приложению
+- **[TASK_2_REPORT.md](./TASK_2_REPORT.md)** - Кнопка обновления для web
+- **[TASK_3_REPORT.md](./TASK_3_REPORT.md)** - Сохранение данных
+- **[TASK_4_REPORT.md](./TASK_4_REPORT.md)** - Создание админки
 
 ## 🏗️ Структура проекта
 
 ```
 horeca-diagnosis/
-├── backend/              # Бэкенд API (Node.js/Express)
-├── src/                  # Исходный код приложения
-├── app/                  # Expo Router файлы
-└── assets/               # Ресурсы (изображения, иконки)
+├── admin/                    # Админ-панель (Next.js)
+│   ├── app/                 # Next.js App Router
+│   ├── lib/                 # API клиент
+│   └── package.json
+├── backend/                 # Бэкенд API (Node.js/Express)
+│   ├── routes/              # API маршруты
+│   │   ├── auth.ts          # Авторизация
+│   │   ├── users.ts         # Пользователи
+│   │   ├── diagnosis.ts     # Диагностика
+│   │   └── admin.ts         # Админ API
+│   ├── models/              # Модели данных
+│   ├── middleware/         # Middleware
+│   └── server.ts            # Основной сервер
+├── src/                     # Исходный код приложения
+│   ├── components/          # React компоненты
+│   ├── screens/             # Экраны приложения
+│   ├── utils/               # Утилиты (API, хранилище)
+│   └── navigation/          # Навигация
+├── app.json                 # Конфигурация Expo
+├── package.json             # Зависимости фронтенда
+└── vercel.json              # Конфигурация Vercel
 ```
 
-## 📚 Дополнительная информация
+## 🔄 Обновление приложения
 
-- [Expo документация](https://docs.expo.dev/)
-- [Expo EAS Update](https://docs.expo.dev/eas-update/introduction/)
-- [React Navigation](https://reactnavigation.org/)
+### Автоматические обновления
 
-## 🔧 Разработка
+После каждого `git push`:
+- **Vercel** автоматически деплоит фронтенд
+- **Render** автоматически деплоит бэкенд
+- **Vercel** автоматически деплоит админку
 
-### Доступные команды
+### OTA обновления (для мобильных)
 
-```bash
-npm start          # Запуск Expo dev server
-npm run web        # Запуск веб-версии
-npm run web:build  # Сборка для веба
-npm run update:app # Создать OTA обновление
-```
+1. В приложении нажмите "Обновить приложение" в профиле
+2. Приложение загрузит и применит обновления
 
-### Технологии
+### Web обновления
 
-- **Frontend:** React Native, Expo, TypeScript
+1. В приложении нажмите "Обновить приложение" в профиле
+2. Страница перезагрузится с последней версией
+
+## 🛠️ Технологии
+
+- **Frontend:** Expo, React Native, TypeScript
 - **Backend:** Node.js, Express, TypeScript
-- **Navigation:** React Navigation
-- **Storage:** AsyncStorage (локально), Server API (production)
-- **Updates:** Expo EAS Update
+- **Admin:** Next.js 14, React, TypeScript, Tailwind CSS
+- **Хранилище:** AsyncStorage (локально), API (сервер)
+- **Деплой:** Vercel (фронтенд, админка), Render (бэкенд)
+
+## 📋 Переменные окружения
+
+### Фронтенд (.env)
+```
+EXPO_PUBLIC_API_URL=https://horeca-backend-6zl1.onrender.com
+EXPO_PUBLIC_USE_SERVER_API=true
+```
+
+### Бэкенд (backend/.env)
+```
+PORT=3000
+NODE_ENV=production
+CORS_ORIGIN=https://horeca-diagnosis-xxxxx.vercel.app
+JWT_SECRET=your-secret-key
+ADMIN_EMAIL=Sergo1289
+ADMIN_PASSWORD=1289
+```
+
+### Админка (admin/.env.local)
+```
+NEXT_PUBLIC_API_URL=https://horeca-backend-6zl1.onrender.com
+```
+
+## 📞 Поддержка
+
+Для вопросов и проблем создайте issue в репозитории.
+
+## 📄 Лицензия
+
+Private project
