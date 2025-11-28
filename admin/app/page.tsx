@@ -17,15 +17,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      console.log('Попытка входа:', { login, password: '***' });
       const response = await adminLogin(login, password);
+      console.log('Ответ от API:', response);
       
-      if (response.success) {
+      if (response && response.success) {
+        console.log('Успешный вход, переход в dashboard');
         router.push('/dashboard');
       } else {
-        setError('Неверный логин или пароль');
+        const errorMsg = response?.error || 'Неверный логин или пароль';
+        console.error('Ошибка входа:', errorMsg);
+        setError(errorMsg);
       }
     } catch (err: any) {
-      setError(err.message || 'Ошибка авторизации');
+      console.error('Исключение при входе:', err);
+      const errorMsg = err?.message || err?.error || 'Ошибка авторизации. Проверьте подключение к серверу.';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }

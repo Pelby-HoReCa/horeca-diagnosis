@@ -60,34 +60,66 @@ const apiRequest = async <T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const url = `${API_URL}${endpoint}`;
+  console.log('Запрос к API:', url, { method: options.method || 'GET', headers });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    console.log('Статус ответа:', response.status, response.statusText);
+
+    if (!response.ok) {
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { error: `HTTP error! status: ${response.status}` };
+      }
+      console.error('Ошибка API:', errorData);
+      throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Данные ответа:', data);
+    return data;
+  } catch (error: any) {
+    console.error('Ошибка fetch:', error);
+    if (error.message) {
+      throw error;
+    }
+    throw new Error(`Ошибка подключения к серверу: ${error.message || 'Неизвестная ошибка'}`);
   }
-
-  return response.json();
 };
 
 // Авторизация админа
 export const adminLogin = async (login: string, password: string) => {
-  const response = await apiRequest<{ success: boolean; token: string; admin: any }>(
-    '/api/admin/login',
-    {
-      method: 'POST',
-      body: JSON.stringify({ email: login, password }), // Бэкенд ожидает email, но это логин
+  try {
+    console.log('API_URL:', API_URL);
+    console.log('Отправка запроса на:', `${API_URL}/api/admin/login`);
+    
+    const response = await apiRequest<{ success: boolean; token?: string; admin?: any; error?: string }>(
+      '/api/admin/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email: login, password }), // Бэкенд ожидает email, но это логин
+      }
+    );
+
+    console.log('Ответ от сервера:', response);
+
+    if (response.success && response.token) {
+      saveToken(response.token);
+      console.log('Токен сохранен');
     }
-  );
 
-  if (response.success && response.token) {
-    saveToken(response.token);
+    return response;
+  } catch (error: any) {
+    console.error('Ошибка в adminLogin:', error);
+    throw error;
   }
-
-  return response;
 };
 
 // Проверка токена
