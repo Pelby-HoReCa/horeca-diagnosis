@@ -65,7 +65,6 @@ router.post('/register', async (req, res) => {
       city,
       address,
       projectLink,
-      registeredAt: new Date().toISOString(),
     });
 
     // Создание JWT токена
