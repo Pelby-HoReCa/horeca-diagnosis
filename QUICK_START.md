@@ -18,7 +18,7 @@ npm install
 ## Шаг 2: Настройка переменных окружения
 
 ### Фронтенд
-Создайте файл `.env` в корне проекта:
+Создайте файл `.e`nv в корне проекта:
 ```bash
 EXPO_PUBLIC_API_URL=http://localhost:3000
 EXPO_PUBLIC_USE_SERVER_API=true

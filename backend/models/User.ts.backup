@@ -215,24 +215,3 @@ export const deleteUser = async (id: string): Promise<boolean> => {
   return result.rowCount !== null && result.rowCount > 0;
 };
 
-export const getAllUsers = async (): Promise<UserData[]> => {
-  const result = await pool.query('SELECT * FROM users ORDER BY registered_at DESC');
-  
-  return result.rows.map(row => ({
-    id: row.id,
-    email: row.email,
-    password: row.password,
-    fullName: row.full_name,
-    position: row.position,
-    phone: row.phone,
-    socialLink: row.social_link,
-    projectName: row.project_name,
-    outletsCount: row.outlets_count,
-    workFormat: row.work_format,
-    city: row.city,
-    address: row.address,
-    projectLink: row.project_link,
-    registeredAt: row.registered_at.toISOString(),
-  }));
-};
-
