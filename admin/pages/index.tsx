@@ -42,7 +42,6 @@ export default function AdminPage() {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
-  const [showJson, setShowJson] = useState(false);
   const [authed, setAuthed] = useState(false);
   const [storedToken, setStoredToken] = useState<string>('');
   const [storedEmail, setStoredEmail] = useState<string>('');
@@ -154,6 +153,31 @@ export default function AdminPage() {
   const totalProjects = Array.isArray(projects) ? projects.length : 0;
   const totalDiagnoses = Array.isArray(diagnosisHistory) ? diagnosisHistory.length : 0;
   const totalTasks = Array.isArray(tasks) ? tasks.length : 0;
+
+  const answerKeys = Object.keys(selectedSnapshot || {}).filter((key) =>
+    key.includes('diagnosis_answers_')
+  );
+  const answersByBlock = answerKeys.map((key) => ({
+    key,
+    count: Array.isArray(selectedSnapshot?.[key]) ? selectedSnapshot[key].length : 0,
+  }));
+
+  const downloadJson = () => {
+    try {
+      const payload = JSON.stringify(selectedUser, null, 2);
+      const blob = new Blob([payload], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pelby-user-${selectedUser?.userId || 'data'}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError('Ошибка при скачивании JSON');
+    }
+  };
 
   if (!authed) {
     return (
@@ -286,11 +310,8 @@ export default function AdminPage() {
                     <div style={styles.sectionTitle}>Профиль пользователя</div>
                     <div style={styles.sectionSub}>Последнее обновление: {new Date(selectedUser.updatedAt).toLocaleString()}</div>
                   </div>
-                  <button
-                    style={styles.ghostButton}
-                    onClick={() => setShowJson((prev) => !prev)}
-                  >
-                    {showJson ? 'Скрыть JSON' : 'Показать JSON'}
+                  <button style={styles.ghostButton} onClick={downloadJson}>
+                    Скачать JSON
                   </button>
                 </div>
                 <KeyValueGrid data={{ userId: selectedUser.userId, ...profile }} />
@@ -363,17 +384,36 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {showJson && (
+              <div style={styles.sectionGrid}>
                 <div style={styles.sectionCard}>
-                  <div style={styles.sectionHeader}>
-                    <div style={styles.sectionTitle}>Полные данные (JSON)</div>
-                    <button style={styles.ghostButton} onClick={() => setShowJson(false)}>
-                      Закрыть
-                    </button>
-                  </div>
-                  <pre style={styles.pre}>{JSON.stringify(selectedUser, null, 2)}</pre>
+                  <div style={styles.sectionTitle}>Ответы (по блокам)</div>
+                  {answersByBlock.length === 0 && (
+                    <div style={styles.empty}>Ответов не найдено</div>
+                  )}
+                  {answersByBlock.map((item) => (
+                    <div key={item.key} style={styles.answerRow}>
+                      <div style={styles.rowTitle}>{item.key.replace('diagnosis_answers_', '')}</div>
+                      <div style={styles.tag}>{item.count} ответов</div>
+                    </div>
+                  ))}
                 </div>
-              )}
+                <div style={styles.sectionCard}>
+                  <div style={styles.sectionTitle}>Задачи</div>
+                  {Array.isArray(tasks) && tasks.length > 0 ? (
+                    tasks.slice(0, 12).map((task: any, idx: number) => (
+                      <div key={task.id || idx} style={styles.taskRow}>
+                        <div>
+                          <div style={styles.rowTitle}>{task.title || 'Без названия'}</div>
+                          <div style={styles.rowSub}>{task.description || task.blockId || '—'}</div>
+                        </div>
+                        <div style={styles.tag}>{task.blockId || 'Задача'}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={styles.empty}>Задач нет</div>
+                  )}
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -618,6 +658,20 @@ const styles: Record<string, React.CSSProperties> = {
   },
   statInlineLabel: { fontSize: 10, color: '#525866', marginBottom: 6 },
   statInlineValue: { fontSize: 14, fontWeight: 700 },
+  answerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    borderBottom: '1px solid #F0F2F4',
+  },
+  taskRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    borderBottom: '1px solid #F0F2F4',
+  },
   error: {
     background: '#FFE4E6',
     color: '#9F1239',
