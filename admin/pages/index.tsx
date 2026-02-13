@@ -128,59 +128,18 @@ export default function AdminPage() {
   const totalDiagnoses = Array.isArray(diagnosisHistory) ? diagnosisHistory.length : 0;
   const totalTasks = Array.isArray(tasks) ? tasks.length : 0;
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <div>
-          <div style={styles.title}>Pelby Admin</div>
-          <div style={styles.subtitle}>Доступ к данным пользователей</div>
-        </div>
-        {!authed ? (
-          <div style={styles.authBox}>
-            <input
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              style={styles.input}
-              type="password"
-              placeholder="Пароль"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button style={styles.button} onClick={loadUsers}>
-              {loading ? 'Загрузка...' : 'Войти'}
-            </button>
-          </div>
-        ) : (
-          <div style={styles.authInfo}>
-            <div style={styles.authUser}>{email || 'admin'}</div>
-            <button
-              style={styles.ghostButton}
-              onClick={() => {
-                setAuthed(false);
-                setUsers([]);
-                setSelectedUser(null);
-                setError('');
-              }}
-            >
-              Выйти
-            </button>
-          </div>
-        )}
-      </div>
-
-      {error && <div style={styles.error}>{error}</div>}
-
-      <div style={styles.content}>
-        {!authed ? (
+  if (!authed) {
+    return (
+      <div style={styles.page}>
+        <div style={styles.loginWrapper}>
           <div style={styles.loginCard}>
+            <div style={styles.title}>Pelby Admin</div>
+            <div style={styles.subtitle}>Доступ к данным пользователей</div>
             <div style={styles.loginTitle}>Вход в админ-панель</div>
             <div style={styles.loginSubtitle}>
               Введите логин и пароль администратора.
             </div>
+            {error && <div style={styles.error}>{error}</div>}
             <div style={styles.loginForm}>
               <input
                 style={styles.input}
@@ -200,7 +159,37 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
-        ) : (
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.header}>
+        <div>
+          <div style={styles.title}>Pelby Admin</div>
+          <div style={styles.subtitle}>Доступ к данным пользователей</div>
+        </div>
+        <div style={styles.authInfo}>
+          <div style={styles.authUser}>{email || 'admin'}</div>
+          <button
+            style={styles.ghostButton}
+            onClick={() => {
+              setAuthed(false);
+              setUsers([]);
+              setSelectedUser(null);
+              setError('');
+            }}
+          >
+            Выйти
+          </button>
+        </div>
+      </div>
+
+      {error && <div style={styles.error}>{error}</div>}
+
+      <div style={styles.content}>
         <div style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
             <div style={styles.listTitle}>Пользователи</div>
@@ -231,9 +220,7 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
-        )}
-
-        {authed && <div style={styles.main}>
+        <div style={styles.main}>
           <div style={styles.statsGrid}>
             <div style={styles.statCard}>
               <div style={styles.statLabel}>Всего пользователей</div>
@@ -350,7 +337,7 @@ export default function AdminPage() {
               )}
             </>
           )}
-        </div>}
+        </div>
       </div>
     </div>
   );
@@ -396,13 +383,20 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 24,
     padding: 24,
   },
+  loginWrapper: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
   loginCard: {
-    gridColumn: '1 / -1',
     background: '#fff',
     borderRadius: 16,
     padding: 28,
     border: '1px solid #E5E7EB',
     maxWidth: 520,
+    width: '100%',
   },
   loginTitle: { fontSize: 18, fontWeight: 700, marginBottom: 6 },
   loginSubtitle: { fontSize: 12, color: '#525866', marginBottom: 16 },
