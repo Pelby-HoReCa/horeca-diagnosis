@@ -1,3 +1,3 @@
-Pelby Admin Panel
+# Admin panel
 
-Deploy target: Vercel (root: admin)
+Deployed on Vercel.
