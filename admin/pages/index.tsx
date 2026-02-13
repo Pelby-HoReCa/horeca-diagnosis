@@ -43,6 +43,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [showJson, setShowJson] = useState(false);
+  const [authed, setAuthed] = useState(false);
 
   const authHeader = useMemo(() => {
     if (!email || !password) return '';
@@ -59,13 +60,16 @@ export default function AdminPage() {
       });
       if (!res.ok) {
         setError('Ошибка авторизации или сервера');
+        setAuthed(false);
         setLoading(false);
         return;
       }
       const data = await res.json();
       setUsers(data.users || []);
+      setAuthed(true);
     } catch (e) {
       setError('Ошибка загрузки');
+      setAuthed(false);
     } finally {
       setLoading(false);
     }
@@ -131,29 +135,72 @@ export default function AdminPage() {
           <div style={styles.title}>Pelby Admin</div>
           <div style={styles.subtitle}>Доступ к данным пользователей</div>
         </div>
-        <div style={styles.authBox}>
-          <input
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <input
-            style={styles.input}
-            type="password"
-            placeholder="Пароль"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <button style={styles.button} onClick={loadUsers}>
-            {loading ? 'Загрузка...' : 'Войти'}
-          </button>
-        </div>
+        {!authed ? (
+          <div style={styles.authBox}>
+            <input
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              style={styles.input}
+              type="password"
+              placeholder="Пароль"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button style={styles.button} onClick={loadUsers}>
+              {loading ? 'Загрузка...' : 'Войти'}
+            </button>
+          </div>
+        ) : (
+          <div style={styles.authInfo}>
+            <div style={styles.authUser}>{email || 'admin'}</div>
+            <button
+              style={styles.ghostButton}
+              onClick={() => {
+                setAuthed(false);
+                setUsers([]);
+                setSelectedUser(null);
+                setError('');
+              }}
+            >
+              Выйти
+            </button>
+          </div>
+        )}
       </div>
 
       {error && <div style={styles.error}>{error}</div>}
 
       <div style={styles.content}>
+        {!authed ? (
+          <div style={styles.loginCard}>
+            <div style={styles.loginTitle}>Вход в админ-панель</div>
+            <div style={styles.loginSubtitle}>
+              Введите логин и пароль администратора.
+            </div>
+            <div style={styles.loginForm}>
+              <input
+                style={styles.input}
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                style={styles.input}
+                type="password"
+                placeholder="Пароль"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button style={styles.button} onClick={loadUsers}>
+                {loading ? 'Загрузка...' : 'Войти'}
+              </button>
+            </div>
+          </div>
+        ) : (
         <div style={styles.sidebar}>
           <div style={styles.sidebarHeader}>
             <div style={styles.listTitle}>Пользователи</div>
@@ -184,8 +231,9 @@ export default function AdminPage() {
             </button>
           ))}
         </div>
+        )}
 
-        <div style={styles.main}>
+        {authed && <div style={styles.main}>
           <div style={styles.statsGrid}>
             <div style={styles.statCard}>
               <div style={styles.statLabel}>Всего пользователей</div>
@@ -302,7 +350,7 @@ export default function AdminPage() {
               )}
             </>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );
@@ -326,6 +374,8 @@ const styles: Record<string, React.CSSProperties> = {
   title: { fontSize: 20, fontWeight: 600 },
   subtitle: { fontSize: 12, color: '#525866' },
   authBox: { display: 'flex', gap: 8 },
+  authInfo: { display: 'flex', alignItems: 'center', gap: 12 },
+  authUser: { fontSize: 12, color: '#525866' },
   input: {
     padding: '10px 12px',
     borderRadius: 8,
@@ -346,6 +396,17 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 24,
     padding: 24,
   },
+  loginCard: {
+    gridColumn: '1 / -1',
+    background: '#fff',
+    borderRadius: 16,
+    padding: 28,
+    border: '1px solid #E5E7EB',
+    maxWidth: 520,
+  },
+  loginTitle: { fontSize: 18, fontWeight: 700, marginBottom: 6 },
+  loginSubtitle: { fontSize: 12, color: '#525866', marginBottom: 16 },
+  loginForm: { display: 'flex', gap: 12, flexWrap: 'wrap' },
   sidebar: {
     background: '#fff',
     borderRadius: 12,
