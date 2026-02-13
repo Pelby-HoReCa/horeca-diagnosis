@@ -231,7 +231,6 @@ export default function AdminPage() {
               setUsers([]);
               setSelectedUser(null);
               setError('');
-              setShowJson(false);
               setStoredToken('');
               setStoredEmail('');
               if (typeof window !== 'undefined') {
