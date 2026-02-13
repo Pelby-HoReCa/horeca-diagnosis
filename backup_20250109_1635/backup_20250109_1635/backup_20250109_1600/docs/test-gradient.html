@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест градиента</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .reference-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            /* Основной вертикальный градиент с точными цветами из референса */
+            background: linear-gradient(
+                180deg,
+                #000000 0%,           /* Чистый черный сверху */
+                #090013 20%,          /* Очень темный фиолетовый */
+                #090013 30%,          /* Продолжение темного */
+                #120025 40%,          /* Начало перехода */
+                #20044B 50%,          /* Темно-фиолетовый в середине */
+                #20044B 60%,          /* Продолжение темно-фиолетового */
+                #2D0A5F 70%,          /* Переход к яркому */
+                #3F1278 75%,          /* Яркий фиолетовый */
+                #4A1792 80%,          /* Яркий фиолетовый */
+                #5A1CAC 90%,          /* Средний яркий фиолетовый */
+                #6A1FB8 100%          /* Самый яркий фиолетовый внизу */
+            );
+            pointer-events: none;
+        }
+        
+        /* Горизонтальный градиент внизу для точного воспроизведения эффекта */
+        .reference-gradient::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 35%;
+            background: linear-gradient(
+                90deg,
+                #4A1792 0%,           /* Более темный фиолетовый слева */
+                #5A1CAC 50%,          /* Средний */
+                #6A1FB8 100%          /* Более яркий справа */
+            );
+            opacity: 0.85;
+        }
+    </style>
+</head>
+<body>
+    <div class="reference-gradient"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+

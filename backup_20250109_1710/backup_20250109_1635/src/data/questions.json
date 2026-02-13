@@ -1,0 +1,1412 @@
+[
+  {
+    "id": "concept",
+    "title": "Концепция и позиционирование",
+    "description": "Бренд, позиционирование и концепция ресторана",
+    "questions": [
+      {
+        "id": "concept_q1",
+        "question": "Есть ли чёткая концепция и позиционирование проекта?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, концепция четко определена и документирована", "value": "yes_clear", "correct": true },
+          { "id": "opt2", "text": "Концепция не определена четко", "value": "unclear", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать четкую концепцию и позиционирование проекта", "priority": "high", "category": "Концепция" } },
+          { "id": "opt3", "text": "Нет определенной концепции", "value": "no", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать концепцию проекта с нуля", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q2",
+        "question": "Насколько чётко определена целевая аудитория?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Целевая аудитория четко определена и описана", "value": "clear_audience", "correct": true },
+          { "id": "opt2", "text": "Целевая аудитория определена частично", "value": "partial", "correct": false, "recommendation": { "title": "задача 2", "description": "Уточнить и детализировать описание целевой аудитории", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Целевая аудитория не определена", "value": "undefined", "correct": false, "recommendation": { "title": "задача 3", "description": "Провести исследование и определить целевую аудиторию", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q3",
+        "question": "Есть ли описанная философия и миссия проекта?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, философия и миссия четко описаны", "value": "described", "correct": true },
+          { "id": "opt2", "text": "Есть общие представления, но не документированы", "value": "general", "correct": false, "recommendation": { "title": "задача 2", "description": "Задокументировать философию и миссию проекта", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Философия и миссия не определены", "value": "no", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать философию и миссию проекта", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q4",
+        "question": "Понимает ли команда философию и миссию проекта?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, вся команда понимает и разделяет философию", "value": "understands", "correct": true },
+          { "id": "opt2", "text": "Часть команды понимает, часть нет", "value": "partial", "correct": false, "recommendation": { "title": "задача 2", "description": "Провести обучение команды по философии и миссии проекта", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Команда не понимает философию проекта", "value": "no_understanding", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему обучения и передачи философии команде", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q5",
+        "question": "Насколько концепция проекта отражена в дизайне и атмосфере?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Полностью отражена в дизайне и атмосфере", "value": "fully_reflected", "correct": true },
+          { "id": "opt2", "text": "Частично отражена, есть несоответствия", "value": "partial_reflection", "correct": false, "recommendation": { "title": "задача 2", "description": "Привести дизайн и атмосферу в соответствие с концепцией", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Концепция не отражена в дизайне и атмосфере", "value": "not_reflected", "correct": false, "recommendation": { "title": "задача 3", "description": "Переработать дизайн и атмосферу согласно концепции проекта", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q6",
+        "question": "Есть ли визуальная айдентика и брендбук?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, есть полный брендбук и визуальная айдентика", "value": "full_brandbook", "correct": true },
+          { "id": "opt2", "text": "Есть только базовые элементы айдентики", "value": "basic", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить визуальную айдентику и создать брендбук", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Визуальной айдентики и брендбука нет", "value": "no", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать визуальную айдентику и брендбук с нуля", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q7",
+        "question": "Насколько название проекта отражает концепцию и формат?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Название полностью отражает концепцию и формат", "value": "fully_reflects", "correct": true },
+          { "id": "opt2", "text": "Название частично отражает концепцию", "value": "partial_reflection", "correct": false, "recommendation": { "title": "задача 2", "description": "Проработать название для лучшего отражения концепции", "priority": "low", "category": "Концепция" } },
+          { "id": "opt3", "text": "Название не отражает концепцию проекта", "value": "does_not_reflect", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать новое название, отражающее концепцию и формат", "priority": "medium", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q8",
+        "question": "Есть ли история бренда или легенда, усиливающая восприятие проекта?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, есть увлекательная история бренда или легенда", "value": "has_story", "correct": true },
+          { "id": "opt2", "text": "Есть общие элементы истории, но не развиты", "value": "basic_story", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить историю бренда или легенду для усиления восприятия", "priority": "low", "category": "Концепция" } },
+          { "id": "opt3", "text": "Истории бренда или легенды нет", "value": "no_story", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать историю бренда или легенду для проекта", "priority": "medium", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q9",
+        "question": "Есть ли чёткое ценовое позиционирование?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, ценовое позиционирование четко определено", "value": "clear_pricing", "correct": true },
+          { "id": "opt2", "text": "Ценовое позиционирование определено частично", "value": "partial_pricing", "correct": false, "recommendation": { "title": "задача 2", "description": "Уточнить и зафиксировать ценовое позиционирование", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Ценовое позиционирование не определено", "value": "no_pricing", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать стратегию ценового позиционирования", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q10",
+        "question": "Проводится ли регулярная оценка восприятия бренда гостями?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, регулярно проводим оценку восприятия бренда", "value": "regular_assessment", "correct": true },
+          { "id": "opt2", "text": "Оценка проводится нерегулярно", "value": "irregular", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярную систему оценки восприятия бренда", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Оценка восприятия бренда не проводится", "value": "no_assessment", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярно оценивать восприятие бренда гостями", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q11",
+        "question": "Проводится ли конкурентный анализ (по концепции, по ценам, по аудитории и тд)?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Да, регулярно проводим комплексный конкурентный анализ", "value": "regular_analysis", "correct": true },
+          { "id": "opt2", "text": "Анализ проводится периодически, но не системно", "value": "periodic", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный системный конкурентный анализ", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Конкурентный анализ не проводится", "value": "no_analysis", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать проводить регулярный конкурентный анализ", "priority": "high", "category": "Концепция" } }
+        ]
+      },
+      {
+        "id": "concept_q12",
+        "question": "Насколько текущая концепция актуальна для рынка?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Концепция полностью актуальна и соответствует трендам", "value": "relevant", "correct": true },
+          { "id": "opt2", "text": "Концепция частично актуальна, требует обновления", "value": "partially_relevant", "correct": false, "recommendation": { "title": "задача 2", "description": "Обновить концепцию с учетом текущих трендов рынка", "priority": "medium", "category": "Концепция" } },
+          { "id": "opt3", "text": "Концепция устарела и не соответствует рынку", "value": "outdated", "correct": false, "recommendation": { "title": "задача 3", "description": "Провести полный пересмотр концепции с учетом актуальных трендов", "priority": "high", "category": "Концепция" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "finance",
+    "title": "Финансы и бухгалтерия",
+    "description": "Финансовые показатели и бухгалтерский учет",
+    "questions": [
+      {
+        "id": "finance_q1",
+        "question": "Как распределяется структура доходов между едой, напитками, доставкой и мероприятиями?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Детальный учет и анализ структуры доходов по категориям", "value": "detailed_tracking", "correct": true },
+          { "id": "opt2", "text": "Учет ведется, но без детального анализа", "value": "basic_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить детальный учет и анализ структуры доходов по категориям", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Структура доходов не отслеживается", "value": "no_tracking", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать отслеживать и анализировать структуру доходов по категориям", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q2",
+        "question": "Какова структура расходов: аренда, зарплаты, продукты, коммунальные платежи, маркетинг?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Полная структура расходов отслеживается и анализируется", "value": "full_analysis", "correct": true },
+          { "id": "opt2", "text": "Расходы учитываются частично, без детального анализа", "value": "partial_analysis", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить структурирование и анализ всех категорий расходов", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Структура расходов не анализируется", "value": "no_analysis", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему учета и анализа структуры расходов", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q3",
+        "question": "Какова маржинальность по каждой категории блюд и напитков?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Маржинальность рассчитывается и отслеживается по каждой категории", "value": "tracked_per_category", "correct": true },
+          { "id": "opt2", "text": "Маржинальность рассчитывается в целом, без разбивки по категориям", "value": "general_margin", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить расчет маржинальности по каждой категории блюд и напитков", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Маржинальность не рассчитывается", "value": "not_calculated", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать рассчитывать и отслеживать маржинальность по категориям", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q4",
+        "question": "Каков средний чек и как он менялся за последние 6–12 месяцев?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Средний чек отслеживается регулярно, динамика анализируется", "value": "regular_tracking", "correct": true },
+          { "id": "opt2", "text": "Средний чек отслеживается периодически, без детального анализа динамики", "value": "periodic_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное отслеживание и анализ динамики среднего чека", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Средний чек не отслеживается систематически", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярно отслеживать и анализировать средний чек", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q5",
+        "question": "Как обеспечивается кассовая дисциплина и контроль расходов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Строгий контроль кассовой дисциплины и расходов с автоматизацией", "value": "strict_control", "correct": true },
+          { "id": "opt2", "text": "Контроль осуществляется частично, есть пробелы", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить контроль кассовой дисциплины и расходов", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Кассовая дисциплина и контроль расходов не обеспечиваются", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему контроля кассовой дисциплины и расходов", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q6",
+        "question": "Ведется ли бухгалтерская отчетность: баланс, P&L, движение денежных средств?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Ведется полная бухгалтерская отчетность регулярно", "value": "full_reporting", "correct": true },
+          { "id": "opt2", "text": "Отчетность ведется частично или нерегулярно", "value": "partial_reporting", "correct": false, "recommendation": { "title": "задача 2", "description": "Наладить регулярное ведение полной бухгалтерской отчетности", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Бухгалтерская отчетность не ведется", "value": "no_reporting", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему ведения бухгалтерской отчетности", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q7",
+        "question": "Как контролируется дебиторская и кредиторская задолженность?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Дебиторская и кредиторская задолженность контролируется регулярно", "value": "regular_control", "correct": true },
+          { "id": "opt2", "text": "Контроль задолженности осуществляется периодически", "value": "periodic_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный контроль дебиторской и кредиторской задолженности", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Задолженность не контролируется систематически", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически контролировать дебиторскую и кредиторскую задолженность", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q8",
+        "question": "Есть ли финансовые KPI и как они отслеживаются?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Финансовые KPI определены и отслеживаются регулярно", "value": "tracked_kpi", "correct": true },
+          { "id": "opt2", "text": "KPI определены частично, отслеживание нерегулярное", "value": "partial_kpi", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить систему финансовых KPI и регулярного отслеживания", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Финансовые KPI не определены и не отслеживаются", "value": "no_kpi", "correct": false, "recommendation": { "title": "задача 3", "description": "Определить финансовые KPI и внедрить систему их отслеживания", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q9",
+        "question": "Какие системы автоматизации учета используются?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используются современные системы автоматизации учета", "value": "modern_systems", "correct": true },
+          { "id": "opt2", "text": "Используются базовые системы автоматизации", "value": "basic_systems", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить более развитые системы автоматизации учета", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Автоматизация учета отсутствует или минимальна", "value": "no_automation", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить системы автоматизации учета", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q10",
+        "question": "Какие были основные причины убытков, если они имели место?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Причины убытков анализируются и принимаются меры по их устранению", "value": "analyzed_actions", "correct": true },
+          { "id": "opt2", "text": "Причины убытков частично анализируются, меры принимаются несистемно", "value": "partial_analysis", "correct": false, "recommendation": { "title": "задача 2", "description": "Углубить анализ причин убытков и систематизировать меры по их устранению", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Причины убытков не анализируются систематически", "value": "no_analysis", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить системный анализ причин убытков и меры по их устранению", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q11",
+        "question": "Как формируется ценовая политика?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Ценовая политика формируется на основе анализа рынка и затрат", "value": "data_driven", "correct": true },
+          { "id": "opt2", "text": "Цены устанавливаются интуитивно или по аналогии с конкурентами", "value": "intuitive", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать ценовую политику на основе анализа рынка и затрат", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Ценовая политика не сформирована системно", "value": "no_policy", "correct": false, "recommendation": { "title": "задача 3", "description": "Сформировать системную ценовую политику на основе анализа", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q12",
+        "question": "Какова рентабельность бизнеса?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Рентабельность рассчитывается и отслеживается регулярно", "value": "tracked_regularly", "correct": true },
+          { "id": "opt2", "text": "Рентабельность рассчитывается периодически, без детального анализа", "value": "periodic_calculation", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный расчет и анализ рентабельности бизнеса", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Рентабельность не рассчитывается систематически", "value": "not_calculated", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярно рассчитывать и анализировать рентабельность бизнеса", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q13",
+        "question": "Как часто проводится финансовый анализ и аудит?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Финансовый анализ и аудит проводятся регулярно", "value": "regular_audit", "correct": true },
+          { "id": "opt2", "text": "Анализ и аудит проводятся периодически, нерегулярно", "value": "periodic_audit", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное проведение финансового анализа и аудита", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Финансовый анализ и аудит не проводятся систематически", "value": "no_audit", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярно проводить финансовый анализ и аудит", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q14",
+        "question": "Как оценивается эффективность вложений в маркетинг и персонал?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Эффективность вложений оценивается систематически с метриками", "value": "systematic_evaluation", "correct": true },
+          { "id": "opt2", "text": "Оценка эффективности проводится частично, без четких метрик", "value": "partial_evaluation", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематическую оценку эффективности вложений с метриками", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Эффективность вложений не оценивается", "value": "no_evaluation", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически оценивать эффективность вложений в маркетинг и персонал", "priority": "high", "category": "Финансы" } }
+        ]
+      },
+      {
+        "id": "finance_q15",
+        "question": "Какие меры принимаются для снижения непроизводительных расходов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регулярно анализируются и принимаются меры по снижению непроизводительных расходов", "value": "regular_actions", "correct": true },
+          { "id": "opt2", "text": "Меры принимаются периодически, без системного подхода", "value": "periodic_actions", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный анализ и системные меры по снижению непроизводительных расходов", "priority": "medium", "category": "Финансы" } },
+          { "id": "opt3", "text": "Меры по снижению непроизводительных расходов не принимаются систематически", "value": "no_actions", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически анализировать и снижать непроизводительные расходы", "priority": "high", "category": "Финансы" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "management",
+    "title": "Управление и организация",
+    "description": "Управление персоналом и организационная структура",
+    "questions": [
+      {
+        "id": "management_q1",
+        "question": "Какая организационная структура ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Четкая организационная структура с прописанными ролями и зонами ответственности", "value": "clear_structure", "correct": true },
+          { "id": "opt2", "text": "Структура существует, но не полностью документирована", "value": "partial_documentation", "correct": false, "recommendation": { "title": "задача 2", "description": "Задокументировать организационную структуру и зоны ответственности", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Организационная структура не определена или отсутствует", "value": "no_structure", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить четкую организационную структуру ресторана", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q2",
+        "question": "Есть ли должностные инструкции для всех сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Должностные инструкции разработаны для всех должностей и актуализируются", "value": "all_job_descriptions", "correct": true },
+          { "id": "opt2", "text": "Должностные инструкции есть не для всех должностей или устарели", "value": "partial_job_descriptions", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и актуализировать должностные инструкции для всех сотрудников", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Должностные инструкции отсутствуют", "value": "no_job_descriptions", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать должностные инструкции для всех должностей", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q3",
+        "question": "Как осуществляется постановка целей и KPI для персонала?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Цели и KPI устанавливаются систематически для всех сотрудников и регулярно пересматриваются", "value": "systematic_kpi", "correct": true },
+          { "id": "opt2", "text": "KPI устанавливаются частично, не для всех сотрудников или нерегулярно", "value": "partial_kpi", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематическую постановку целей и KPI для всего персонала", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Система постановки целей и KPI отсутствует", "value": "no_kpi", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему постановки целей и KPI для персонала", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q4",
+        "question": "Какие процессы существуют для найма, адаптации и увольнения сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Четкие регламентированные процессы найма, адаптации и увольнения", "value": "structured_processes", "correct": true },
+          { "id": "opt2", "text": "Процессы существуют частично или не регламентированы", "value": "unstructured_processes", "correct": false, "recommendation": { "title": "задача 2", "description": "Регламентировать процессы найма, адаптации и увольнения сотрудников", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Процессы найма, адаптации и увольнения не формализованы", "value": "no_processes", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить процессы найма, адаптации и увольнения сотрудников", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q5",
+        "question": "Какова система мотивации и бонусов для персонала?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Развитая система мотивации и бонусов, понятная персоналу", "value": "developed_system", "correct": true },
+          { "id": "opt2", "text": "Система мотивации существует, но требует улучшения или не все сотрудники понимают её", "value": "basic_system", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить систему мотивации и бонусов, повысить прозрачность для персонала", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Система мотивации и бонусов отсутствует или неэффективна", "value": "no_system", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему мотивации и бонусов для персонала", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q6",
+        "question": "Как проводится обучение персонала: повара, бармены, официанты, менеджеры?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регулярное систематическое обучение для всех категорий персонала", "value": "regular_training", "correct": true },
+          { "id": "opt2", "text": "Обучение проводится периодически или не для всех категорий", "value": "periodic_training", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное систематическое обучение для всех категорий персонала", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Обучение персонала не проводится систематически или отсутствует", "value": "no_training", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему регулярного обучения для всех категорий персонала", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q7",
+        "question": "Как контролируется качество работы персонала?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Систематический контроль качества работы с регулярной обратной связью", "value": "systematic_control", "correct": true },
+          { "id": "opt2", "text": "Контроль качества осуществляется периодически или несистемно", "value": "periodic_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематический контроль качества работы персонала с регулярной обратной связью", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Контроль качества работы персонала отсутствует или неэффективен", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему контроля качества работы персонала", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q8",
+        "question": "Какие полномочия делегированы сотрудникам и руководителям?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Полномочия четко определены и делегированы согласно должностям", "value": "clear_delegation", "correct": true },
+          { "id": "opt2", "text": "Делегирование полномочий осуществляется частично или нечетко", "value": "partial_delegation", "correct": false, "recommendation": { "title": "задача 2", "description": "Уточнить и систематизировать делегирование полномочий сотрудникам и руководителям", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Полномочия не делегированы или делегируются несистемно", "value": "no_delegation", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать систему делегирования полномочий сотрудникам и руководителям", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q9",
+        "question": "Насколько вовлечены руководители в ежедневные процессы?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Руководители активно вовлечены в ежедневные процессы и оперативное управление", "value": "high_involvement", "correct": true },
+          { "id": "opt2", "text": "Вовлеченность руководителей в процессы нерегулярная или недостаточная", "value": "moderate_involvement", "correct": false, "recommendation": { "title": "задача 2", "description": "Повысить вовлеченность руководителей в ежедневные процессы и оперативное управление", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Руководители не вовлечены в ежедневные процессы", "value": "low_involvement", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему вовлечения руководителей в ежедневные процессы", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q10",
+        "question": "Как осуществляется планирование смен и графиков сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Планирование смен и графиков осуществляется систематически с учетом нагрузки и пожеланий", "value": "systematic_planning", "correct": true },
+          { "id": "opt2", "text": "Планирование осуществляется, но не всегда оптимально или несистемно", "value": "basic_planning", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить систему планирования смен и графиков сотрудников", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Планирование смен и графиков осуществляется хаотично или отсутствует", "value": "chaotic_planning", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить системное планирование смен и графиков сотрудников", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q11",
+        "question": "Есть ли регламенты работы для всех подразделений?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регламенты работы разработаны для всех подразделений и актуализируются", "value": "all_regulations", "correct": true },
+          { "id": "opt2", "text": "Регламенты есть не для всех подразделений или устарели", "value": "partial_regulations", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и актуализировать регламенты работы для всех подразделений", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Регламенты работы отсутствуют", "value": "no_regulations", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать регламенты работы для всех подразделений", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q12",
+        "question": "Как контролируется соблюдение стандартов работы?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регулярный контроль соблюдения стандартов с корректирующими действиями", "value": "regular_control", "correct": true },
+          { "id": "opt2", "text": "Контроль стандартов осуществляется периодически или несистемно", "value": "periodic_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный систематический контроль соблюдения стандартов работы", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Контроль соблюдения стандартов отсутствует или неэффективен", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему контроля соблюдения стандартов работы", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q13",
+        "question": "Какие меры принимаются для удержания ключевых сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Разработаны и применяются системные меры по удержанию ключевых сотрудников", "value": "systematic_retention", "correct": true },
+          { "id": "opt2", "text": "Меры по удержанию принимаются периодически или несистемно", "value": "partial_retention", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и систематизировать меры по удержанию ключевых сотрудников", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Меры по удержанию ключевых сотрудников не принимаются", "value": "no_retention", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему мер по удержанию ключевых сотрудников", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q14",
+        "question": "Каков уровень текучести кадров и как он контролируется?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Текучесть кадров отслеживается регулярно, анализируются причины и принимаются меры", "value": "tracked_analyzed", "correct": true },
+          { "id": "opt2", "text": "Текучесть отслеживается периодически, без глубокого анализа", "value": "basic_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное отслеживание и анализ текучести кадров с принятием мер", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Текучесть кадров не отслеживается или не анализируется", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать отслеживать и анализировать текучесть кадров", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q15",
+        "question": "Как организована внутренняя коммуникация между подразделениями?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Эффективная система внутренней коммуникации между всеми подразделениями", "value": "effective_communication", "correct": true },
+          { "id": "opt2", "text": "Коммуникация между подразделениями осуществляется частично или неэффективно", "value": "partial_communication", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить систему внутренней коммуникации между подразделениями", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Внутренняя коммуникация между подразделениями не организована", "value": "no_communication", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему эффективной внутренней коммуникации между подразделениями", "priority": "high", "category": "Управление" } }
+        ]
+      },
+      {
+        "id": "management_q16",
+        "question": "Как оценивается эффективность руководителей и менеджеров?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регулярная систематическая оценка эффективности руководителей с обратной связью", "value": "regular_evaluation", "correct": true },
+          { "id": "opt2", "text": "Оценка эффективности проводится периодически или несистемно", "value": "periodic_evaluation", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярную систематическую оценку эффективности руководителей и менеджеров", "priority": "medium", "category": "Управление" } },
+          { "id": "opt3", "text": "Оценка эффективности руководителей и менеджеров не проводится", "value": "no_evaluation", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему оценки эффективности руководителей и менеджеров", "priority": "high", "category": "Управление" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "menu",
+    "title": "Меню и продуктовая стратегия",
+    "description": "Меню, продуктовая линейка и стратегия",
+    "questions": [
+      {
+        "id": "menu_q1",
+        "question": "Как формируется ассортимент и структура меню?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Ассортимент формируется на основе анализа данных, спроса и стратегических целей", "value": "data_driven", "correct": true },
+          { "id": "opt2", "text": "Ассортимент формируется частично на основе данных, частично интуитивно", "value": "mixed_approach", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить системный подход к формированию ассортимента на основе анализа данных", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Ассортимент формируется интуитивно, без системного подхода", "value": "intuitive", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать стратегию формирования ассортимента на основе анализа данных и спроса", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q2",
+        "question": "Насколько меню актуально и учитывает сезонность?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Меню регулярно обновляется с учетом сезонности и актуальных трендов", "value": "seasonal_updates", "correct": true },
+          { "id": "opt2", "text": "Меню обновляется периодически, сезонность учитывается частично", "value": "periodic_updates", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное обновление меню с учетом сезонности и актуальных трендов", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Меню не обновляется регулярно, сезонность не учитывается", "value": "static_menu", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать систему регулярного обновления меню с учетом сезонности", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q3",
+        "question": "Какие блюда приносят наибольшую прибыль?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Прибыльность блюд отслеживается и анализируется регулярно", "value": "tracked_profitability", "correct": true },
+          { "id": "opt2", "text": "Прибыльность отслеживается частично или нерегулярно", "value": "partial_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное отслеживание и анализ прибыльности блюд", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Прибыльность блюд не отслеживается", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать отслеживать и анализировать прибыльность каждого блюда", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q4",
+        "question": "Какие блюда пользуются наибольшей популярностью?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Популярность блюд отслеживается и анализируется регулярно", "value": "tracked_popularity", "correct": true },
+          { "id": "opt2", "text": "Популярность отслеживается частично или нерегулярно", "value": "partial_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное отслеживание и анализ популярности блюд", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Популярность блюд не отслеживается систематически", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически отслеживать и анализировать популярность блюд", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q5",
+        "question": "Как осуществляется контроль качества продуктов и блюд?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Строгий контроль качества на всех этапах: приемка, хранение, приготовление, подача", "value": "strict_control", "correct": true },
+          { "id": "opt2", "text": "Контроль качества осуществляется частично, не на всех этапах", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить контроль качества на всех этапах работы с продуктами и блюдами", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Контроль качества продуктов и блюд отсутствует или неэффективен", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему контроля качества продуктов и блюд на всех этапах", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q6",
+        "question": "С кем работает ресторан по поставкам и как организована логистика?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Налажена работа с надежными поставщиками, логистика организована эффективно", "value": "efficient_logistics", "correct": true },
+          { "id": "opt2", "text": "Работа с поставщиками и логистика организованы частично эффективно", "value": "moderate_logistics", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить работу с поставщиками и оптимизировать логистику", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Работа с поставщиками и логистика не организованы системно", "value": "poor_logistics", "correct": false, "recommendation": { "title": "задача 3", "description": "Наладить системную работу с поставщиками и организовать эффективную логистику", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q7",
+        "question": "Как осуществляется учет остатков и списаний продуктов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Учет остатков и списаний ведется систематически с автоматизацией", "value": "systematic_accounting", "correct": true },
+          { "id": "opt2", "text": "Учет ведется частично или нерегулярно", "value": "partial_accounting", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематический учет остатков и списаний продуктов", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Учет остатков и списаний не ведется или ведется несистемно", "value": "no_accounting", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически вести учет остатков и списаний продуктов", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q8",
+        "question": "Как контролируется себестоимость блюд?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Себестоимость блюд рассчитывается и контролируется регулярно", "value": "regular_control", "correct": true },
+          { "id": "opt2", "text": "Контроль себестоимости осуществляется периодически или не для всех блюд", "value": "periodic_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный контроль себестоимости всех блюд", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Себестоимость блюд не контролируется систематически", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически контролировать себестоимость всех блюд", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q9",
+        "question": "Как внедряются новые блюда и инновации в меню?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть четкий процесс внедрения новых блюд с тестированием и анализом", "value": "structured_process", "correct": true },
+          { "id": "opt2", "text": "Новые блюда внедряются, но процесс не систематизирован", "value": "unstructured_process", "correct": false, "recommendation": { "title": "задача 2", "description": "Систематизировать процесс внедрения новых блюд с тестированием и анализом", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Новые блюда внедряются хаотично, без системного подхода", "value": "chaotic_process", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить процесс внедрения новых блюд с тестированием", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q10",
+        "question": "Существует ли баланс между основной и экспериментальной линейкой блюд?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Сбалансированное меню с основной и экспериментальной линейкой", "value": "balanced_menu", "correct": true },
+          { "id": "opt2", "text": "Баланс существует, но не оптимизирован", "value": "unbalanced_menu", "correct": false, "recommendation": { "title": "задача 2", "description": "Оптимизировать баланс между основной и экспериментальной линейкой блюд", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Баланс между основной и экспериментальной линейкой отсутствует", "value": "no_balance", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать сбалансированное меню с основной и экспериментальной линейкой", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q11",
+        "question": "Меню адаптировано под разные сегменты клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Меню адаптировано под разные сегменты клиентов с учетом их потребностей", "value": "segmented_menu", "correct": true },
+          { "id": "opt2", "text": "Меню частично адаптировано под разные сегменты", "value": "partial_segmentation", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить адаптацию меню под разные сегменты клиентов", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Меню не адаптировано под разные сегменты клиентов", "value": "no_segmentation", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать адаптацию меню под разные сегменты клиентов", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q12",
+        "question": "Есть ли уникальные предложения для привлечения гостей?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть уникальные предложения, регулярно обновляющиеся для привлечения гостей", "value": "unique_offers", "correct": true },
+          { "id": "opt2", "text": "Уникальные предложения есть, но обновляются редко или неэффективны", "value": "static_offers", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить систему уникальных предложений с регулярным обновлением", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Уникальные предложения для привлечения гостей отсутствуют", "value": "no_offers", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать уникальные предложения для привлечения гостей", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q13",
+        "question": "Как оценивается актуальность ценовой политики?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Ценовая политика регулярно анализируется и корректируется с учетом рынка", "value": "regular_review", "correct": true },
+          { "id": "opt2", "text": "Ценовая политика анализируется периодически, корректировки редкие", "value": "periodic_review", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный анализ и корректировку ценовой политики", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Ценовая политика не анализируется и не корректируется систематически", "value": "no_review", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярно анализировать и корректировать ценовую политику", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q14",
+        "question": "Насколько эффективны специальные предложения и акции?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Эффективность акций отслеживается и анализируется, предложения оптимизируются", "value": "tracked_optimized", "correct": true },
+          { "id": "opt2", "text": "Эффективность акций отслеживается частично, оптимизация несистемна", "value": "partial_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить системное отслеживание и оптимизацию эффективности акций", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Эффективность специальных предложений и акций не отслеживается", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать отслеживать и анализировать эффективность акций и предложений", "priority": "high", "category": "Меню" } }
+        ]
+      },
+      {
+        "id": "menu_q15",
+        "question": "Как часто проводится анализ продаж по меню и корректировка ассортимента?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Анализ продаж проводится регулярно, ассортимент корректируется на основе данных", "value": "regular_analysis", "correct": true },
+          { "id": "opt2", "text": "Анализ проводится периодически, корректировки не всегда на основе данных", "value": "periodic_analysis", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный анализ продаж и корректировку ассортимента на основе данных", "priority": "medium", "category": "Меню" } },
+          { "id": "opt3", "text": "Анализ продаж не проводится регулярно, ассортимент не корректируется системно", "value": "no_analysis", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярно проводить анализ продаж и корректировать ассортимент", "priority": "high", "category": "Меню" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "marketing",
+    "title": "Маркетинг и продажи",
+    "description": "Маркетинговые активности и продажи",
+    "questions": [
+      {
+        "id": "marketing_q1",
+        "question": "Как позиционируется ресторан на рынке?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Четкое позиционирование с уникальным предложением, понятное целевой аудитории", "value": "clear_positioning", "correct": true },
+          { "id": "opt2", "text": "Позиционирование определено частично или нечетко", "value": "partial_positioning", "correct": false, "recommendation": { "title": "задача 2", "description": "Уточнить и усилить позиционирование ресторана на рынке", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Позиционирование ресторана не определено или неясно", "value": "no_positioning", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать четкое позиционирование ресторана на рынке", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q2",
+        "question": "Кто является целевой аудиторией ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Целевая аудитория четко определена и описана, маркетинг направлен на неё", "value": "defined_audience", "correct": true },
+          { "id": "opt2", "text": "Целевая аудитория определена частично, маркетинг не всегда направлен на неё", "value": "partial_audience", "correct": false, "recommendation": { "title": "задача 2", "description": "Уточнить определение целевой аудитории и адаптировать маркетинг", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Целевая аудитория не определена четко", "value": "undefined_audience", "correct": false, "recommendation": { "title": "задача 3", "description": "Определить и описать целевую аудиторию ресторана", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q3",
+        "question": "Какие каналы продвижения используются: онлайн и оффлайн?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используется комплекс каналов онлайн и оффлайн, их эффективность отслеживается", "value": "integrated_channels", "correct": true },
+          { "id": "opt2", "text": "Используются отдельные каналы, без комплексного подхода", "value": "fragmented_channels", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить комплексный подход к использованию каналов продвижения", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Каналы продвижения используются несистемно или отсутствуют", "value": "no_channels", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему каналов продвижения онлайн и оффлайн", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q4",
+        "question": "Насколько эффективны текущие рекламные кампании?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Эффективность рекламных кампаний отслеживается и анализируется, ROI измеряется", "value": "tracked_effective", "correct": true },
+          { "id": "opt2", "text": "Эффективность отслеживается частично, без глубокого анализа", "value": "partial_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить системное отслеживание и анализ эффективности рекламных кампаний", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Эффективность рекламных кампаний не отслеживается", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать отслеживать и анализировать эффективность рекламных кампаний", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q5",
+        "question": "Как ведется работа с социальными сетями?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Активная работа с социальными сетями, регулярный контент, взаимодействие с аудиторией", "value": "active_social", "correct": true },
+          { "id": "opt2", "text": "Работа с соцсетями ведется периодически или несистемно", "value": "irregular_social", "correct": false, "recommendation": { "title": "задача 2", "description": "Систематизировать работу с социальными сетями, регулярный контент", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Работа с социальными сетями не ведется или минимальна", "value": "no_social", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать активную работу с социальными сетями", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q6",
+        "question": "Как осуществляется работа с отзывами клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Систематическая работа с отзывами: мониторинг, ответы, анализ и улучшения", "value": "systematic_reviews", "correct": true },
+          { "id": "opt2", "text": "Работа с отзывами ведется периодически, без системного подхода", "value": "periodic_reviews", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематическую работу с отзывами клиентов", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Работа с отзывами не ведется систематически", "value": "no_reviews", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически работать с отзывами клиентов", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q7",
+        "question": "Есть ли программы лояльности и насколько они эффективны?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть эффективная программа лояльности, её эффективность отслеживается", "value": "effective_loyalty", "correct": true },
+          { "id": "opt2", "text": "Программа лояльности есть, но требует улучшения или не отслеживается эффективность", "value": "basic_loyalty", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить программу лояльности и отслеживать её эффективность", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Программы лояльности нет или она неэффективна", "value": "no_loyalty", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить программу лояльности", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q8",
+        "question": "Как ведется работа с партнерами и агрегаторами доставки?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Налажена эффективная работа с партнерами, отслеживается эффективность сотрудничества", "value": "effective_partnerships", "correct": true },
+          { "id": "opt2", "text": "Работа с партнерами ведется, но не оптимизирована или не отслеживается эффективность", "value": "basic_partnerships", "correct": false, "recommendation": { "title": "задача 2", "description": "Оптимизировать работу с партнерами и отслеживать эффективность", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Работа с партнерами и агрегаторами не организована эффективно", "value": "poor_partnerships", "correct": false, "recommendation": { "title": "задача 3", "description": "Наладить эффективную работу с партнерами и агрегаторами доставки", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q9",
+        "question": "Какие онлайн-продажи доступны и насколько они успешны?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Развиты различные каналы онлайн-продаж, их эффективность отслеживается", "value": "developed_online", "correct": true },
+          { "id": "opt2", "text": "Онлайн-продажи есть, но не все каналы развиты или не отслеживается эффективность", "value": "partial_online", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить каналы онлайн-продаж и отслеживать их эффективность", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Онлайн-продажи не развиты или отсутствуют", "value": "no_online", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить каналы онлайн-продаж", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q10",
+        "question": "Используется ли CRM для учета клиентов и их предпочтений?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используется CRM-система для учета клиентов и анализа их предпочтений", "value": "crm_used", "correct": true },
+          { "id": "opt2", "text": "CRM используется частично или не для всех клиентов", "value": "partial_crm", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить полноценное использование CRM для учета всех клиентов", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "CRM не используется или отсутствует", "value": "no_crm", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить CRM-систему для учета клиентов и их предпочтений", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q11",
+        "question": "Каковы продажи по событиям и банкетам?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Продажи по событиям и банкетам отслеживаются и анализируются, есть стратегия развития", "value": "tracked_events", "correct": true },
+          { "id": "opt2", "text": "Продажи по событиям есть, но не отслеживаются систематически или нет стратегии", "value": "untracked_events", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить отслеживание и анализ продаж по событиям, разработать стратегию", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Продажи по событиям и банкетам не развиты или не отслеживаются", "value": "no_events", "correct": false, "recommendation": { "title": "задача 3", "description": "Развить направление событий и банкетов, внедрить отслеживание", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q12",
+        "question": "Как оценивается эффективность сезонных акций?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Эффективность сезонных акций отслеживается и анализируется, акции оптимизируются", "value": "tracked_seasonal", "correct": true },
+          { "id": "opt2", "text": "Эффективность сезонных акций отслеживается частично или не анализируется", "value": "partial_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить системное отслеживание и анализ эффективности сезонных акций", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Эффективность сезонных акций не отслеживается", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать отслеживать и анализировать эффективность сезонных акций", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q13",
+        "question": "Какие виды рекламы используются внутри ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используются различные виды внутренней рекламы, их эффективность отслеживается", "value": "effective_internal", "correct": true },
+          { "id": "opt2", "text": "Внутренняя реклама используется частично или не отслеживается эффективность", "value": "basic_internal", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить виды внутренней рекламы и отслеживать их эффективность", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Внутренняя реклама не используется или неэффективна", "value": "no_internal", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить различные виды внутренней рекламы в ресторане", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q14",
+        "question": "Какие аналитические инструменты применяются для оценки маркетинга?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используются современные аналитические инструменты для комплексной оценки маркетинга", "value": "advanced_analytics", "correct": true },
+          { "id": "opt2", "text": "Аналитические инструменты используются частично или базово", "value": "basic_analytics", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить использование аналитических инструментов для оценки маркетинга", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "Аналитические инструменты не используются или минимальны", "value": "no_analytics", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить аналитические инструменты для оценки маркетинга", "priority": "high", "category": "Маркетинг" } }
+        ]
+      },
+      {
+        "id": "marketing_q15",
+        "question": "Как измеряется возврат инвестиций в маркетинговые активности?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "ROI маркетинговых активностей рассчитывается и анализируется регулярно", "value": "tracked_roi", "correct": true },
+          { "id": "opt2", "text": "ROI отслеживается периодически или не для всех активностей", "value": "partial_roi", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный расчет и анализ ROI для всех маркетинговых активностей", "priority": "medium", "category": "Маркетинг" } },
+          { "id": "opt3", "text": "ROI маркетинговых активностей не измеряется", "value": "no_roi", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать измерять и анализировать ROI маркетинговых активностей", "priority": "high", "category": "Маркетинг" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "operations",
+    "title": "Операционная деятельность",
+    "description": "Операционные процессы и эффективность",
+    "questions": [
+      {
+        "id": "operations_q1",
+        "question": "Насколько эффективен кухонный процесс?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Кухонный процесс оптимизирован, время приготовления минимально, эффективность высокая", "value": "highly_efficient", "correct": true },
+          { "id": "opt2", "text": "Кухонный процесс работает средне, есть возможности для оптимизации", "value": "moderate_efficiency", "correct": false, "recommendation": { "title": "задача 2", "description": "Оптимизировать кухонный процесс для повышения эффективности", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Кухонный процесс неэффективен, требует серьезной оптимизации", "value": "inefficient", "correct": false, "recommendation": { "title": "задача 3", "description": "Провести полную оптимизацию кухонного процесса", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q2",
+        "question": "Как быстро обслуживаются гости?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Время обслуживания оптимизировано, гости обслуживаются быстро", "value": "fast_service", "correct": true },
+          { "id": "opt2", "text": "Скорость обслуживания средняя, есть задержки", "value": "moderate_speed", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить скорость обслуживания гостей", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Гости обслуживаются медленно, много жалоб на время ожидания", "value": "slow_service", "correct": false, "recommendation": { "title": "задача 3", "description": "Кардинально улучшить скорость обслуживания гостей", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q3",
+        "question": "Как организовано бронирование столов и мест?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Система бронирования организована эффективно, автоматизирована", "value": "efficient_booking", "correct": true },
+          { "id": "opt2", "text": "Бронирование работает, но не оптимально или частично автоматизировано", "value": "basic_booking", "correct": false, "recommendation": { "title": "задача 2", "description": "Оптимизировать систему бронирования столов и мест", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Бронирование не организовано или работает неэффективно", "value": "poor_booking", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить эффективную систему бронирования столов и мест", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q4",
+        "question": "Как контролируется качество блюд и напитков?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Строгий контроль качества блюд и напитков на всех этапах", "value": "strict_control", "correct": true },
+          { "id": "opt2", "text": "Контроль качества осуществляется частично или не на всех этапах", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить контроль качества блюд и напитков на всех этапах", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Контроль качества блюд и напитков отсутствует или неэффективен", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему строгого контроля качества блюд и напитков", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q5",
+        "question": "Соблюдаются ли санитарные нормы на кухне и в зале?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Санитарные нормы соблюдаются строго и контролируются регулярно", "value": "strict_compliance", "correct": true },
+          { "id": "opt2", "text": "Санитарные нормы соблюдаются частично, контроль нерегулярный", "value": "partial_compliance", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить соблюдение и контроль санитарных норм на кухне и в зале", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Санитарные нормы не соблюдаются или соблюдаются несистемно", "value": "poor_compliance", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить строгое соблюдение санитарных норм на кухне и в зале", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q6",
+        "question": "Как организована логистика закупок и хранение продуктов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Логистика закупок и хранение продуктов организованы эффективно", "value": "efficient_logistics", "correct": true },
+          { "id": "opt2", "text": "Логистика и хранение работают, но требуют оптимизации", "value": "needs_optimization", "correct": false, "recommendation": { "title": "задача 2", "description": "Оптимизировать логистику закупок и хранение продуктов", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Логистика закупок и хранение продуктов не организованы эффективно", "value": "poor_logistics", "correct": false, "recommendation": { "title": "задача 3", "description": "Наладить эффективную логистику закупок и хранение продуктов", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q7",
+        "question": "Как планируются закупки продуктов и материалов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Закупки планируются систематически на основе данных и прогнозов", "value": "systematic_planning", "correct": true },
+          { "id": "opt2", "text": "Планирование закупок осуществляется частично или нерегулярно", "value": "partial_planning", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематическое планирование закупок на основе данных", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Закупки планируются хаотично или не планируются", "value": "chaotic_planning", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать систему планирования закупок продуктов и материалов", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q8",
+        "question": "Как контролируются списания и потери продуктов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Списания и потери контролируются строго, анализируются причины", "value": "strict_control", "correct": true },
+          { "id": "opt2", "text": "Контроль списаний и потерь ведется частично или нерегулярно", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить контроль списаний и потерь продуктов, анализировать причины", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Списания и потери не контролируются систематически", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему контроля списаний и потерь продуктов", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q9",
+        "question": "Как организована работа официантов и барменов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Работа официантов и барменов организована эффективно, есть стандарты и контроль", "value": "well_organized", "correct": true },
+          { "id": "opt2", "text": "Работа организована частично, стандарты есть не для всех процессов", "value": "partially_organized", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить организацию работы официантов и барменов, стандартизировать процессы", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Работа официантов и барменов не организована системно", "value": "poorly_organized", "correct": false, "recommendation": { "title": "задача 3", "description": "Наладить эффективную организацию работы официантов и барменов", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q10",
+        "question": "Какие POS-системы и программы автоматизации используются?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используются современные POS-системы и программы автоматизации", "value": "modern_systems", "correct": true },
+          { "id": "opt2", "text": "Используются базовые системы автоматизации, требуют развития", "value": "basic_systems", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить более развитые POS-системы и программы автоматизации", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "POS-системы и автоматизация отсутствуют или минимальны", "value": "no_automation", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить POS-системы и программы автоматизации", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q11",
+        "question": "Как контролируются расходы на энергию и ресурсы?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Расходы на энергию и ресурсы контролируются и оптимизируются регулярно", "value": "controlled_optimized", "correct": true },
+          { "id": "opt2", "text": "Контроль расходов ведется частично, оптимизация нерегулярная", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить контроль и оптимизацию расходов на энергию и ресурсы", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Расходы на энергию и ресурсы не контролируются систематически", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить контроль и оптимизацию расходов на энергию и ресурсы", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q12",
+        "question": "Есть ли регламенты по обслуживанию клиентов и приготовлению блюд?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Регламенты разработаны для всех процессов и соблюдаются", "value": "all_regulations", "correct": true },
+          { "id": "opt2", "text": "Регламенты есть частично или не всегда соблюдаются", "value": "partial_regulations", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать полные регламенты и обеспечить их соблюдение", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Регламенты отсутствуют или не соблюдаются", "value": "no_regulations", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать регламенты по обслуживанию клиентов и приготовлению блюд", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q13",
+        "question": "Как ресторан действует при пиковых нагрузках?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть план действий при пиковых нагрузках, команда готова и обучена", "value": "prepared_plan", "correct": true },
+          { "id": "opt2", "text": "Действия при пиковых нагрузках не полностью регламентированы", "value": "partial_preparation", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и внедрить план действий при пиковых нагрузках", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "План действий при пиковых нагрузках отсутствует", "value": "no_plan", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать план действий и обучить команду работе при пиковых нагрузках", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q14",
+        "question": "Как организована работа на случай внештатных ситуаций?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть четкие процедуры на случай внештатных ситуаций, команда обучена", "value": "clear_procedures", "correct": true },
+          { "id": "opt2", "text": "Процедуры есть частично, команда не полностью обучена", "value": "partial_procedures", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать полные процедуры и обучить команду действиям при внештатных ситуациях", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Процедуры на случай внештатных ситуаций отсутствуют", "value": "no_procedures", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать процедуры и обучить команду работе при внештатных ситуациях", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q15",
+        "question": "Насколько стандарты сервиса соблюдаются на практике?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Стандарты сервиса соблюдаются строго и контролируются регулярно", "value": "strict_compliance", "correct": true },
+          { "id": "opt2", "text": "Стандарты соблюдаются частично, контроль нерегулярный", "value": "partial_compliance", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить соблюдение стандартов сервиса и регулярный контроль", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Стандарты сервиса не соблюдаются или соблюдаются несистемно", "value": "poor_compliance", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить строгое соблюдение стандартов сервиса с регулярным контролем", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q16",
+        "question": "Как оценивается производительность сотрудников?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Производительность сотрудников оценивается регулярно с метриками и обратной связью", "value": "regular_evaluation", "correct": true },
+          { "id": "opt2", "text": "Оценка производительности проводится периодически или несистемно", "value": "periodic_evaluation", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярную оценку производительности сотрудников с метриками", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Производительность сотрудников не оценивается систематически", "value": "no_evaluation", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить систему оценки производительности сотрудников", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q17",
+        "question": "Как оптимизируются процессы для снижения времени ожидания гостей?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Процессы постоянно оптимизируются для снижения времени ожидания", "value": "continuous_optimization", "correct": true },
+          { "id": "opt2", "text": "Оптимизация процессов проводится периодически или несистемно", "value": "periodic_optimization", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить постоянную оптимизацию процессов для снижения времени ожидания", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Процессы не оптимизируются для снижения времени ожидания", "value": "no_optimization", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать оптимизировать процессы для снижения времени ожидания гостей", "priority": "high", "category": "Операции" } }
+        ]
+      },
+      {
+        "id": "operations_q18",
+        "question": "Используются ли чек-листы и контрольные листы для ежедневной работы?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Чек-листы и контрольные листы используются систематически для всех процессов", "value": "systematic_checklists", "correct": true },
+          { "id": "opt2", "text": "Чек-листы используются частично или не для всех процессов", "value": "partial_checklists", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить систематическое использование чек-листов для всех процессов", "priority": "medium", "category": "Операции" } },
+          { "id": "opt3", "text": "Чек-листы и контрольные листы не используются", "value": "no_checklists", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить чек-листы и контрольные листы для ежедневной работы", "priority": "high", "category": "Операции" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "client_experience",
+    "title": "Клиентский опыт",
+    "description": "Качество обслуживания и опыт клиентов",
+    "questions": [
+      {
+        "id": "client_experience_q1",
+        "question": "Как измеряется уровень удовлетворенности клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Уровень удовлетворенности измеряется регулярно с использованием различных метрик и инструментов", "value": "regular_measurement", "correct": true },
+          { "id": "opt2", "text": "Измерение удовлетворенности проводится периодически или не всеми методами", "value": "periodic_measurement", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное измерение уровня удовлетворенности клиентов различными методами", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Уровень удовлетворенности клиентов не измеряется систематически", "value": "no_measurement", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематически измерять уровень удовлетворенности клиентов", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q2",
+        "question": "Насколько гости довольны сервисом?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Гости очень довольны сервисом, регулярно получаем положительные отзывы", "value": "very_satisfied", "correct": true },
+          { "id": "opt2", "text": "Удовлетворенность сервисом средняя, есть жалобы и предложения по улучшению", "value": "moderate_satisfaction", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить качество сервиса для повышения удовлетворенности гостей", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Гости недовольны сервисом, много жалоб", "value": "dissatisfied", "correct": false, "recommendation": { "title": "задача 3", "description": "Кардинально улучшить качество сервиса для повышения удовлетворенности гостей", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q3",
+        "question": "Насколько атмосфера и интерьер соответствуют ожиданиям гостей?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Атмосфера и интерьер полностью соответствуют ожиданиям гостей и концепции", "value": "fully_matches", "correct": true },
+          { "id": "opt2", "text": "Атмосфера и интерьер частично соответствуют ожиданиям, требуют улучшения", "value": "partial_match", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить атмосферу и интерьер для лучшего соответствия ожиданиям гостей", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Атмосфера и интерьер не соответствуют ожиданиям гостей", "value": "does_not_match", "correct": false, "recommendation": { "title": "задача 3", "description": "Переработать атмосферу и интерьер для соответствия ожиданиям гостей", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q4",
+        "question": "Насколько чисто и комфортно в зале и на кухне?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "В зале и на кухне всегда чисто и комфортно, стандарты соблюдаются строго", "value": "always_clean", "correct": true },
+          { "id": "opt2", "text": "Чистота и комфорт поддерживаются периодически, есть замечания", "value": "periodic_cleanliness", "correct": false, "recommendation": { "title": "задача 2", "description": "Усилить поддержание чистоты и комфорта в зале и на кухне", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Чистота и комфорт не поддерживаются должным образом", "value": "poor_cleanliness", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему поддержания чистоты и комфорта в зале и на кухне", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q5",
+        "question": "Как оценивается скорость обслуживания клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Скорость обслуживания отслеживается и анализируется, гости довольны", "value": "tracked_satisfactory", "correct": true },
+          { "id": "opt2", "text": "Скорость обслуживания отслеживается частично, есть жалобы на медленность", "value": "partial_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить скорость обслуживания и систематически отслеживать её", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Скорость обслуживания не отслеживается, много жалоб на медленность", "value": "not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Кардинально улучшить скорость обслуживания и внедрить её отслеживание", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q6",
+        "question": "Как ресторан обрабатывает жалобы и рекламации?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Жалобы обрабатываются быстро и эффективно, есть система анализа и предотвращения", "value": "fast_effective", "correct": true },
+          { "id": "opt2", "text": "Жалобы обрабатываются, но не всегда быстро или без системного подхода", "value": "slow_processing", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить скорость и эффективность обработки жалоб, внедрить системный подход", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Жалобы обрабатываются неэффективно или не обрабатываются", "value": "ineffective_processing", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить эффективную систему обработки жалоб и рекламаций", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q7",
+        "question": "Как клиенты эмоционально реагируют на посещение ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Клиенты получают положительные эмоции, часто делятся впечатлениями", "value": "positive_emotions", "correct": true },
+          { "id": "opt2", "text": "Эмоциональная реакция клиентов нейтральная или смешанная", "value": "neutral_emotions", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить эмоциональный опыт клиентов от посещения ресторана", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Клиенты получают негативные эмоции от посещения", "value": "negative_emotions", "correct": false, "recommendation": { "title": "задача 3", "description": "Кардинально улучшить эмоциональный опыт клиентов от посещения ресторана", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q8",
+        "question": "Есть ли индивидуальный подход к гостям?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Индивидуальный подход применяется систематически, учитываются предпочтения гостей", "value": "systematic_approach", "correct": true },
+          { "id": "opt2", "text": "Индивидуальный подход применяется частично или не для всех гостей", "value": "partial_approach", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить индивидуальный подход к гостям, учитывать их предпочтения", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Индивидуальный подход к гостям отсутствует", "value": "no_approach", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить индивидуальный подход к гостям с учетом их предпочтений", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q9",
+        "question": "Каков процент повторных клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Процент повторных клиентов отслеживается и высокий, анализируются причины возврата", "value": "high_tracked", "correct": true },
+          { "id": "opt2", "text": "Процент повторных клиентов средний или отслеживается нерегулярно", "value": "moderate_tracking", "correct": false, "recommendation": { "title": "задача 2", "description": "Повысить процент повторных клиентов и регулярно отслеживать его", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Процент повторных клиентов низкий или не отслеживается", "value": "low_not_tracked", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать стратегию повышения процента повторных клиентов и отслеживать его", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q10",
+        "question": "Есть ли постоянные «фанаты» бренда ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть постоянные «фанаты» бренда, активно поддерживающие ресторан", "value": "has_fans", "correct": true },
+          { "id": "opt2", "text": "Есть отдельные лояльные клиенты, но не формируется сообщество «фанатов»", "value": "some_loyal", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить сообщество постоянных «фанатов» бренда ресторана", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Постоянных «фанатов» бренда нет или они не поддерживаются", "value": "no_fans", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать и поддерживать сообщество постоянных «фанатов» бренда", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q11",
+        "question": "Насколько удобно делать онлайн-заказ и доставку?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Онлайн-заказ и доставка удобны, процесс оптимизирован, клиенты довольны", "value": "convenient_optimized", "correct": true },
+          { "id": "opt2", "text": "Онлайн-заказ и доставка работают, но требуют улучшения удобства", "value": "needs_improvement", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить удобство онлайн-заказа и доставки", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Онлайн-заказ и доставка неудобны или не работают эффективно", "value": "inconvenient", "correct": false, "recommendation": { "title": "задача 3", "description": "Оптимизировать процесс онлайн-заказа и доставки для удобства клиентов", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      },
+      {
+        "id": "client_experience_q12",
+        "question": "Есть ли программы поощрения постоянных клиентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть эффективные программы поощрения постоянных клиентов, их эффективность отслеживается", "value": "effective_programs", "correct": true },
+          { "id": "opt2", "text": "Программы поощрения есть, но требуют улучшения или не отслеживается эффективность", "value": "basic_programs", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить программы поощрения постоянных клиентов и отслеживать их эффективность", "priority": "medium", "category": "Клиентский опыт" } },
+          { "id": "opt3", "text": "Программы поощрения постоянных клиентов отсутствуют или неэффективны", "value": "no_programs", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить программы поощрения постоянных клиентов", "priority": "high", "category": "Клиентский опыт" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "infrastructure",
+    "title": "Инфраструктура и оборудование",
+    "description": "Инфраструктура, оборудование и технологии",
+    "questions": [
+      {
+        "id": "infrastructure_q1",
+        "question": "В каком состоянии кухня, барная зона и зал ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Все зоны в отличном состоянии, регулярно поддерживаются и обновляются", "value": "excellent_condition", "correct": true },
+          { "id": "opt2", "text": "Состояние зон удовлетворительное, требуются некоторые улучшения", "value": "satisfactory_condition", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить состояние кухни, барной зоны и зала ресторана", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Состояние зон неудовлетворительное, требуется ремонт или обновление", "value": "poor_condition", "correct": false, "recommendation": { "title": "задача 3", "description": "Провести ремонт и обновление кухни, барной зоны и зала ресторана", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q2",
+        "question": "Насколько эффективна планировка кухни и зала?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Планировка кухни и зала оптимальна, способствует эффективной работе", "value": "optimal_layout", "correct": true },
+          { "id": "opt2", "text": "Планировка в целом хорошая, но есть возможности для улучшения", "value": "good_needs_improvement", "correct": false, "recommendation": { "title": "задача 2", "description": "Оптимизировать планировку кухни и зала для повышения эффективности", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Планировка неэффективна, мешает продуктивной работе", "value": "inefficient_layout", "correct": false, "recommendation": { "title": "задача 3", "description": "Перепланировать кухню и зал для повышения эффективности работы", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q3",
+        "question": "Какое оборудование используется и насколько оно современное?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Используется современное оборудование, регулярно обновляется", "value": "modern_updated", "correct": true },
+          { "id": "opt2", "text": "Оборудование частично устарело, требуется обновление", "value": "partially_outdated", "correct": false, "recommendation": { "title": "задача 2", "description": "Обновить устаревшее оборудование", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Оборудование устарело и требует замены", "value": "outdated_replacement", "correct": false, "recommendation": { "title": "задача 3", "description": "Заменить устаревшее оборудование на современное", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q4",
+        "question": "Соответствует ли оборудование нормам безопасности и гигиены?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Все оборудование полностью соответствует нормам безопасности и гигиены", "value": "full_compliance", "correct": true },
+          { "id": "opt2", "text": "Оборудование в основном соответствует нормам, есть отдельные замечания", "value": "mostly_compliant", "correct": false, "recommendation": { "title": "задача 2", "description": "Привести оборудование в полное соответствие нормам безопасности и гигиены", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Оборудование не соответствует нормам безопасности и гигиены", "value": "non_compliant", "correct": false, "recommendation": { "title": "задача 3", "description": "Срочно привести оборудование в соответствие нормам безопасности и гигиены", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q5",
+        "question": "Как организована IT-инфраструктура ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "IT-инфраструктура современная и надежная, регулярно поддерживается", "value": "modern_reliable", "correct": true },
+          { "id": "opt2", "text": "IT-инфраструктура работает, но требует улучшения или обновления", "value": "needs_improvement", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить и обновить IT-инфраструктуру ресторана", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "IT-инфраструктура не организована или неэффективна", "value": "poor_infrastructure", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать и внедрить современную IT-инфраструктуру ресторана", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q6",
+        "question": "Насколько хорошо работает вентиляция и кондиционирование?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Вентиляция и кондиционирование работают отлично, обеспечивают комфорт", "value": "excellent_climate", "correct": true },
+          { "id": "opt2", "text": "Вентиляция и кондиционирование работают, но требуют улучшения", "value": "needs_improvement", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить работу вентиляции и кондиционирования", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Вентиляция и кондиционирование работают плохо или не работают", "value": "poor_climate", "correct": false, "recommendation": { "title": "задача 3", "description": "Отремонтировать или заменить систему вентиляции и кондиционирования", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q7",
+        "question": "Как освещение и интерьер влияют на комфорт гостей?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Освещение и интерьер создают комфортную атмосферу, гости довольны", "value": "comfortable_atmosphere", "correct": true },
+          { "id": "opt2", "text": "Освещение и интерьер в целом хорошие, но есть возможности для улучшения", "value": "good_can_improve", "correct": false, "recommendation": { "title": "задача 2", "description": "Улучшить освещение и интерьер для повышения комфорта гостей", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Освещение и интерьер не способствуют комфорту гостей", "value": "uncomfortable", "correct": false, "recommendation": { "title": "задача 3", "description": "Переработать освещение и интерьер для создания комфортной атмосферы", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q8",
+        "question": "Контролируется ли энергопотребление и затраты на ресурсы?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Энергопотребление и затраты контролируются регулярно, оптимизируются", "value": "controlled_optimized", "correct": true },
+          { "id": "opt2", "text": "Контроль ведется частично или нерегулярно", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный контроль и оптимизацию энергопотребления и затрат на ресурсы", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Энергопотребление и затраты на ресурсы не контролируются", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать контролировать и оптимизировать энергопотребление и затраты на ресурсы", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q9",
+        "question": "Есть ли резервные системы на случай поломок оборудования?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть резервные системы для критически важного оборудования", "value": "backup_systems", "correct": true },
+          { "id": "opt2", "text": "Резервные системы есть частично или не для всего критического оборудования", "value": "partial_backup", "correct": false, "recommendation": { "title": "задача 2", "description": "Развить систему резервирования для всего критически важного оборудования", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Резервные системы отсутствуют", "value": "no_backup", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить резервные системы для критически важного оборудования", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      },
+      {
+        "id": "infrastructure_q10",
+        "question": "Как часто проводится обслуживание и ремонт оборудования?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Обслуживание и ремонт проводятся регулярно по графику, профилактически", "value": "regular_maintenance", "correct": true },
+          { "id": "opt2", "text": "Обслуживание проводится периодически или только при поломках", "value": "periodic_maintenance", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярное профилактическое обслуживание оборудования по графику", "priority": "medium", "category": "Инфраструктура" } },
+          { "id": "opt3", "text": "Обслуживание и ремонт проводятся только при поломках", "value": "reactive_only", "correct": false, "recommendation": { "title": "задача 3", "description": "Внедрить систему регулярного профилактического обслуживания оборудования", "priority": "high", "category": "Инфраструктура" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "risks",
+    "title": "Риски и соответствие нормам",
+    "description": "Управление рисками и соответствие требованиям",
+    "questions": [
+      {
+        "id": "risks_q1",
+        "question": "Проходил ли ресторан санитарные проверки и соблюдаются ли лицензии?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Ресторан регулярно проходит санитарные проверки, все лицензии актуальны и соблюдаются", "value": "regular_checks_compliant", "correct": true },
+          { "id": "opt2", "text": "Санитарные проверки проходят периодически, лицензии в основном соблюдаются", "value": "periodic_checks", "correct": false, "recommendation": { "title": "задача 2", "description": "Наладить регулярные санитарные проверки и обеспечить полное соблюдение лицензий", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Санитарные проверки не проводятся регулярно или лицензии не соблюдаются", "value": "non_compliant", "correct": false, "recommendation": { "title": "задача 3", "description": "Срочно провести санитарную проверку и обеспечить соблюдение всех лицензий", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q2",
+        "question": "Соответствует ли ресторан пожарным и строительным нормам?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Ресторан полностью соответствует пожарным и строительным нормам, регулярно проверяется", "value": "full_compliance", "correct": true },
+          { "id": "opt2", "text": "Соответствие нормам в целом есть, но требуются некоторые улучшения", "value": "mostly_compliant", "correct": false, "recommendation": { "title": "задача 2", "description": "Привести ресторан в полное соответствие пожарным и строительным нормам", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Ресторан не соответствует пожарным или строительным нормам", "value": "non_compliant", "correct": false, "recommendation": { "title": "задача 3", "description": "Срочно привести ресторан в соответствие пожарным и строительным нормам", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q3",
+        "question": "Есть ли страхование бизнеса?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Бизнес полностью застрахован, включая все необходимые виды страхования", "value": "fully_insured", "correct": true },
+          { "id": "opt2", "text": "Есть частичное страхование, но не все необходимые виды покрыты", "value": "partial_insurance", "correct": false, "recommendation": { "title": "задача 2", "description": "Расширить страховое покрытие бизнеса, включив все необходимые виды страхования", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Страхование бизнеса отсутствует или недостаточно", "value": "no_insurance", "correct": false, "recommendation": { "title": "задача 3", "description": "Оформить комплексное страхование бизнеса", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q4",
+        "question": "Насколько юридически корректны договора с поставщиками и партнерами?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Все договора с поставщиками и партнерами юридически корректны, регулярно проверяются", "value": "legally_correct", "correct": true },
+          { "id": "opt2", "text": "Договора в основном корректны, но требуют проверки или обновления", "value": "mostly_correct", "correct": false, "recommendation": { "title": "задача 2", "description": "Провести юридическую проверку и обновление договоров с поставщиками и партнерами", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Договора юридически некорректны или не проверяются", "value": "legally_incorrect", "correct": false, "recommendation": { "title": "задача 3", "description": "Срочно провести юридическую проверку и корректировку всех договоров с поставщиками и партнерами", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q5",
+        "question": "Как контролируются финансовые и налоговые риски?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Финансовые и налоговые риски контролируются системно, регулярно проводится аудит", "value": "systematic_control", "correct": true },
+          { "id": "opt2", "text": "Контроль финансовых и налоговых рисков ведется частично или нерегулярно", "value": "partial_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить системный контроль финансовых и налоговых рисков с регулярным аудитом", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Финансовые и налоговые риски не контролируются", "value": "no_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать системный контроль финансовых и налоговых рисков", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q6",
+        "question": "Как оценивается качество сырья от поставщиков?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Качество сырья от поставщиков оценивается регулярно, есть система контроля качества", "value": "regular_quality_control", "correct": true },
+          { "id": "opt2", "text": "Оценка качества сырья проводится периодически или выборочно", "value": "periodic_control", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярную систему оценки и контроля качества сырья от поставщиков", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Качество сырья от поставщиков не оценивается систематически", "value": "no_quality_control", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематическую оценку качества сырья от поставщиков", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q7",
+        "question": "Какие риски связаны с сезонностью бизнеса?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Риски сезонности учтены, есть план действий для различных сезонных периодов", "value": "seasonal_plan", "correct": true },
+          { "id": "opt2", "text": "Риски сезонности частично учтены, но план действий неполный", "value": "partial_plan", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать полный план действий для управления сезонными рисками", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Риски сезонности не учитываются или не планируются", "value": "no_plan", "correct": false, "recommendation": { "title": "задача 3", "description": "Проанализировать и спланировать действия для управления сезонными рисками", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q8",
+        "question": "Как ресторан реагирует на действия конкурентов?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Действия конкурентов отслеживаются системно, есть стратегия реагирования", "value": "systematic_response", "correct": true },
+          { "id": "opt2", "text": "Действия конкурентов отслеживаются периодически, реакция не всегда системная", "value": "periodic_response", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать системную стратегию отслеживания и реагирования на действия конкурентов", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Действия конкурентов не отслеживаются или реакция отсутствует", "value": "no_response", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать системное отслеживание действий конкурентов и разработать стратегию реагирования", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q9",
+        "question": "Какие внешние факторы могут повлиять на бизнес?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Внешние факторы анализируются регулярно, есть план действий для различных сценариев", "value": "analyzed_planned", "correct": true },
+          { "id": "opt2", "text": "Внешние факторы учитываются частично, но план действий неполный", "value": "partial_analysis", "correct": false, "recommendation": { "title": "задача 2", "description": "Провести полный анализ внешних факторов и разработать планы действий для различных сценариев", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "Внешние факторы не анализируются или не планируются", "value": "not_analyzed", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярный анализ внешних факторов и разработку планов действий", "priority": "high", "category": "Риски" } }
+        ]
+      },
+      {
+        "id": "risks_q10",
+        "question": "Есть ли план действий при чрезвычайных ситуациях?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть детальный план действий при чрезвычайных ситуациях, регулярно обновляется и тренируется", "value": "detailed_plan", "correct": true },
+          { "id": "opt2", "text": "План действий при чрезвычайных ситуациях есть, но требует обновления или тренировок", "value": "needs_update", "correct": false, "recommendation": { "title": "задача 2", "description": "Обновить и регулярно тренировать план действий при чрезвычайных ситуациях", "priority": "medium", "category": "Риски" } },
+          { "id": "opt3", "text": "План действий при чрезвычайных ситуациях отсутствует или не актуален", "value": "no_plan", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать детальный план действий при чрезвычайных ситуациях", "priority": "high", "category": "Риски" } }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "strategy",
+    "title": "Стратегия развития",
+    "description": "Стратегическое планирование и развитие",
+    "questions": [
+      {
+        "id": "strategy_q1",
+        "question": "Какие цели ресторана на 1, 3 и 5 лет?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть четко определенные цели на 1, 3 и 5 лет с планами их достижения", "value": "clear_goals", "correct": true },
+          { "id": "opt2", "text": "Цели определены частично или только на краткосрочную перспективу", "value": "partial_goals", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать четкие цели на 1, 3 и 5 лет с планами их достижения", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Долгосрочные цели не определены или отсутствуют", "value": "no_goals", "correct": false, "recommendation": { "title": "задача 3", "description": "Определить стратегические цели ресторана на 1, 3 и 5 лет", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q2",
+        "question": "Есть ли планы расширения: новые точки, доставка, франшиза?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть детальные планы расширения с проработанными вариантами развития", "value": "detailed_expansion", "correct": true },
+          { "id": "opt2", "text": "Планы расширения есть, но требуют доработки или не все варианты рассмотрены", "value": "needs_development", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать детальные планы расширения: новые точки, доставка, франшиза", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Планы расширения отсутствуют или не проработаны", "value": "no_expansion_plan", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать стратегию расширения бизнеса: новые точки, доставка, франшиза", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q3",
+        "question": "Какие инвестиции планируются в маркетинг и инфраструктуру?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть четкий план инвестиций в маркетинг и инфраструктуру с бюджетом и сроками", "value": "clear_investment_plan", "correct": true },
+          { "id": "opt2", "text": "Инвестиции планируются частично или без детального бюджета", "value": "partial_planning", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать детальный план инвестиций в маркетинг и инфраструктуру с бюджетом и сроками", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "План инвестиций в маркетинг и инфраструктуру отсутствует", "value": "no_investment_plan", "correct": false, "recommendation": { "title": "задача 3", "description": "Разработать стратегию инвестиций в маркетинг и инфраструктуру", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q4",
+        "question": "Какие технологические инновации внедряются в работе ресторана?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Технологические инновации активно внедряются, есть план развития технологий", "value": "active_innovation", "correct": true },
+          { "id": "opt2", "text": "Инновации внедряются частично или несистемно", "value": "partial_innovation", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и внедрить системный подход к технологическим инновациям в ресторане", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Технологические инновации не внедряются или отсутствуют", "value": "no_innovation", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать внедрение технологических инноваций в работу ресторана", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q5",
+        "question": "Как анализируются конкуренты и их стратегии?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Конкуренты анализируются регулярно, их стратегии отслеживаются системно", "value": "systematic_analysis", "correct": true },
+          { "id": "opt2", "text": "Анализ конкурентов проводится периодически или неполно", "value": "periodic_analysis", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярный системный анализ конкурентов и их стратегий", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Конкуренты и их стратегии не анализируются", "value": "no_analysis", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать регулярный анализ конкурентов и их стратегий", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q6",
+        "question": "Какие возможности существуют для увеличения прибыли?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Возможности для увеличения прибыли анализируются регулярно, есть план действий", "value": "analyzed_planned", "correct": true },
+          { "id": "opt2", "text": "Возможности рассматриваются частично, план действий неполный", "value": "partial_consideration", "correct": false, "recommendation": { "title": "задача 2", "description": "Провести полный анализ возможностей увеличения прибыли и разработать план действий", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Возможности для увеличения прибыли не анализируются", "value": "not_analyzed", "correct": false, "recommendation": { "title": "задача 3", "description": "Проанализировать возможности увеличения прибыли и разработать стратегию", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q7",
+        "question": "Как оптимизируются текущие расходы?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Расходы оптимизируются регулярно, есть система контроля и снижения затрат", "value": "regular_optimization", "correct": true },
+          { "id": "opt2", "text": "Оптимизация расходов проводится периодически или частично", "value": "periodic_optimization", "correct": false, "recommendation": { "title": "задача 2", "description": "Внедрить регулярную систему оптимизации и контроля текущих расходов", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Расходы не оптимизируются систематически", "value": "no_optimization", "correct": false, "recommendation": { "title": "задача 3", "description": "Начать систематическую оптимизацию текущих расходов", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q8",
+        "question": "Есть ли новые направления: бар, кейтеринг, мероприятия?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Новые направления проработаны и развиваются: бар, кейтеринг, мероприятия", "value": "developed_directions", "correct": true },
+          { "id": "opt2", "text": "Новые направления рассматриваются или развиваются частично", "value": "partial_development", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и внедрить новые направления: бар, кейтеринг, мероприятия", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Новые направления не рассматриваются или отсутствуют", "value": "no_new_directions", "correct": false, "recommendation": { "title": "задача 3", "description": "Изучить и внедрить новые направления развития: бар, кейтеринг, мероприятия", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q9",
+        "question": "Рассматривается ли франчайзинг как способ роста?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Франчайзинг проработан как способ роста, есть план развития франшизы", "value": "franchise_planned", "correct": true },
+          { "id": "opt2", "text": "Франчайзинг рассматривается, но требует проработки", "value": "under_consideration", "correct": false, "recommendation": { "title": "задача 2", "description": "Проработать франчайзинг как способ роста бизнеса", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Франчайзинг не рассматривается как способ роста", "value": "not_considered", "correct": false, "recommendation": { "title": "задача 3", "description": "Изучить возможности франчайзинга как способа роста бизнеса", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q10",
+        "question": "Как удерживаются постоянные клиенты?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть система удержания постоянных клиентов: программы лояльности, персонализация, специальные предложения", "value": "retention_system", "correct": true },
+          { "id": "opt2", "text": "Работа с постоянными клиентами ведется частично или несистемно", "value": "partial_retention", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать и внедрить систему удержания постоянных клиентов", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Система удержания постоянных клиентов отсутствует", "value": "no_retention", "correct": false, "recommendation": { "title": "задача 3", "description": "Создать систему удержания постоянных клиентов: программы лояльности, персонализация", "priority": "high", "category": "Стратегия" } }
+        ]
+      },
+      {
+        "id": "strategy_q11",
+        "question": "Планируется ли привлечение инвесторов и как это будет осуществляться?",
+        "type": "single",
+        "options": [
+          { "id": "opt1", "text": "Есть стратегия привлечения инвесторов с проработанным планом и документацией", "value": "investor_strategy", "correct": true },
+          { "id": "opt2", "text": "Привлечение инвесторов рассматривается, но план требует доработки", "value": "under_development", "correct": false, "recommendation": { "title": "задача 2", "description": "Разработать стратегию и план привлечения инвесторов", "priority": "medium", "category": "Стратегия" } },
+          { "id": "opt3", "text": "Привлечение инвесторов не планируется или не рассматривается", "value": "not_planned", "correct": false, "recommendation": { "title": "задача 3", "description": "Изучить возможности привлечения инвесторов и разработать стратегию", "priority": "high", "category": "Стратегия" } }
+        ]
+      }
+    ]
+  }
+]

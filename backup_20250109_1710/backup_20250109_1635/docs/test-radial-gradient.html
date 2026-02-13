@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест радиального градиента</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .radial-gradient-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            /* Радиальный градиент: светлый центр → темные края */
+            background: radial-gradient(
+                ellipse at center,
+                #210042 0%,           /* Светлый темно-фиолетовый в центре */
+                #1f003b 15%,          /* Переход */
+                #180032 30%,          /* Темнеет */
+                #120025 50%,          /* Еще темнее */
+                #0e011d 70%,          /* Очень темный */
+                #0a0015 85%,          /* Почти черный */
+                #05000a 100%          /* Самый темный по краям */
+            );
+            pointer-events: none;
+        }
+        
+        /* Тестовый текст для проверки */
+        .test-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        
+        .test-content h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="radial-gradient-bg"></div>
+    <div class="test-content">
+        <h1>Экосистема</h1>
+        <p>для вашего бизнеса</p>
+    </div>
+</body>
+</html>
+
+
+
+
+
+
+
+
