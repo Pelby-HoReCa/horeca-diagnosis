@@ -20,15 +20,9 @@ export default function DashboardHeader({ navigation, onHeaderPress, selectedVen
   const [city, setCity] = useState<string>('');
   const [cityIconSvg, setCityIconSvg] = useState<string>('');
   const [helpButtonIconSvg, setHelpButtonIconSvg] = useState<string>('');
-  const [headerReady, setHeaderReady] = useState(true);
-  
-  const dataLoadedRef = useRef(false);
+  const [headerReady, setHeaderReady] = useState(false);
 
   useEffect(() => {
-    if (dataLoadedRef.current) {
-      return; // Уже загружено
-    }
-
     const loadData = async () => {
       try {
         // Загружаем данные профиля
