@@ -1,11 +1,37 @@
 import React, { useMemo, useState } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'https://horeca-backend-6zl1.onrender.com';
 
 type UserRow = {
   userId: string;
   createdAt: string;
   updatedAt: string;
+};
+
+const formatValue = (value: any) => {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.length ? value.map((v) => formatValue(v)).join(', ') : '—';
+  return JSON.stringify(value);
+};
+
+const KeyValueGrid = ({ data }: { data: Record<string, any> }) => {
+  const entries = Object.entries(data || {});
+  if (!entries.length) {
+    return <div style={styles.empty}>Данных нет</div>;
+  }
+  return (
+    <div style={styles.profileGrid}>
+      {entries.map(([key, value]) => (
+        <div key={key} style={styles.profileItem}>
+          <div style={styles.profileLabel}>{key}</div>
+          <div style={styles.profileValue}>{formatValue(value)}</div>
+        </div>
+      ))}
+    </div>
+  );
 };
 
 export default function AdminPage() {
@@ -198,41 +224,20 @@ export default function AdminPage() {
                     {showJson ? 'Скрыть JSON' : 'Показать JSON'}
                   </button>
                 </div>
-                <div style={styles.profileGrid}>
-                  <div>
-                    <div style={styles.profileLabel}>User ID</div>
-                    <div style={styles.profileValue}>{selectedUser.userId}</div>
-                  </div>
-                  <div>
-                    <div style={styles.profileLabel}>Имя</div>
-                    <div style={styles.profileValue}>{profile.name || profile.fullName || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={styles.profileLabel}>Email</div>
-                    <div style={styles.profileValue}>{profile.email || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={styles.profileLabel}>Телефон</div>
-                    <div style={styles.profileValue}>{profile.phone || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={styles.profileLabel}>Город</div>
-                    <div style={styles.profileValue}>{profile.city || '—'}</div>
-                  </div>
-                </div>
+                <KeyValueGrid data={{ userId: selectedUser.userId, ...profile }} />
               </div>
 
               <div style={styles.sectionGrid}>
                 <div style={styles.sectionCard}>
                   <div style={styles.sectionTitle}>Проекты</div>
                   {Array.isArray(projects) && projects.length > 0 ? (
-                    projects.map((p: any) => (
-                      <div key={p.id || p.name} style={styles.projectRow}>
-                        <div>
-                          <div style={styles.rowTitle}>{p.name || 'Без названия'}</div>
-                          <div style={styles.rowSub}>{p.address || p.city || '—'}</div>
+                    projects.map((p: any, idx: number) => (
+                      <div key={p.id || p.name || idx} style={styles.projectCard}>
+                        <div style={styles.projectHeader}>
+                          <div style={styles.rowTitle}>{p.name || `Проект ${idx + 1}`}</div>
+                          <div style={styles.tag}>{p.id || 'ID'}</div>
                         </div>
-                        <div style={styles.tag}>{p.id || 'ID'}</div>
+                        <KeyValueGrid data={p || {}} />
                       </div>
                     ))
                   ) : (
@@ -244,16 +249,19 @@ export default function AdminPage() {
                   <div style={styles.sectionTitle}>История диагностик</div>
                   {Array.isArray(diagnosisHistory) && diagnosisHistory.length > 0 ? (
                     diagnosisHistory.slice(0, 8).map((h: any, idx: number) => (
-                      <div key={h.id || idx} style={styles.historyRow}>
-                        <div>
-                          <div style={styles.rowTitle}>
-                            {typeof h.efficiency === 'number' ? `${h.efficiency}%` : '—'}
+                      <div key={h.id || idx} style={styles.historyCard}>
+                        <div style={styles.historyHeader}>
+                          <div>
+                            <div style={styles.rowTitle}>
+                              {typeof h.efficiency === 'number' ? `${h.efficiency}%` : '—'}
+                            </div>
+                            <div style={styles.rowSub}>
+                              {h.createdAt ? new Date(h.createdAt).toLocaleString() : 'Дата не указана'}
+                            </div>
                           </div>
-                          <div style={styles.rowSub}>
-                            {h.createdAt ? new Date(h.createdAt).toLocaleString() : 'Дата не указана'}
-                          </div>
+                          <div style={styles.tag}>{h.venueId || 'Проект'}</div>
                         </div>
-                        <div style={styles.tag}>{h.venueId || 'Проект'}</div>
+                        <KeyValueGrid data={h || {}} />
                       </div>
                     ))
                   ) : (
@@ -462,21 +470,39 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     gap: 12,
   },
+  profileItem: {
+    background: '#F8FAFC',
+    border: '1px solid #E5E7EB',
+    borderRadius: 10,
+    padding: 10,
+  },
   profileLabel: { fontSize: 10, color: '#525866', marginBottom: 4 },
   profileValue: { fontSize: 13, fontWeight: 600 },
-  projectRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '8px 0',
-    borderBottom: '1px solid #F0F2F4',
+  projectCard: {
+    border: '1px solid #EEF2F6',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    background: '#FBFCFE',
   },
-  historyRow: {
+  projectHeader: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '8px 0',
-    borderBottom: '1px solid #F0F2F4',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  historyCard: {
+    border: '1px solid #EEF2F6',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    background: '#FBFCFE',
+  },
+  historyHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   tag: {
     background: '#EEF2FF',
