@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || 'https://horeca-backend-6zl1.onrender.com';
@@ -44,12 +44,26 @@ export default function AdminPage() {
   const [query, setQuery] = useState('');
   const [showJson, setShowJson] = useState(false);
   const [authed, setAuthed] = useState(false);
+  const [storedToken, setStoredToken] = useState<string>('');
+  const [storedEmail, setStoredEmail] = useState<string>('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const token = window.localStorage.getItem('pelby_admin_token') || '';
+    const savedEmail = window.localStorage.getItem('pelby_admin_email') || '';
+    if (token) {
+      setStoredToken(token);
+      setStoredEmail(savedEmail);
+      setAuthed(true);
+    }
+  }, []);
 
   const authHeader = useMemo(() => {
+    if (storedToken) return `Basic ${storedToken}`;
     if (!email || !password) return '';
     const token = btoa(`${email}:${password}`);
     return `Basic ${token}`;
-  }, [email, password]);
+  }, [email, password, storedToken]);
 
   const loadUsers = async () => {
     try {
@@ -67,6 +81,13 @@ export default function AdminPage() {
       const data = await res.json();
       setUsers(data.users || []);
       setAuthed(true);
+      const token = btoa(`${email}:${password}`);
+      setStoredToken(token);
+      setStoredEmail(email);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('pelby_admin_token', token);
+        window.localStorage.setItem('pelby_admin_email', email);
+      }
     } catch (e) {
       setError('Ошибка загрузки');
       setAuthed(false);
@@ -95,6 +116,12 @@ export default function AdminPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (authed && users.length === 0 && authHeader) {
+      loadUsers();
+    }
+  }, [authed, authHeader, users.length]);
 
   const filteredUsers = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -172,7 +199,7 @@ export default function AdminPage() {
           <div style={styles.subtitle}>Доступ к данным пользователей</div>
         </div>
         <div style={styles.authInfo}>
-          <div style={styles.authUser}>{email || 'admin'}</div>
+          <div style={styles.authUser}>{storedEmail || email || 'admin'}</div>
           <button
             style={styles.ghostButton}
             onClick={() => {
@@ -180,6 +207,13 @@ export default function AdminPage() {
               setUsers([]);
               setSelectedUser(null);
               setError('');
+              setShowJson(false);
+              setStoredToken('');
+              setStoredEmail('');
+              if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('pelby_admin_token');
+                window.localStorage.removeItem('pelby_admin_email');
+              }
             }}
           >
             Выйти
@@ -331,7 +365,12 @@ export default function AdminPage() {
 
               {showJson && (
                 <div style={styles.sectionCard}>
-                  <div style={styles.sectionTitle}>Полные данные (JSON)</div>
+                  <div style={styles.sectionHeader}>
+                    <div style={styles.sectionTitle}>Полные данные (JSON)</div>
+                    <button style={styles.ghostButton} onClick={() => setShowJson(false)}>
+                      Закрыть
+                    </button>
+                  </div>
                   <pre style={styles.pre}>{JSON.stringify(selectedUser, null, 2)}</pre>
                 </div>
               )}
