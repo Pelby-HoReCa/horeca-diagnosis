@@ -12,6 +12,24 @@ app.use(express.json({ limit: '20mb' }));
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'it@pelby.ru';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Sergo1289';
 
+const ensureSchema = async () => {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "UserData" (
+        "userId" text PRIMARY KEY,
+        "data" jsonb NOT NULL,
+        "createdAt" timestamptz NOT NULL DEFAULT now(),
+        "updatedAt" timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "UserData_updatedAt_idx" ON "UserData" ("updatedAt" DESC);`
+    );
+  } catch (error) {
+    console.error('ensureSchema error', error);
+  }
+};
+
 const requireAdmin = (req, res, next) => {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Basic ')) {
@@ -100,6 +118,8 @@ app.get('/admin/user/:userId', requireAdmin, async (req, res) => {
 });
 
 const port = process.env.PORT || 4000;
-app.listen(port, () => {
-  console.log(`API listening on port ${port}`);
+ensureSchema().finally(() => {
+  app.listen(port, () => {
+    console.log(`API listening on port ${port}`);
+  });
 });
