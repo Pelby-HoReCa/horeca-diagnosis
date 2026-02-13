@@ -129,24 +129,59 @@ export default function AdminPage() {
   }, [query, users]);
 
   const selectedSnapshot = selectedUser?.data || {};
+  const parsedSnapshot = useMemo(() => {
+    const parsed: Record<string, any> = {};
+    Object.entries(selectedSnapshot || {}).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        try {
+          parsed[key] = JSON.parse(value);
+          return;
+        } catch {
+          parsed[key] = value;
+          return;
+        }
+      }
+      parsed[key] = value;
+    });
+    return parsed;
+  }, [selectedSnapshot]);
+
+  const extractListByKey = (pattern: string) =>
+    Object.entries(parsedSnapshot)
+      .filter(([key]) => key.includes(pattern))
+      .flatMap(([, value]) => (Array.isArray(value) ? value : []));
+
+  const registrationPayload =
+    parsedSnapshot.registrationStep2 ||
+    parsedSnapshot.registrationStep1 ||
+    parsedSnapshot.registration ||
+    {};
+
   const projects =
-    selectedSnapshot.restaurants ||
-    selectedSnapshot.projects ||
-    selectedSnapshot.venues ||
+    registrationPayload.restaurants ||
+    parsedSnapshot.restaurants ||
+    parsedSnapshot.projects ||
+    parsedSnapshot.venues ||
     [];
+
   const diagnosisHistory =
-    selectedSnapshot.userDiagnosisHistory ||
-    selectedSnapshot.diagnosisHistory ||
-    selectedSnapshot.surveyHistory ||
+    parsedSnapshot.userDiagnosisHistory ||
+    parsedSnapshot.diagnosisHistory ||
+    parsedSnapshot.surveyHistory ||
+    extractListByKey('diagnosis_history_') ||
     [];
+
   const tasks =
-    selectedSnapshot.actionPlanTasks ||
-    selectedSnapshot.tasks ||
+    parsedSnapshot.actionPlanTasks ||
+    parsedSnapshot.tasks ||
+    extractListByKey('actionPlanTasks') ||
     [];
+
   const profile =
-    selectedSnapshot.profile ||
-    selectedSnapshot.user ||
-    selectedSnapshot.account ||
+    parsedSnapshot.profile ||
+    parsedSnapshot.user ||
+    parsedSnapshot.account ||
+    parsedSnapshot.userProfile ||
     {};
 
   const totalUsers = users.length;
@@ -154,17 +189,20 @@ export default function AdminPage() {
   const totalDiagnoses = Array.isArray(diagnosisHistory) ? diagnosisHistory.length : 0;
   const totalTasks = Array.isArray(tasks) ? tasks.length : 0;
 
-  const answerKeys = Object.keys(selectedSnapshot || {}).filter((key) =>
+  const answerKeys = Object.keys(parsedSnapshot || {}).filter((key) =>
     key.includes('diagnosis_answers_')
   );
-  const answersByBlock = answerKeys.map((key) => ({
-    key,
-    count: Array.isArray(selectedSnapshot?.[key]) ? selectedSnapshot[key].length : 0,
-  }));
+  const answersByBlock = answerKeys.map((key) => {
+    const value = parsedSnapshot?.[key];
+    return {
+      key,
+      count: Array.isArray(value) ? value.length : 0,
+    };
+  });
 
   const downloadJson = () => {
     try {
-      const payload = JSON.stringify(selectedUser, null, 2);
+      const payload = JSON.stringify({ raw: selectedSnapshot, parsed: parsedSnapshot }, null, 2);
       const blob = new Blob([payload], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
