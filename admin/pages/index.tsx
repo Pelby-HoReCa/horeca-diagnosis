@@ -208,6 +208,23 @@ export default function AdminPage() {
               <button style={styles.button} onClick={loadUsers}>
                 {loading ? 'Загрузка...' : 'Войти'}
               </button>
+              <button
+                style={styles.ghostButton}
+                onClick={() => {
+                  setAuthed(false);
+                  setUsers([]);
+                  setSelectedUser(null);
+                  setError('');
+                  setStoredToken('');
+                  setStoredEmail('');
+                  if (typeof window !== 'undefined') {
+                    window.localStorage.removeItem('pelby_admin_token');
+                    window.localStorage.removeItem('pelby_admin_email');
+                  }
+                }}
+              >
+                Сбросить токен
+              </button>
             </div>
           </div>
         </div>
@@ -240,6 +257,23 @@ export default function AdminPage() {
             }}
           >
             Выйти
+          </button>
+          <button
+            style={styles.ghostButton}
+            onClick={() => {
+              setAuthed(false);
+              setUsers([]);
+              setSelectedUser(null);
+              setError('');
+              setStoredToken('');
+              setStoredEmail('');
+              if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('pelby_admin_token');
+                window.localStorage.removeItem('pelby_admin_email');
+              }
+            }}
+          >
+            Сбросить токен
           </button>
         </div>
       </div>
