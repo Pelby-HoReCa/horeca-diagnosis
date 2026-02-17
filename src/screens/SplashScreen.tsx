@@ -1,9 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { palette } from '../styles/theme';
-
-const { width, height } = Dimensions.get('window');
 
 const splashIconSvg = `
 <svg width="73" height="70" viewBox="0 0 73 70" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -76,6 +74,8 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: palette.primaryBlue,
     justifyContent: 'center',
     alignItems: 'center',
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   },
   progressBarContainer: {
     position: 'absolute',
-    bottom: 100,
+    bottom: Platform.OS === 'web' ? 72 : 100,
     width: 180,
     height: 8,
     alignSelf: 'center',
