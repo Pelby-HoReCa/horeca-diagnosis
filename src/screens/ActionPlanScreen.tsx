@@ -1310,11 +1310,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                     style={styles.diagnosisButton}
                     activeOpacity={0.7}
                     onPress={() => {
-                      navigation.navigate('BlockQuestions', { 
-                        blockId: block.id, 
-                        blockTitle: block.title,
-                        venueId: selectedVenueId,
-                      });
+                      navigation.navigate('Register2');
                     }}
                   >
                     <Text style={styles.diagnosisButtonText}>К диагностике</Text>

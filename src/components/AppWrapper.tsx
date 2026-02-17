@@ -3,6 +3,7 @@ import { useFonts, Manrope_300Light, Manrope_400Regular, Manrope_500Medium, Manr
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavigationIndependentTree, CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
+import { Platform } from 'react-native';
 
 import { AppContext, AppContextType } from '../context/AppContext';
 import AppNavigator from '../navigation/AppNavigator';
@@ -380,7 +381,7 @@ export default function AppWrapper() {
               <RegisterScreen1
                 onContinue={() => props.navigation.navigate('Register2')}
                 onSkip={() => props.navigation.navigate('Register2')}
-                onBack={() => props.navigation.navigate('Register2')}
+                onBack={() => props.navigation.goBack()}
               />
             )}
           </Stack.Screen>
@@ -390,7 +391,7 @@ export default function AppWrapper() {
               <RegisterScreen2
                 onContinue={() => props.navigation.navigate('Register3')}
                 onSkip={() => props.navigation.navigate('Register3')}
-                onBack={() => props.navigation.goBack()}
+                onBack={() => props.navigation.navigate('Register1')}
                 onOpenMap={(index) => {
                   setMapTargetIndex(index);
                   props.navigation.navigate('MapPicker');
@@ -427,6 +428,13 @@ export default function AppWrapper() {
                 onContinue={async (selectedBlocks) => {
                   await AsyncStorage.setItem('registrationStep3Completed', 'true');
                   setSelectedBlocksForDiagnosis(selectedBlocks);
+                  if (Platform.OS === 'web') {
+                    props.navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'MainTabs' }],
+                    });
+                    return;
+                  }
                   if (selectedBlocks.length > 0) {
                     const firstBlockId = selectedBlocks[0];
                     setNextBlockId(firstBlockId);
@@ -445,6 +453,13 @@ export default function AppWrapper() {
                 }}
                 onSkip={async () => {
                   await AsyncStorage.setItem('registrationStep3Completed', 'true');
+                  if (Platform.OS === 'web') {
+                    props.navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'MainTabs' }],
+                    });
+                    return;
+                  }
                   props.navigation.reset({
                     index: 0,
                     routes: [{ name: 'MainTabs' }],
