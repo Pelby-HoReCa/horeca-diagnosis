@@ -299,7 +299,7 @@ export default function AppNavigator({ route }: { route?: any }) {
       initialRouteName={route?.params?.tab && tabNames.includes(route?.params?.tab) ? route?.params?.tab : 'Главная'}
       screenOptions={({ route }) => {
         const focusedRouteName = getFocusedRouteNameFromRoute(route) ?? '';
-        const hideTabBar = focusedRouteName === 'Help';
+        const hideTabBar = focusedRouteName === 'Help' || focusedRouteName === 'TaskSubtasks';
         return {
           headerShown: false,
           tabBarActiveTintColor: COLORS.active,

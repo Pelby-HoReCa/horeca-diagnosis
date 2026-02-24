@@ -53,6 +53,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   const [showAllCompletedModal, setShowAllCompletedModal] = useState(false);
   const [showAddWarningModal, setShowAddWarningModal] = useState(false);
   const [incompleteTasksCount, setIncompleteTasksCount] = useState(0);
+  const selectedVenueIdRef = useRef<string | null>(null);
 
   const questionsByBlock: Record<string, any[]> = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -67,12 +68,16 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
     loadIcons();
   }, []);
 
+  useEffect(() => {
+    selectedVenueIdRef.current = selectedVenueId;
+  }, [selectedVenueId]);
+
   useFocusEffect(
     useCallback(() => {
       const syncSelectedVenue = async () => {
         const userId = await getCurrentUserId();
         const storedVenueId = await getSelectedVenueId(userId);
-        if (storedVenueId && storedVenueId !== selectedVenueId) {
+        if (storedVenueId && storedVenueId !== selectedVenueIdRef.current) {
           setSelectedVenueId(storedVenueId);
           return;
         }
@@ -80,7 +85,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         loadBlocksWithoutClearing();
       };
       syncSelectedVenue();
-    }, [selectedVenueId])
+    }, [])
   );
 
   const loadProfileData = async () => {
@@ -244,8 +249,6 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         console.error('Ошибка сохранения выбранного проекта (диагностика):', error);
       }
     })();
-    loadProfileData();
-    loadBlocksWithoutClearing();
   };
 
   const loadIcons = async () => {

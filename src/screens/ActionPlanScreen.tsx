@@ -41,6 +41,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
   const [emptyBlockIconSvg, setEmptyBlockIconSvg] = useState<string>('');
   const [coinsIconSvg, setCoinsIconSvg] = useState<string>('');
   const [colorsIconSvg, setColorsIconSvg] = useState<string>('');
+  const [chartBarLineIconSvg, setChartBarLineIconSvg] = useState<string>('');
   const [arrowRightIconSvg, setArrowRightIconSvg] = useState<string>('');
   const [fileIconSvg, setFileIconSvg] = useState<string>('');
   const [marketingIconSvg, setMarketingIconSvg] = useState<string>('');
@@ -62,8 +63,13 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
   const [subtasksByTask, setSubtasksByTask] = useState<
     Record<string, Array<{ id: string; title: string; completed: boolean }>>
   >({});
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const [showAddWarningModal, setShowAddWarningModal] = useState(false);
+  const [pendingTaskCompletion, setPendingTaskCompletion] = useState<{
+    taskId: string;
+    incompleteSubtasks: number;
+  } | null>(null);
+  const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
+  const selectedVenueIdRef = useRef<string | null>(null);
 
   const getTaskKey = (task: Task) => {
     const baseId = (task as any).id || task.title || 'task';
@@ -71,18 +77,40 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     return `${baseId}__${blockId}`;
   };
 
+  const getTaskLegacyKey = (task: Task) => {
+    const safeTitle = (task?.title || 'task').trim();
+    const blockId = (task as any)?.blockId || task?.blockId || 'block';
+    return `${safeTitle}__${blockId}`;
+  };
+
+  const getIncompleteSubtaskCount = (task: Task) => {
+    const primaryKey = getTaskKey(task);
+    const legacyKey = getTaskLegacyKey(task);
+    const fallbackIdKey = (task as any)?.id || '';
+    const list =
+      subtasksByTask[primaryKey] ||
+      subtasksByTask[legacyKey] ||
+      (fallbackIdKey ? subtasksByTask[fallbackIdKey] : []) ||
+      [];
+    return (Array.isArray(list) ? list : []).filter((subtask: any) => !subtask?.completed).length;
+  };
+
   useEffect(() => {
     loadIcons();
   }, []);
 
   // Обновляем задачи при возврате на экран (БЕЗ очистки данных)
+  useEffect(() => {
+    selectedVenueIdRef.current = selectedVenueId;
+  }, [selectedVenueId]);
+
   useFocusEffect(
     useCallback(() => {
       console.log('Экран "Задачи" получил фокус, обновляем задачи...');
       const syncSelectedVenue = async () => {
         const userId = await getCurrentUserId();
         const storedVenueId = await getSelectedVenueId(userId);
-        if (storedVenueId && storedVenueId !== selectedVenueId) {
+        if (storedVenueId && storedVenueId !== selectedVenueIdRef.current) {
           setSelectedVenueId(storedVenueId);
           return;
         }
@@ -91,7 +119,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
         loadProfileData();
       };
       syncSelectedVenue();
-    }, [selectedVenueId])
+    }, [])
   );
 
   const loadProfileData = async () => {
@@ -258,9 +286,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
         console.error('Ошибка сохранения выбранного проекта (задачи):', error);
       }
     })();
-    loadProfileData();
-    loadCompletedBlocks();
-    loadTasksWithoutClearing();
   };
 
   const loadIcons = async () => {
@@ -362,6 +387,13 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       if (colorsAsset.localUri) {
         const response = await fetch(colorsAsset.localUri);
         setColorsIconSvg(await response.text());
+      }
+
+      const chartBarLineAsset = Asset.fromModule(require('../../assets/images/chart-bar-line-icon.svg'));
+      await chartBarLineAsset.downloadAsync();
+      if (chartBarLineAsset.localUri) {
+        const response = await fetch(chartBarLineAsset.localUri);
+        setChartBarLineIconSvg(await response.text());
       }
 
       const fileAsset = Asset.fromModule(require('../../assets/images/file-icon.svg'));
@@ -592,28 +624,28 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     
     // Исключения для 11, 12, 13, 14
     if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-      return 'шагов';
+      return 'подзадач';
     }
     
-    // 1 шаг
+    // 1 подзадача
     if (lastDigit === 1) {
-      return 'шаг';
+      return 'подзадача';
     }
     
-    // 2, 3, 4 шага
+    // 2, 3, 4 подзадачи
     if (lastDigit >= 2 && lastDigit <= 4) {
-      return 'шага';
+      return 'подзадачи';
     }
     
-    // 5, 6, 7, 8, 9, 0 шагов
-    return 'шагов';
+    // 5, 6, 7, 8, 9, 0 подзадач
+    return 'подзадач';
   };
 
   const getBlockIconSvg = (blockId: string): string | null => {
     const iconMap: Record<string, string> = {
       'finance': coinsIconSvg,
       'concept': colorsIconSvg,
-      'management': arrowRightIconSvg,
+      'management': chartBarLineIconSvg,
       'menu': fileIconSvg, // Продуктовая стратегия
       'product': fileIconSvg,
       'marketing': marketingIconSvg,
@@ -752,6 +784,13 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
           setTasks([]);
         }
       }
+
+      // Подзадачи нужны для счетчиков на карточках задач
+      const venueId = await getSelectedVenueId(userId);
+      const subtasksKey = getVenueScopedKey('actionPlanSubtasks', userId, venueId);
+      const subtasksJson = await AsyncStorage.getItem(subtasksKey);
+      const subtasksParsed = subtasksJson ? JSON.parse(subtasksJson) : {};
+      setSubtasksByTask(subtasksParsed || {});
     } catch (error) {
       console.error('Ошибка загрузки задач:', error);
       setTasks([]);
@@ -844,10 +883,10 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     }
   };
 
-  const toggleTaskCompletion = async (taskId: string) => {
+  const setTaskCompleted = async (taskId: string, completed: boolean) => {
     try {
       const updatedTasks = tasks.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
+        task.id === taskId ? { ...task, completed } : task
       );
       setTasks(updatedTasks);
 
@@ -862,6 +901,23 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     } catch (error) {
       console.error('Ошибка обновления задачи:', error);
     }
+  };
+
+  const toggleTaskCompletion = async (task: Task) => {
+    if (!task?.id) return;
+    if (task.completed) {
+      await setTaskCompleted(task.id, false);
+      return;
+    }
+    const incompleteSubtasks = getIncompleteSubtaskCount(task);
+    if (incompleteSubtasks > 0) {
+      setPendingTaskCompletion({
+        taskId: task.id,
+        incompleteSubtasks,
+      });
+      return;
+    }
+    await setTaskCompleted(task.id, true);
   };
 
   const saveSubtasks = async (next: Record<string, Array<{ id: string; title: string; completed: boolean }>>) => {
@@ -1101,6 +1157,18 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     }, 350);
   };
 
+  const scrollToTop = () => {
+    programmaticScrollRef.current = true;
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 350);
+  };
+
+  const toggleBlockCollapse = (blockId: string) => {
+    setCollapsedBlocks((prev) => ({ ...prev, [blockId]: !prev[blockId] }));
+  };
+
   useEffect(() => {
     if (!selectedTab || selectedTab === 'all') return;
     const timeout = setTimeout(() => {
@@ -1130,12 +1198,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 
   const handleScroll = (event: any) => {
     const offsetY = event.nativeEvent.contentOffset.y;
-    if (offsetY > 500 && !showScrollTop) {
-      setShowScrollTop(true);
-    } else if (offsetY <= 500 && showScrollTop) {
-      setShowScrollTop(false);
-    }
-
     if (programmaticScrollRef.current) return;
 
     if (offsetY <= 40 && selectedTab !== 'all') {
@@ -1145,14 +1207,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 
   return (
     <View style={styles.container}>
-    <ScrollView 
-      ref={scrollViewRef} 
-      style={styles.scrollView}
-      contentContainerStyle={{ paddingBottom: 30 }}
-      showsVerticalScrollIndicator={false}
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
-    >
       {/* Секция профиля проекта - МЕМОИЗИРОВАНА для предотвращения ре-рендеров */}
       {headerJSX}
 
@@ -1178,7 +1232,10 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
               selectedTab === 'all' && styles.tabButtonActive,
               pressed && styles.tabButtonPressed,
             ]}
-            onPress={() => setSelectedTab('all')}
+            onPress={() => {
+              setSelectedTab('all');
+              scrollToTop();
+            }}
           >
             <Text
               numberOfLines={1}
@@ -1245,6 +1302,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
         </ScrollView>
       </View>
 
+    <ScrollView 
+      ref={scrollViewRef} 
+      style={styles.scrollView}
+      contentContainerStyle={{ paddingBottom: 30 }}
+      showsVerticalScrollIndicator={false}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
+    >
       {/* Блоки с задачами */}
       {displayedBlocks.map((block, blockIndex) => {
         const isUncompleted = !block.completed || block.efficiency === undefined;
@@ -1254,6 +1319,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
         const blockIconSvg = getBlockIconSvg(block.id);
         const blockBadgeColors = getDiagnosisBadgeColors(dynamicEfficiency);
         const isLastBlock = blockIndex === displayedBlocks.length - 1;
+        const isCollapsed = !!collapsedBlocks[block.id];
         
         // Если блок непройденный, показываем специальный формат
         if (isUncompleted) {
@@ -1266,7 +1332,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                 }}
               >
                 {/* Заголовок блока с иконкой и "-%" */}
-                <View style={[styles.blockHeaderCard, styles.blockHeaderCardUncompleted]}>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.blockHeaderCard,
+                    styles.blockHeaderCardUncompleted,
+                    pressed && styles.blockHeaderCardPressed,
+                  ]}
+                  onPress={() => toggleBlockCollapse(block.id)}
+                >
                   <View style={styles.blockHeaderTopRow}>
                     {blockIconSvg && (
                       <View style={styles.blockHeaderIcon}>
@@ -1278,11 +1351,19 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                     <View style={styles.blockHeaderTextContainer}>
                       <Text style={styles.blockHeaderTitle}>{block.title}</Text>
                     </View>
-                    <Text style={styles.blockUncompletedPercent}>-%</Text>
+                    <View style={styles.blockHeaderRight}>
+                      <Text style={styles.blockUncompletedPercent}>-%</Text>
+                      <Ionicons
+                        name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                        size={18}
+                        color="#868C98"
+                      />
+                    </View>
                   </View>
-                </View>
+                </Pressable>
 
                 {/* Контент для непройденного блока */}
+                {!isCollapsed && (
                 <View style={styles.uncompletedBlockContent}>
                   {/* Кружочек с числом 0 */}
                   <View style={styles.emptyBlockIconContainer}>
@@ -1310,12 +1391,25 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                     style={styles.diagnosisButton}
                     activeOpacity={0.7}
                     onPress={() => {
-                      navigation.navigate('Register2');
+                      const uncompletedBlockIds = allBlocks
+                        .filter((item) => !item.completed || item.efficiency === undefined || item.efficiency === null)
+                        .map((item) => item.id);
+                      const deduped = Array.from(new Set(uncompletedBlockIds));
+                      const selectedBlocks = [
+                        block.id,
+                        ...deduped.filter((id) => id !== block.id),
+                      ];
+                      navigation.navigate('NextBlock', {
+                        blockId: block.id,
+                        origin: 'actionPlan',
+                        selectedBlocks,
+                      });
                     }}
                   >
                     <Text style={styles.diagnosisButtonText}>К диагностике</Text>
                   </TouchableOpacity>
                 </View>
+                )}
               </View>
               
               {/* Серая линия между блоками (такая же, как между задачами и заголовками) */}
@@ -1334,7 +1428,13 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
               }}
             >
               {/* Заголовок блока с иконкой и эффективностью */}
-              <View style={styles.blockHeaderCard}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.blockHeaderCard,
+                  pressed && styles.blockHeaderCardPressed,
+                ]}
+                onPress={() => toggleBlockCollapse(block.id)}
+              >
                 <View style={styles.blockHeaderTopRow}>
                   {blockIconSvg && (
                     <View style={styles.blockHeaderIcon}>
@@ -1361,15 +1461,21 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                       {dynamicEfficiency}%
                     </Text>
                   </View>
+                  <Ionicons
+                    name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                    size={18}
+                    color="#868C98"
+                    style={styles.blockHeaderChevron}
+                  />
                 </View>
-              </View>
+              </Pressable>
 
               {/* Задачи */}
+              {!isCollapsed && (
               <View style={styles.tasksContainer}>
                 {sortedBlockTasks.map((task, taskIndex) => {
                   const efficiencyGain = Number.isFinite(task.efficiencyGain) ? task.efficiencyGain : 0;
-                  const taskKey = getTaskKey(task);
-                  const subtaskCount = subtasksByTask[taskKey]?.length || 0;
+                  const subtaskCount = getIncompleteSubtaskCount(task);
                   const isCompleted = task.completed;
                   const completedColor = '#868C98';
                   const rawTitle = (task.title || '').trim();
@@ -1395,7 +1501,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                         <TouchableOpacity
                           style={styles.taskCheckbox}
                           activeOpacity={0.8}
-                          onPress={() => toggleTaskCompletion(task.id)}
+                          onPress={() => toggleTaskCompletion(task)}
                         >
                           {isCompleted ? (
                             taskCheckboxCheckedSvg ? (
@@ -1442,6 +1548,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                   );
                 })}
               </View>
+              )}
             </View>
             
             {/* Серая линия между блоками */}
@@ -1451,19 +1558,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       })}
 
     </ScrollView>
-
-    {showScrollTop && (
-      <TouchableOpacity
-        style={styles.scrollTopButton}
-        activeOpacity={0.8}
-        onPress={() => {
-          setSelectedTab('all');
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-        }}
-      >
-        <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
-      </TouchableOpacity>
-    )}
 
     {/* Модальное окно выбора проекта */}
     <Modal
@@ -1703,6 +1797,50 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
             >
               <Text style={styles.addWarningSecondaryButtonText}>К задачам</Text>
             </AnimatedPressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+
+    <Modal
+      visible={!!pendingTaskCompletion}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setPendingTaskCompletion(null)}
+    >
+      <View style={styles.taskConfirmOverlay}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => setPendingTaskCompletion(null)}
+        />
+        <View style={styles.taskConfirmCard}>
+          <Text style={styles.taskConfirmTitle}>Вы уверены, что хотите завершить задачу?</Text>
+          <Text style={styles.taskConfirmText}>
+            Для ее завершения отмечено {pendingTaskCompletion?.incompleteSubtasks || 0} невыполненных подзадач.
+          </Text>
+          <View style={styles.taskConfirmButtons}>
+            <View style={styles.taskConfirmButtonWrap}>
+              <AnimatedPressable
+                style={styles.taskConfirmYesButton}
+                onPress={async () => {
+                  if (pendingTaskCompletion?.taskId) {
+                    await setTaskCompleted(pendingTaskCompletion.taskId, true);
+                  }
+                  setPendingTaskCompletion(null);
+                }}
+              >
+                <Text style={styles.taskConfirmYesText}>Да</Text>
+              </AnimatedPressable>
+            </View>
+            <View style={styles.taskConfirmButtonWrap}>
+              <AnimatedPressable
+                style={styles.taskConfirmNoButton}
+                onPress={() => setPendingTaskCompletion(null)}
+              >
+                <Text style={styles.taskConfirmNoText}>Нет</Text>
+              </AnimatedPressable>
+            </View>
           </View>
         </View>
       </View>
@@ -2214,6 +2352,72 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#EBF1FF',
   },
+  taskConfirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  taskConfirmCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 16,
+  },
+  taskConfirmTitle: {
+    fontSize: 20,
+    fontWeight: '500',
+    color: '#0A0D14',
+    textAlign: 'center',
+    lineHeight: 27,
+  },
+  taskConfirmText: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: '300',
+    color: '#525866',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  taskConfirmButtons: {
+    marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  taskConfirmButtonWrap: {
+    width: '48.5%',
+  },
+  taskConfirmNoButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 99,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#191BDF',
+  },
+  taskConfirmYesButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: '#C2D6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  taskConfirmNoText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#EBF1FF',
+  },
+  taskConfirmYesText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#162664',
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2278,6 +2482,9 @@ const styles = StyleSheet.create({
   blockHeaderCard: {
     marginBottom: 10, // Уменьшено на 5px (было 15, стало 10)
   },
+  blockHeaderCardPressed: {
+    opacity: 0.68,
+  },
   blockHeaderCardUncompleted: {
     marginTop: 0, // Выровнено с завершенными блоками
   },
@@ -2322,6 +2529,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 16,
     includeFontPadding: false,
+  },
+  blockHeaderChevron: {
+    marginLeft: 8,
+  },
+  blockHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: spacing.sm,
   },
   blockUncompletedPercent: {
     fontSize: 14,

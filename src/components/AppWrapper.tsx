@@ -471,34 +471,49 @@ export default function AppWrapper() {
           </Stack.Screen>
 
           <Stack.Screen name="DiagnosisQuestions">
-            {(props) => (
-              <DiagnosisQuestionsScreen
-                selectedBlocks={selectedBlocksForDiagnosis}
-                currentBlockId={props.route.params?.blockId}
-                onBack={() => props.navigation.goBack()}
-                onSkip={() => props.navigation.goBack()}
-                onBlockComplete={(blockId) => {
-                  setCompletedBlockId(blockId);
-                  props.navigation.replace('BlockResults', { blockId });
-                }}
-              />
-            )}
+            {(props) => {
+              const routeSelectedBlocks = props.route.params?.selectedBlocks;
+              const effectiveSelectedBlocks =
+                Array.isArray(routeSelectedBlocks) && routeSelectedBlocks.length > 0
+                  ? routeSelectedBlocks
+                  : selectedBlocksForDiagnosis;
+              return (
+                <DiagnosisQuestionsScreen
+                  selectedBlocks={effectiveSelectedBlocks}
+                  currentBlockId={props.route.params?.blockId}
+                  onBack={() => props.navigation.goBack()}
+                  onSkip={() => props.navigation.goBack()}
+                  onBlockComplete={(blockId) => {
+                    setCompletedBlockId(blockId);
+                    props.navigation.replace('BlockResults', {
+                      blockId,
+                      selectedBlocks: effectiveSelectedBlocks,
+                    });
+                  }}
+                />
+              );
+            }}
           </Stack.Screen>
 
           <Stack.Screen name="BlockResults">
             {(props) => {
               const blockId = props.route.params?.blockId || completedBlockId || '';
-              const blocksCount = selectedBlocksForDiagnosis.length || DEFAULT_BLOCKS.length;
-              const selectedIndex = selectedBlocksForDiagnosis.indexOf(blockId);
+              const routeSelectedBlocks = props.route.params?.selectedBlocks;
+              const effectiveSelectedBlocks =
+                Array.isArray(routeSelectedBlocks) && routeSelectedBlocks.length > 0
+                  ? routeSelectedBlocks
+                  : selectedBlocksForDiagnosis;
+              const blocksCount = effectiveSelectedBlocks.length || DEFAULT_BLOCKS.length;
+              const selectedIndex = effectiveSelectedBlocks.indexOf(blockId);
               return (
                 <BlockResultsScreen
                   blockId={blockId}
                   completedBlockIndex={selectedIndex >= 0 ? selectedIndex : DEFAULT_BLOCKS.findIndex((b) => b.id === blockId)}
                   totalBlocks={blocksCount}
-                  selectedBlocks={selectedBlocksForDiagnosis}
+                  selectedBlocks={effectiveSelectedBlocks}
                   onContinue={async () => {
-                    const blocks = selectedBlocksForDiagnosis.length
-                      ? selectedBlocksForDiagnosis
+                    const blocks = effectiveSelectedBlocks.length
+                      ? effectiveSelectedBlocks
                       : await loadSelectedBlocksFromStorage();
                     const currentIdx = blocks.findIndex((id) => id === blockId);
                     const nextIdx = currentIdx + 1;
@@ -507,9 +522,16 @@ export default function AppWrapper() {
                       setNextBlockId(nextId);
                       const completed = await isBlockCompleted(nextId);
                       if (completed) {
-                        props.navigation.replace('BlockResults', { blockId: nextId });
+                        props.navigation.replace('BlockResults', {
+                          blockId: nextId,
+                          selectedBlocks: blocks,
+                        });
                       } else {
-                        props.navigation.replace('NextBlock', { blockId: nextId, origin: 'blockResults' });
+                        props.navigation.replace('NextBlock', {
+                          blockId: nextId,
+                          origin: 'blockResults',
+                          selectedBlocks: blocks,
+                        });
                       }
                     } else {
                       props.navigation.replace('DiagnosisResults');
@@ -540,6 +562,11 @@ export default function AppWrapper() {
           <Stack.Screen name="NextBlock">
             {(props) => {
               const blockId = props.route.params?.blockId || nextBlockId || '';
+              const routeSelectedBlocks = props.route.params?.selectedBlocks;
+              const effectiveSelectedBlocks =
+                Array.isArray(routeSelectedBlocks) && routeSelectedBlocks.length > 0
+                  ? routeSelectedBlocks
+                  : selectedBlocksForDiagnosis;
               const blockIndex = DEFAULT_BLOCKS.findIndex((block) => block.id === blockId);
               const blockTitle = DEFAULT_BLOCKS.find((block) => block.id === blockId)?.title;
               return (
@@ -547,7 +574,7 @@ export default function AppWrapper() {
                   blockId={blockId}
                   blockTitle={blockTitle}
                   currentStepIndex={blockIndex >= 0 ? blockIndex : undefined}
-                  selectedBlocks={selectedBlocksForDiagnosis}
+                  selectedBlocks={effectiveSelectedBlocks}
                   onBack={() => {
                     const origin = props.route.params?.origin;
                     if (origin === 'register3') {
@@ -569,14 +596,20 @@ export default function AppWrapper() {
                           (value) => value !== null && value !== undefined && value !== ''
                         ).length;
                         if (answered >= total) {
-                          props.navigation.replace('BlockResults', { blockId });
+                          props.navigation.replace('BlockResults', {
+                            blockId,
+                            selectedBlocks: effectiveSelectedBlocks,
+                          });
                           return;
                         }
                       }
                     } catch (error) {
                       console.error('Ошибка проверки завершения блока:', error);
                     }
-                    props.navigation.replace('DiagnosisQuestions', { blockId });
+                    props.navigation.replace('DiagnosisQuestions', {
+                      blockId,
+                      selectedBlocks: effectiveSelectedBlocks,
+                    });
                   }}
                 />
               );
