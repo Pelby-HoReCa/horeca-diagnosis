@@ -39,12 +39,11 @@ export default function RegisterScreen1({
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [verifiedPhoneDigits, setVerifiedPhoneDigits] = useState<string | null>(null);
   const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
-  const [verificationMethod, setVerificationMethod] = useState<'sms' | 'call'>('sms');
   const [verificationId, setVerificationId] = useState('');
-  const [verificationCallPhone, setVerificationCallPhone] = useState('');
   const [verificationCodeInput, setVerificationCodeInput] = useState('');
   const [verificationError, setVerificationError] = useState('');
   const [isVerificationLoading, setIsVerificationLoading] = useState(false);
+  const [resendCooldownSec, setResendCooldownSec] = useState(0);
   const [userIconSvg, setUserIconSvg] = useState<string>('');
   const [emailIconSvg, setEmailIconSvg] = useState<string>('');
   const [russiaFlagSvg, setRussiaFlagSvg] = useState<string>('');
@@ -54,6 +53,7 @@ export default function RegisterScreen1({
     email: '',
     phone: '',
     consent: '',
+    phoneVerification: '',
   });
 
   // Функция форматирования телефона с автоматической маской
@@ -84,7 +84,6 @@ export default function RegisterScreen1({
       setIsPhoneVerified(false);
       setVerifiedPhoneDigits(null);
       setVerificationId('');
-      setVerificationCallPhone('');
     }
     if (verificationError) {
       setVerificationError('');
@@ -92,6 +91,9 @@ export default function RegisterScreen1({
     // Очищаем ошибку при вводе
     if (errors.phone) {
       setErrors(prev => ({ ...prev, phone: '' }));
+    }
+    if (errors.phoneVerification) {
+      setErrors(prev => ({ ...prev, phoneVerification: '' }));
     }
   };
 
@@ -112,10 +114,14 @@ export default function RegisterScreen1({
     if (errorCode === 'verification_already_consumed') return 'Эта сессия уже использована. Запросите новый код';
     if (errorCode === 'verification_attempts_exceeded') return 'Лимит попыток исчерпан. Запросите новый код';
     if (errorCode === 'code_required') return 'Введите код подтверждения';
+    if (errorCode === 'sms_sender_not_approved') {
+      return 'В SMS.ru не настроен буквенный отправитель. Завершите настройку и повторите.';
+    }
+    if (errorCode === 'sms_provider_error') return 'SMS-провайдер временно недоступен. Повторите позже.';
     return 'Не удалось выполнить верификацию. Повторите позже';
   };
 
-  const sendVerificationCode = async (method: 'sms' | 'call') => {
+  const sendVerificationCode = async () => {
     const digits = getPhoneDigits();
     if (digits.length < 10) {
       setVerificationError('Укажите корректный номер телефона');
@@ -129,7 +135,7 @@ export default function RegisterScreen1({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone: `+7${digits}`,
-          method,
+          method: 'sms',
         }),
       });
 
@@ -145,11 +151,10 @@ export default function RegisterScreen1({
         return;
       }
 
-      setVerificationMethod(method);
       setVerificationCodeInput('');
       setVerificationId(typeof payload?.verificationId === 'string' ? payload.verificationId : '');
-      setVerificationCallPhone(typeof payload?.callPhone === 'string' ? payload.callPhone : '');
       setVerificationError('');
+      setResendCooldownSec(60);
     } catch (error) {
       console.error('Ошибка запуска верификации телефона:', error);
       setVerificationError('Нет соединения с сервером. Проверьте интернет');
@@ -159,8 +164,14 @@ export default function RegisterScreen1({
   };
 
   const openVerificationModal = () => {
+    if (errors.phoneVerification) {
+      setErrors(prev => ({ ...prev, phoneVerification: '' }));
+    }
+    setVerificationCodeInput('');
+    setVerificationError('');
+    setVerificationId('');
+    setResendCooldownSec(0);
     setShowPhoneVerificationModal(true);
-    void sendVerificationCode('sms');
   };
 
   const validateForm = () => {
@@ -169,6 +180,7 @@ export default function RegisterScreen1({
       email: '',
       phone: '',
       consent: '',
+      phoneVerification: '',
     };
 
     // Валидация имени
@@ -201,7 +213,7 @@ export default function RegisterScreen1({
   const completeRegistration = async (skipPhoneVerificationCheck = false) => {
     const currentPhoneDigits = getPhoneDigits();
     if (!skipPhoneVerificationCheck && (!isPhoneVerified || verifiedPhoneDigits !== currentPhoneDigits)) {
-      openVerificationModal();
+      setErrors(prev => ({ ...prev, phoneVerification: 'Требуется верификация' }));
       return;
     }
 
@@ -248,6 +260,8 @@ export default function RegisterScreen1({
     if (!validateForm()) return;
     await completeRegistration();
   };
+  const canStartPhoneVerification = getPhoneDigits().length === 10;
+  const canConfirmPhoneVerification = Boolean(verificationId) && !isVerificationLoading;
 
   const handleConfirmPhoneVerification = async () => {
     const enteredCode = verificationCodeInput.trim();
@@ -256,7 +270,7 @@ export default function RegisterScreen1({
       return;
     }
 
-    if (verificationMethod === 'sms' && enteredCode.length < VERIFICATION_CODE_LENGTH) {
+    if (enteredCode.length < VERIFICATION_CODE_LENGTH) {
       setVerificationError('Введите код подтверждения');
       return;
     }
@@ -268,7 +282,7 @@ export default function RegisterScreen1({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           verificationId,
-          code: verificationMethod === 'sms' ? enteredCode : undefined,
+          code: enteredCode,
         }),
       });
 
@@ -277,11 +291,6 @@ export default function RegisterScreen1({
         payload = await response.json();
       } catch {
         payload = {};
-      }
-
-      if (response.status === 202) {
-        setVerificationError('Звонок еще не подтвержден. Повторите проверку через несколько секунд');
-        return;
       }
 
       if (!response.ok || !payload?.ok || payload?.verified !== true) {
@@ -294,7 +303,7 @@ export default function RegisterScreen1({
       setShowPhoneVerificationModal(false);
       setVerificationError('');
       setVerificationId('');
-      setVerificationCallPhone('');
+      setErrors(prev => ({ ...prev, phoneVerification: '' }));
       await completeRegistration(true);
     } catch (error) {
       console.error('Ошибка проверки кода телефона:', error);
@@ -310,6 +319,14 @@ export default function RegisterScreen1({
     }
     onSkip?.();
   };
+
+  useEffect(() => {
+    if (resendCooldownSec <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldownSec(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldownSec]);
 
   useEffect(() => {
     const loadSavedRegistration = async () => {
@@ -482,7 +499,21 @@ export default function RegisterScreen1({
 
           {/* Phone */}
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputLabel}>Телефон</Text>
+            <View style={styles.inputLabelRow}>
+              <Text style={[styles.inputLabel, styles.inputLabelNoMargin]}>Телефон</Text>
+              {!isPhoneVerified && (
+                <AnimatedPressable
+                  style={[
+                    styles.phoneVerifyTopAction,
+                    !canStartPhoneVerification && styles.phoneVerifyTopActionDisabled,
+                  ]}
+                  onPress={openVerificationModal}
+                  disabled={!canStartPhoneVerification}
+                >
+                  <Text style={styles.phoneVerifyTopActionText}>Верифицировать</Text>
+                </AnimatedPressable>
+              )}
+            </View>
             <View style={[styles.phoneInputContainer, errors.phone && styles.inputContainerError]}>
               <View style={styles.phonePrefix}>
                 {russiaFlagSvg && (
@@ -512,10 +543,14 @@ export default function RegisterScreen1({
                   <Ionicons name="checkmark" size={14} color={palette.success} />
                 </View>
               </View>
-            ) : (
-              <AnimatedPressable style={styles.phoneVerifyAction} onPress={openVerificationModal}>
-                <Text style={styles.phoneVerifyActionText}>Требуется верификация</Text>
-              </AnimatedPressable>
+            ) : null}
+            {!!errors.phoneVerification && (
+              <View style={styles.phoneVerificationErrorRow}>
+                <Text style={styles.phoneVerificationErrorText}>{errors.phoneVerification}</Text>
+                <AnimatedPressable style={styles.phoneVerificationErrorLinkWrap} onPress={openVerificationModal}>
+                  <Text style={styles.phoneVerificationErrorLink}>Верифицировать</Text>
+                </AnimatedPressable>
+              </View>
             )}
           </View>
         </View>
@@ -586,110 +621,64 @@ export default function RegisterScreen1({
           />
           <View style={styles.verificationCard}>
             <Text style={styles.verificationTitle}>Подтверждение телефона</Text>
-            <Text style={styles.verificationSubtitle}>Выберите способ получения кода</Text>
-
-            <View style={styles.verificationMethodRow}>
-              <AnimatedPressable
-                style={[
-                  styles.verificationMethodButton,
-                  verificationMethod === 'sms' && styles.verificationMethodButtonActive,
-                  isVerificationLoading && styles.verificationMethodButtonDisabled,
-                ]}
-                onPress={() => {
-                  if (!isVerificationLoading) {
-                    void sendVerificationCode('sms');
-                  }
-                }}
-              >
-                <Text
-                  style={[
-                    styles.verificationMethodText,
-                    verificationMethod === 'sms' && styles.verificationMethodTextActive,
-                  ]}
-                >
-                  SMS
-                </Text>
-              </AnimatedPressable>
-
-              <AnimatedPressable
-                style={[
-                  styles.verificationMethodButton,
-                  verificationMethod === 'call' && styles.verificationMethodButtonActive,
-                  isVerificationLoading && styles.verificationMethodButtonDisabled,
-                ]}
-                onPress={() => {
-                  if (!isVerificationLoading) {
-                    void sendVerificationCode('call');
-                  }
-                }}
-              >
-                <Text
-                  style={[
-                    styles.verificationMethodText,
-                    verificationMethod === 'call' && styles.verificationMethodTextActive,
-                  ]}
-                >
-                  Звонок
-                </Text>
-              </AnimatedPressable>
-            </View>
-
-            {verificationMethod === 'sms' ? (
-              <TextInput
-                style={styles.verificationCodeInput}
-                placeholder="Введите код"
-                placeholderTextColor="#868C98"
-                keyboardType="number-pad"
-                maxLength={VERIFICATION_CODE_LENGTH}
-                value={verificationCodeInput}
-                editable={!isVerificationLoading}
-                onChangeText={(text) => {
-                  setVerificationCodeInput(text.replace(/\D/g, ''));
-                  if (verificationError) {
-                    setVerificationError('');
-                  }
-                }}
-              />
-            ) : (
-              <View style={styles.verificationCallInfoCard}>
-                <Text style={styles.verificationCallInfoText}>
-                  Позвоните на номер ниже и затем нажмите «Проверить звонок».
-                </Text>
-                <Text style={styles.verificationCallNumber}>
-                  {verificationCallPhone || 'Номер ожидается...'}
-                </Text>
-              </View>
-            )}
+            <TextInput
+              style={styles.verificationCodeInput}
+              placeholder={verificationCodeInput ? '' : 'Введите код'}
+              placeholderTextColor="#868C98"
+              keyboardType="number-pad"
+              maxLength={VERIFICATION_CODE_LENGTH}
+              value={verificationCodeInput}
+              editable={!isVerificationLoading}
+              onChangeText={(text) => {
+                setVerificationCodeInput(text.replace(/\D/g, ''));
+                if (verificationError) {
+                  setVerificationError('');
+                }
+              }}
+            />
 
             {!!verificationError && <Text style={styles.verificationError}>{verificationError}</Text>}
 
-            <AnimatedPressable
-              style={[styles.verificationConfirmButton, isVerificationLoading && styles.verificationConfirmButtonDisabled]}
-              onPress={() => {
-                if (!isVerificationLoading) {
-                  void handleConfirmPhoneVerification();
-                }
-              }}
-            >
-              <Text style={styles.verificationConfirmButtonText}>
-                {verificationMethod === 'call' ? 'Проверить звонок' : 'Подтвердить'}
-              </Text>
-            </AnimatedPressable>
-
             <TouchableOpacity
               onPress={() => {
-                if (!isVerificationLoading) {
-                  void sendVerificationCode(verificationMethod);
+                if (!isVerificationLoading && resendCooldownSec <= 0) {
+                  void sendVerificationCode();
                 }
               }}
               style={styles.verificationResendButton}
-              disabled={isVerificationLoading}
+              disabled={isVerificationLoading || resendCooldownSec > 0}
               activeOpacity={0.8}
             >
-              <Text style={[styles.verificationResendText, isVerificationLoading && styles.verificationResendTextDisabled]}>
-                {isVerificationLoading ? 'Проверяем...' : 'Отправить код повторно'}
+              <Text
+                style={[
+                  styles.verificationResendText,
+                  (isVerificationLoading || resendCooldownSec > 0) && styles.verificationResendTextDisabled,
+                ]}
+              >
+                {isVerificationLoading
+                  ? 'Проверяем...'
+                  : resendCooldownSec > 0
+                    ? `Отправить код повторно через ${resendCooldownSec} сек`
+                    : verificationId
+                      ? 'Отправить код повторно'
+                      : 'Отправить код'}
               </Text>
             </TouchableOpacity>
+
+            <AnimatedPressable
+              style={[
+                styles.verificationConfirmButton,
+                !canConfirmPhoneVerification && styles.verificationConfirmButtonDisabled,
+              ]}
+              onPress={() => {
+                if (canConfirmPhoneVerification) {
+                  void handleConfirmPhoneVerification();
+                }
+              }}
+              disabled={!canConfirmPhoneVerification}
+            >
+              <Text style={styles.verificationConfirmButtonText}>Подтвердить</Text>
+            </AnimatedPressable>
           </View>
         </View>
       </Modal>
@@ -781,6 +770,15 @@ const styles = StyleSheet.create({
     color: '#0A0D14', // Цвет #0A0D14
     fontFamily: 'Manrope-SemiBold',
     marginBottom: spacing.xs,
+  },
+  inputLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  inputLabelNoMargin: {
+    marginBottom: 0,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -965,19 +963,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  phoneVerifyAction: {
-    marginTop: spacing.xxs,
-    marginLeft: spacing.xs,
-    alignSelf: 'flex-start',
-    paddingVertical: 2,
-    paddingRight: 4,
+  phoneVerifyTopAction: {
+    paddingVertical: spacing.xxs,
+    paddingLeft: spacing.sm,
+    paddingRight: 0,
   },
-  phoneVerifyActionText: {
-    fontSize: 12,
-    lineHeight: 17,
-    fontWeight: '400',
-    color: '#FF4D57',
-    fontFamily: 'Manrope-Regular',
+  phoneVerifyTopActionDisabled: {
+    opacity: 0.45,
+  },
+  phoneVerifyTopActionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#191BDF',
+    fontFamily: 'Manrope-Medium',
+    letterSpacing: 0.5,
   },
   phoneVerified: {
     color: palette.success,
@@ -989,6 +988,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     transform: [{ translateY: 0.5 }],
+  },
+  phoneVerificationErrorRow: {
+    marginTop: spacing.xxs,
+    marginLeft: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  phoneVerificationErrorText: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#FF4D57',
+    fontFamily: 'Manrope-Regular',
+  },
+  phoneVerificationErrorLinkWrap: {
+    marginLeft: 8,
+    paddingVertical: 1,
+  },
+  phoneVerificationErrorLink: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#191BDF',
+    fontFamily: 'Manrope-Medium',
   },
   verificationBackdrop: {
     flex: 1,
@@ -1014,46 +1035,6 @@ const styles = StyleSheet.create({
     color: '#0A0D14',
     fontFamily: 'Manrope-Bold',
   },
-  verificationSubtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '400',
-    color: '#525866',
-    fontFamily: 'Manrope-Regular',
-  },
-  verificationMethodRow: {
-    marginTop: 14,
-    flexDirection: 'row',
-    gap: 10,
-  },
-  verificationMethodButton: {
-    flex: 1,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E4E9',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  verificationMethodButtonActive: {
-    borderColor: '#191BDF',
-    backgroundColor: 'rgba(25, 27, 223, 0.08)',
-  },
-  verificationMethodButtonDisabled: {
-    opacity: 0.55,
-  },
-  verificationMethodText: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
-    color: '#525866',
-    fontFamily: 'Manrope-Medium',
-  },
-  verificationMethodTextActive: {
-    color: '#191BDF',
-  },
   verificationCodeInput: {
     marginTop: 12,
     height: 52,
@@ -1066,30 +1047,6 @@ const styles = StyleSheet.create({
     color: '#0A0D14',
     fontFamily: 'Manrope-Medium',
     letterSpacing: 1.5,
-  },
-  verificationCallInfoCard: {
-    marginTop: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E4E9',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  verificationCallInfoText: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '400',
-    color: '#525866',
-    fontFamily: 'Manrope-Regular',
-  },
-  verificationCallNumber: {
-    marginTop: 6,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: '600',
-    color: '#191BDF',
-    fontFamily: 'Manrope-SemiBold',
   },
   verificationError: {
     marginTop: 6,

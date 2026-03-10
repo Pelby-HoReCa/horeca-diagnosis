@@ -36,6 +36,7 @@ const SMSRU_CALLCHECK_ADD_ENDPOINT =
 const SMSRU_CALLCHECK_STATUS_ENDPOINT =
   process.env.SMSRU_CALLCHECK_STATUS_ENDPOINT || 'https://sms.ru/callcheck/status';
 const SMSRU_CODE_TEMPLATE = process.env.SMSRU_CODE_TEMPLATE || 'Код Pelby: {code}';
+const SMSRU_FROM = (process.env.SMSRU_FROM || '').trim();
 
 const createPhoneVerificationId = () => randomUUID();
 
@@ -172,6 +173,7 @@ const sendSmsRuCode = async ({ phone, code }) => {
     api_id: SMSRU_API_ID,
     to: phone,
     msg: message,
+    from: SMSRU_FROM || undefined,
     json: 1,
   });
 
@@ -185,7 +187,10 @@ const sendSmsRuCode = async ({ phone, code }) => {
   const smsStatus = body?.sms?.[phone];
   const isOk = body?.status === 'OK' && smsStatus?.status === 'OK';
   if (!isOk) {
-    throw new Error(`smsru_sms_failed:${JSON.stringify(body)}`);
+    const smsStatusCode = Number(smsStatus?.status_code || 0);
+    const error = new Error(`smsru_sms_failed:${JSON.stringify(body)}`);
+    error.code = smsStatusCode === 221 ? 'sms_sender_not_approved' : 'sms_provider_error';
+    throw error;
   }
 };
 
@@ -619,6 +624,12 @@ app.post('/auth/phone/start', async (req, res) => {
     });
   } catch (error) {
     console.error('auth/phone/start error', error);
+    if (error?.code === 'sms_sender_not_approved') {
+      return res.status(400).json({ ok: false, error: 'sms_sender_not_approved' });
+    }
+    if (error?.code === 'sms_provider_error') {
+      return res.status(502).json({ ok: false, error: 'sms_provider_error' });
+    }
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
