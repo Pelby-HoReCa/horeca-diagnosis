@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Modal,
   View,
   Text,
   TextInput,
@@ -9,25 +10,41 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Asset } from 'expo-asset';
 import { SvgXml } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AnimatedPressable from '../components/AnimatedPressable';
-import { palette, spacing, radii, typography } from '../styles/theme';
+import { palette, spacing } from '../styles/theme';
 import { findUserByEmail, saveUser, updateUser } from '../utils/usersStorage';
+import { API_BASE_URL } from '../utils/config';
 
 interface RegisterScreen1Props {
   onContinue: () => void;
   onSkip?: () => void;
   onBack?: () => void;
+  onOpenConsentDocument?: () => void;
 }
 
-export default function RegisterScreen1({ onContinue, onSkip, onBack }: RegisterScreen1Props) {
+export default function RegisterScreen1({
+  onContinue,
+  onSkip,
+  onBack,
+  onOpenConsentDocument,
+}: RegisterScreen1Props) {
+  const VERIFICATION_CODE_LENGTH = 4;
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [verifiedPhoneDigits, setVerifiedPhoneDigits] = useState<string | null>(null);
+  const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
+  const [verificationMethod, setVerificationMethod] = useState<'sms' | 'call'>('sms');
+  const [verificationId, setVerificationId] = useState('');
+  const [verificationCallPhone, setVerificationCallPhone] = useState('');
+  const [verificationCodeInput, setVerificationCodeInput] = useState('');
+  const [verificationError, setVerificationError] = useState('');
+  const [isVerificationLoading, setIsVerificationLoading] = useState(false);
   const [userIconSvg, setUserIconSvg] = useState<string>('');
   const [emailIconSvg, setEmailIconSvg] = useState<string>('');
   const [russiaFlagSvg, setRussiaFlagSvg] = useState<string>('');
@@ -63,10 +80,87 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
     }
     
     setPhone(formatted);
+    if (verifiedPhoneDigits && limitedDigits !== verifiedPhoneDigits) {
+      setIsPhoneVerified(false);
+      setVerifiedPhoneDigits(null);
+      setVerificationId('');
+      setVerificationCallPhone('');
+    }
+    if (verificationError) {
+      setVerificationError('');
+    }
     // Очищаем ошибку при вводе
     if (errors.phone) {
       setErrors(prev => ({ ...prev, phone: '' }));
     }
+  };
+
+  const getPhoneDigits = () => phone.replace(/\D/g, '');
+
+  const getVerificationErrorText = (errorCode: string, retryInSec?: number) => {
+    if (errorCode === 'invalid_phone') return 'Укажите корректный номер телефона';
+    if (errorCode === 'phone_provider_not_configured') return 'Провайдер верификации пока не настроен';
+    if (errorCode === 'verification_too_many_requests' && retryInSec) {
+      return `Слишком часто. Повторите через ${retryInSec} сек`;
+    }
+    if (errorCode === 'verification_rate_limit_exceeded' && retryInSec) {
+      return `Лимит попыток. Повторите через ${retryInSec} сек`;
+    }
+    if (errorCode === 'invalid_code') return 'Неверный код. Попробуйте еще раз';
+    if (errorCode === 'verification_expired') return 'Код истек. Запросите новый';
+    if (errorCode === 'verification_not_found') return 'Сессия верификации не найдена. Запросите код снова';
+    if (errorCode === 'verification_already_consumed') return 'Эта сессия уже использована. Запросите новый код';
+    if (errorCode === 'verification_attempts_exceeded') return 'Лимит попыток исчерпан. Запросите новый код';
+    if (errorCode === 'code_required') return 'Введите код подтверждения';
+    return 'Не удалось выполнить верификацию. Повторите позже';
+  };
+
+  const sendVerificationCode = async (method: 'sms' | 'call') => {
+    const digits = getPhoneDigits();
+    if (digits.length < 10) {
+      setVerificationError('Укажите корректный номер телефона');
+      return;
+    }
+
+    try {
+      setIsVerificationLoading(true);
+      const response = await fetch(`${API_BASE_URL}/auth/phone/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: `+7${digits}`,
+          method,
+        }),
+      });
+
+      let payload: any = {};
+      try {
+        payload = await response.json();
+      } catch {
+        payload = {};
+      }
+
+      if (!response.ok || !payload?.ok) {
+        setVerificationError(getVerificationErrorText(payload?.error || 'unknown_error', payload?.retryInSec));
+        return;
+      }
+
+      setVerificationMethod(method);
+      setVerificationCodeInput('');
+      setVerificationId(typeof payload?.verificationId === 'string' ? payload.verificationId : '');
+      setVerificationCallPhone(typeof payload?.callPhone === 'string' ? payload.callPhone : '');
+      setVerificationError('');
+    } catch (error) {
+      console.error('Ошибка запуска верификации телефона:', error);
+      setVerificationError('Нет соединения с сервером. Проверьте интернет');
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  };
+
+  const openVerificationModal = () => {
+    setShowPhoneVerificationModal(true);
+    void sendVerificationCode('sms');
   };
 
   const validateForm = () => {
@@ -104,8 +198,12 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
     return !Object.values(newErrors).some(error => error !== '');
   };
 
-  const handleContinue = async () => {
-    if (!validateForm()) return;
+  const completeRegistration = async (skipPhoneVerificationCheck = false) => {
+    const currentPhoneDigits = getPhoneDigits();
+    if (!skipPhoneVerificationCheck && (!isPhoneVerified || verifiedPhoneDigits !== currentPhoneDigits)) {
+      openVerificationModal();
+      return;
+    }
 
     const payload = {
       fullName: name,
@@ -146,6 +244,73 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
     onContinue();
   };
 
+  const handleContinue = async () => {
+    if (!validateForm()) return;
+    await completeRegistration();
+  };
+
+  const handleConfirmPhoneVerification = async () => {
+    const enteredCode = verificationCodeInput.trim();
+    if (!verificationId) {
+      setVerificationError('Сначала запросите код');
+      return;
+    }
+
+    if (verificationMethod === 'sms' && enteredCode.length < VERIFICATION_CODE_LENGTH) {
+      setVerificationError('Введите код подтверждения');
+      return;
+    }
+
+    try {
+      setIsVerificationLoading(true);
+      const response = await fetch(`${API_BASE_URL}/auth/phone/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          verificationId,
+          code: verificationMethod === 'sms' ? enteredCode : undefined,
+        }),
+      });
+
+      let payload: any = {};
+      try {
+        payload = await response.json();
+      } catch {
+        payload = {};
+      }
+
+      if (response.status === 202) {
+        setVerificationError('Звонок еще не подтвержден. Повторите проверку через несколько секунд');
+        return;
+      }
+
+      if (!response.ok || !payload?.ok || payload?.verified !== true) {
+        setVerificationError(getVerificationErrorText(payload?.error || 'unknown_error', payload?.retryInSec));
+        return;
+      }
+
+      setIsPhoneVerified(true);
+      setVerifiedPhoneDigits(getPhoneDigits());
+      setShowPhoneVerificationModal(false);
+      setVerificationError('');
+      setVerificationId('');
+      setVerificationCallPhone('');
+      await completeRegistration(true);
+    } catch (error) {
+      console.error('Ошибка проверки кода телефона:', error);
+      setVerificationError('Нет соединения с сервером. Проверьте интернет');
+    } finally {
+      setIsVerificationLoading(false);
+    }
+  };
+
+  const handleSkip = () => {
+    if (errors.consent) {
+      setErrors(prev => ({ ...prev, consent: '' }));
+    }
+    onSkip?.();
+  };
+
   useEffect(() => {
     const loadSavedRegistration = async () => {
       const saved = await AsyncStorage.getItem('registrationStep1');
@@ -155,7 +320,6 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
           if (parsed.fullName) setName(parsed.fullName);
           if (parsed.email) setEmail(parsed.email);
           if (parsed.phone) setPhone(parsed.phone);
-          if (typeof parsed.consent === 'boolean') setConsent(parsed.consent);
         } catch (error) {
           console.error('Ошибка чтения данных регистрации (шаг 1):', error);
         }
@@ -245,7 +409,7 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
           <View style={styles.stepIndicatorContainer}>
             <Text style={styles.stepIndicator}>1 / 3 ШАГ</Text>
           </View>
-          <TouchableOpacity onPress={onSkip || (() => {})} style={styles.skipButton}>
+          <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
             <Text style={styles.skipButtonText}>Пропустить</Text>
           </TouchableOpacity>
         </View>
@@ -341,6 +505,18 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
               </View>
             </View>
             {errors.phone ? <Text style={styles.errorText}>{errors.phone}</Text> : null}
+            {isPhoneVerified ? (
+              <View style={styles.phoneVerifiedRow}>
+                <Text style={[styles.phoneVerificationStatus, styles.phoneVerified]}>Верифицирован</Text>
+                <View style={styles.phoneVerifiedIconWrap}>
+                  <Ionicons name="checkmark" size={14} color={palette.success} />
+                </View>
+              </View>
+            ) : (
+              <AnimatedPressable style={styles.phoneVerifyAction} onPress={openVerificationModal}>
+                <Text style={styles.phoneVerifyActionText}>Требуется верификация</Text>
+              </AnimatedPressable>
+            )}
           </View>
         </View>
 
@@ -380,25 +556,143 @@ export default function RegisterScreen1({ onContinue, onSkip, onBack }: Register
                 <View style={styles.checkboxEmpty} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity 
-              activeOpacity={1}
-              onPress={() => {
-                setConsent(!consent);
-                if (errors.consent) {
-                  setErrors(prev => ({ ...prev, consent: '' }));
-                }
-              }}
-              style={styles.consentTextContainer}
-            >
+            <View style={styles.consentTextContainer}>
               <Text style={styles.consentText} numberOfLines={1} ellipsizeMode="clip">
                 <Text style={styles.consentMainText}>Даю согласие на обработку </Text>
-                <Text style={styles.consentLink}>персональных данных</Text>
+                <Text
+                  style={styles.consentLink}
+                  onPress={onOpenConsentDocument}
+                >
+                  персональных данных
+                </Text>
               </Text>
-            </TouchableOpacity>
+            </View>
           </View>
           {errors.consent ? <Text style={styles.errorText}>{errors.consent}</Text> : null}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showPhoneVerificationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhoneVerificationModal(false)}
+      >
+        <View style={styles.verificationBackdrop}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowPhoneVerificationModal(false)}
+          />
+          <View style={styles.verificationCard}>
+            <Text style={styles.verificationTitle}>Подтверждение телефона</Text>
+            <Text style={styles.verificationSubtitle}>Выберите способ получения кода</Text>
+
+            <View style={styles.verificationMethodRow}>
+              <AnimatedPressable
+                style={[
+                  styles.verificationMethodButton,
+                  verificationMethod === 'sms' && styles.verificationMethodButtonActive,
+                  isVerificationLoading && styles.verificationMethodButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (!isVerificationLoading) {
+                    void sendVerificationCode('sms');
+                  }
+                }}
+              >
+                <Text
+                  style={[
+                    styles.verificationMethodText,
+                    verificationMethod === 'sms' && styles.verificationMethodTextActive,
+                  ]}
+                >
+                  SMS
+                </Text>
+              </AnimatedPressable>
+
+              <AnimatedPressable
+                style={[
+                  styles.verificationMethodButton,
+                  verificationMethod === 'call' && styles.verificationMethodButtonActive,
+                  isVerificationLoading && styles.verificationMethodButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (!isVerificationLoading) {
+                    void sendVerificationCode('call');
+                  }
+                }}
+              >
+                <Text
+                  style={[
+                    styles.verificationMethodText,
+                    verificationMethod === 'call' && styles.verificationMethodTextActive,
+                  ]}
+                >
+                  Звонок
+                </Text>
+              </AnimatedPressable>
+            </View>
+
+            {verificationMethod === 'sms' ? (
+              <TextInput
+                style={styles.verificationCodeInput}
+                placeholder="Введите код"
+                placeholderTextColor="#868C98"
+                keyboardType="number-pad"
+                maxLength={VERIFICATION_CODE_LENGTH}
+                value={verificationCodeInput}
+                editable={!isVerificationLoading}
+                onChangeText={(text) => {
+                  setVerificationCodeInput(text.replace(/\D/g, ''));
+                  if (verificationError) {
+                    setVerificationError('');
+                  }
+                }}
+              />
+            ) : (
+              <View style={styles.verificationCallInfoCard}>
+                <Text style={styles.verificationCallInfoText}>
+                  Позвоните на номер ниже и затем нажмите «Проверить звонок».
+                </Text>
+                <Text style={styles.verificationCallNumber}>
+                  {verificationCallPhone || 'Номер ожидается...'}
+                </Text>
+              </View>
+            )}
+
+            {!!verificationError && <Text style={styles.verificationError}>{verificationError}</Text>}
+
+            <AnimatedPressable
+              style={[styles.verificationConfirmButton, isVerificationLoading && styles.verificationConfirmButtonDisabled]}
+              onPress={() => {
+                if (!isVerificationLoading) {
+                  void handleConfirmPhoneVerification();
+                }
+              }}
+            >
+              <Text style={styles.verificationConfirmButtonText}>
+                {verificationMethod === 'call' ? 'Проверить звонок' : 'Подтвердить'}
+              </Text>
+            </AnimatedPressable>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (!isVerificationLoading) {
+                  void sendVerificationCode(verificationMethod);
+                }
+              }}
+              style={styles.verificationResendButton}
+              disabled={isVerificationLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.verificationResendText, isVerificationLoading && styles.verificationResendTextDisabled]}>
+                {isVerificationLoading ? 'Проверяем...' : 'Отправить код повторно'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -659,5 +953,182 @@ const styles = StyleSheet.create({
   consentLink: {
     color: '#191BDF', // Цвет 191BDF для "персональных данных"
     fontWeight: '500',
+  },
+  phoneVerificationStatus: {
+    marginTop: 6,
+    fontSize: 12,
+    fontFamily: 'Manrope-Regular',
+  },
+  phoneVerifiedRow: {
+    marginTop: 4,
+    marginLeft: spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  phoneVerifyAction: {
+    marginTop: spacing.xxs,
+    marginLeft: spacing.xs,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+    paddingRight: 4,
+  },
+  phoneVerifyActionText: {
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '400',
+    color: '#FF4D57',
+    fontFamily: 'Manrope-Regular',
+  },
+  phoneVerified: {
+    color: palette.success,
+  },
+  phoneVerifiedIconWrap: {
+    marginLeft: 2,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    transform: [{ translateY: 0.5 }],
+  },
+  verificationBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  verificationCard: {
+    width: '100%',
+    backgroundColor: '#F6F8FA',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: '#E2E4E9',
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 16,
+  },
+  verificationTitle: {
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: '700',
+    color: '#0A0D14',
+    fontFamily: 'Manrope-Bold',
+  },
+  verificationSubtitle: {
+    marginTop: 4,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '400',
+    color: '#525866',
+    fontFamily: 'Manrope-Regular',
+  },
+  verificationMethodRow: {
+    marginTop: 14,
+    flexDirection: 'row',
+    gap: 10,
+  },
+  verificationMethodButton: {
+    flex: 1,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E4E9',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verificationMethodButtonActive: {
+    borderColor: '#191BDF',
+    backgroundColor: 'rgba(25, 27, 223, 0.08)',
+  },
+  verificationMethodButtonDisabled: {
+    opacity: 0.55,
+  },
+  verificationMethodText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: '#525866',
+    fontFamily: 'Manrope-Medium',
+  },
+  verificationMethodTextActive: {
+    color: '#191BDF',
+  },
+  verificationCodeInput: {
+    marginTop: 12,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E4E9',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: '#0A0D14',
+    fontFamily: 'Manrope-Medium',
+    letterSpacing: 1.5,
+  },
+  verificationCallInfoCard: {
+    marginTop: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E4E9',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  verificationCallInfoText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '400',
+    color: '#525866',
+    fontFamily: 'Manrope-Regular',
+  },
+  verificationCallNumber: {
+    marginTop: 6,
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '600',
+    color: '#191BDF',
+    fontFamily: 'Manrope-SemiBold',
+  },
+  verificationError: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#FF4D57',
+    fontFamily: 'Manrope-Regular',
+  },
+  verificationConfirmButton: {
+    marginTop: 12,
+    height: 52,
+    borderRadius: 99,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#191BDF',
+  },
+  verificationConfirmButtonDisabled: {
+    opacity: 0.6,
+  },
+  verificationConfirmButtonText: {
+    fontSize: 17,
+    lineHeight: 22,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    fontFamily: 'Manrope-Medium',
+  },
+  verificationResendButton: {
+    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+  },
+  verificationResendText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '500',
+    color: '#191BDF',
+    fontFamily: 'Manrope-Medium',
+  },
+  verificationResendTextDisabled: {
+    color: '#868C98',
   },
 });

@@ -20,6 +20,218 @@ const AI_MAX_INPUT_CHARS = Number(process.env.AI_MAX_INPUT_CHARS || 2000);
 const AI_TEMPERATURE = Number(process.env.AI_TEMPERATURE || 0.25);
 const AI_MAX_TOKENS = Number(process.env.AI_MAX_TOKENS || 500);
 
+const PHONE_VERIFICATION_TTL_MS = Number(process.env.PHONE_VERIFICATION_TTL_MS || 5 * 60 * 1000);
+const PHONE_VERIFICATION_MAX_ATTEMPTS = Number(process.env.PHONE_VERIFICATION_MAX_ATTEMPTS || 5);
+const PHONE_VERIFICATION_MAX_STARTS_PER_HOUR = Number(
+  process.env.PHONE_VERIFICATION_MAX_STARTS_PER_HOUR || 10
+);
+const PHONE_VERIFICATION_MIN_RESTART_INTERVAL_MS = Number(
+  process.env.PHONE_VERIFICATION_MIN_RESTART_INTERVAL_MS || 30 * 1000
+);
+
+const SMSRU_API_ID = process.env.SMSRU_API_ID || '';
+const SMSRU_SMS_ENDPOINT = process.env.SMSRU_SMS_ENDPOINT || 'https://sms.ru/sms/send';
+const SMSRU_CALLCHECK_ADD_ENDPOINT =
+  process.env.SMSRU_CALLCHECK_ADD_ENDPOINT || 'https://sms.ru/callcheck/add';
+const SMSRU_CALLCHECK_STATUS_ENDPOINT =
+  process.env.SMSRU_CALLCHECK_STATUS_ENDPOINT || 'https://sms.ru/callcheck/status';
+const SMSRU_CODE_TEMPLATE = process.env.SMSRU_CODE_TEMPLATE || 'Код Pelby: {code}';
+
+const createPhoneVerificationId = () => randomUUID();
+
+const normalizeRuPhone = (rawValue) => {
+  const digits = String(rawValue || '').replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `7${digits}`;
+  }
+  if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+    return `7${digits.slice(1)}`;
+  }
+  return null;
+};
+
+const maskPhone = (normalizedPhone) => {
+  if (!normalizedPhone || normalizedPhone.length !== 11) return normalizedPhone || '';
+  return `+7 (${normalizedPhone.slice(1, 4)}) ${normalizedPhone.slice(4, 7)}-${normalizedPhone.slice(
+    7,
+    9
+  )}-${normalizedPhone.slice(9, 11)}`;
+};
+
+const prunePhoneVerificationState = async () => {
+  await prisma.$executeRawUnsafe(`
+    DELETE FROM "PhoneVerificationSession"
+    WHERE ("expiresAt" < NOW() - INTERVAL '1 hour')
+       OR ("consumedAt" IS NOT NULL AND "consumedAt" < NOW() - INTERVAL '24 hour');
+  `);
+};
+
+const getPhoneVerificationRate = async (phone) => {
+  const [countRow] = await prisma.$queryRawUnsafe(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM "PhoneVerificationSession"
+      WHERE "phone" = $1
+        AND "createdAt" > NOW() - INTERVAL '1 hour';
+    `,
+    phone
+  );
+
+  const [lastRow] = await prisma.$queryRawUnsafe(
+    `
+      SELECT MAX("createdAt") AS "lastStartedAt"
+      FROM "PhoneVerificationSession"
+      WHERE "phone" = $1;
+    `,
+    phone
+  );
+
+  return {
+    count: Number(countRow?.count || 0),
+    lastStartedAt: lastRow?.lastStartedAt ? new Date(lastRow.lastStartedAt) : null,
+  };
+};
+
+const createPhoneVerificationSession = async (session) => {
+  const [row] = await prisma.$queryRawUnsafe(
+    `
+      INSERT INTO "PhoneVerificationSession" (
+        "id", "phone", "method", "code", "callcheckId", "callPhone",
+        "attemptsLeft", "expiresAt", "createdAt", "updatedAt"
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      RETURNING *;
+    `,
+    session.id,
+    session.phone,
+    session.method,
+    session.code || null,
+    session.callcheckId || null,
+    session.callPhone || null,
+    session.attemptsLeft,
+    session.expiresAt
+  );
+  return row || null;
+};
+
+const getPhoneVerificationSession = async (verificationId) => {
+  const [row] = await prisma.$queryRawUnsafe(
+    `
+      SELECT *
+      FROM "PhoneVerificationSession"
+      WHERE "id" = $1
+      LIMIT 1;
+    `,
+    verificationId
+  );
+  return row || null;
+};
+
+const consumePhoneVerificationSession = async (verificationId, verified) => {
+  const [row] = await prisma.$queryRawUnsafe(
+    `
+      UPDATE "PhoneVerificationSession"
+      SET "consumedAt" = NOW(),
+          "verifiedAt" = CASE WHEN $2::boolean THEN NOW() ELSE "verifiedAt" END,
+          "updatedAt" = NOW()
+      WHERE "id" = $1
+      RETURNING *;
+    `,
+    verificationId,
+    Boolean(verified)
+  );
+  return row || null;
+};
+
+const decrementPhoneVerificationAttempts = async (verificationId) => {
+  const [row] = await prisma.$queryRawUnsafe(
+    `
+      UPDATE "PhoneVerificationSession"
+      SET "attemptsLeft" = GREATEST("attemptsLeft" - 1, 0),
+          "updatedAt" = NOW()
+      WHERE "id" = $1
+      RETURNING *;
+    `,
+    verificationId
+  );
+  return row || null;
+};
+
+const buildSmsRuUrl = (baseUrl, params) => {
+  const url = new URL(baseUrl);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    url.searchParams.set(key, String(value));
+  });
+  return url.toString();
+};
+
+const sendSmsRuCode = async ({ phone, code }) => {
+  const message = SMSRU_CODE_TEMPLATE.replace('{code}', code);
+  const url = buildSmsRuUrl(SMSRU_SMS_ENDPOINT, {
+    api_id: SMSRU_API_ID,
+    to: phone,
+    msg: message,
+    json: 1,
+  });
+
+  const response = await fetchWithTimeout(url, { method: 'GET' }, 15000);
+  const body = await parseResponseJson(response);
+
+  if (!response.ok) {
+    throw new Error(`smsru_sms_http_${response.status}:${JSON.stringify(body)}`);
+  }
+
+  const smsStatus = body?.sms?.[phone];
+  const isOk = body?.status === 'OK' && smsStatus?.status === 'OK';
+  if (!isOk) {
+    throw new Error(`smsru_sms_failed:${JSON.stringify(body)}`);
+  }
+};
+
+const startSmsRuCallcheck = async ({ phone }) => {
+  const url = buildSmsRuUrl(SMSRU_CALLCHECK_ADD_ENDPOINT, {
+    api_id: SMSRU_API_ID,
+    phone,
+    json: 1,
+  });
+  const response = await fetchWithTimeout(url, { method: 'GET' }, 15000);
+  const body = await parseResponseJson(response);
+
+  if (!response.ok) {
+    throw new Error(`smsru_callcheck_http_${response.status}:${JSON.stringify(body)}`);
+  }
+
+  if (body?.status !== 'OK' || !body?.check_id) {
+    throw new Error(`smsru_callcheck_start_failed:${JSON.stringify(body)}`);
+  }
+
+  return {
+    checkId: String(body.check_id),
+    callPhone: typeof body.call_phone === 'string' ? body.call_phone : '',
+  };
+};
+
+const getSmsRuCallcheckStatus = async ({ checkId }) => {
+  const url = buildSmsRuUrl(SMSRU_CALLCHECK_STATUS_ENDPOINT, {
+    api_id: SMSRU_API_ID,
+    check_id: checkId,
+    json: 1,
+  });
+  const response = await fetchWithTimeout(url, { method: 'GET' }, 15000);
+  const body = await parseResponseJson(response);
+
+  if (!response.ok) {
+    throw new Error(`smsru_callcheck_status_http_${response.status}:${JSON.stringify(body)}`);
+  }
+
+  if (body?.status !== 'OK') {
+    throw new Error(`smsru_callcheck_status_failed:${JSON.stringify(body)}`);
+  }
+
+  return Number(body.check_status || 0);
+};
+
 const fetchWithTimeout = async (url, options = {}, timeoutMs = AI_TIMEOUT_MS) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -279,6 +491,30 @@ const ensureSchema = async () => {
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "UserData_updatedAt_idx" ON "UserData" ("updatedAt" DESC);`
     );
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PhoneVerificationSession" (
+        "id" text PRIMARY KEY,
+        "phone" text NOT NULL,
+        "method" text NOT NULL,
+        "code" text,
+        "callcheckId" text,
+        "callPhone" text,
+        "attemptsLeft" integer NOT NULL DEFAULT 5,
+        "expiresAt" timestamptz NOT NULL,
+        "verifiedAt" timestamptz,
+        "consumedAt" timestamptz,
+        "createdAt" timestamptz NOT NULL DEFAULT now(),
+        "updatedAt" timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_phone_createdAt_idx"
+       ON "PhoneVerificationSession" ("phone", "createdAt" DESC);`
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_expiresAt_idx"
+       ON "PhoneVerificationSession" ("expiresAt" DESC);`
+    );
   } catch (error) {
     console.error('ensureSchema error', error);
   }
@@ -302,6 +538,172 @@ const requireAdmin = (req, res, next) => {
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+app.post('/auth/phone/start', async (req, res) => {
+  try {
+    await prunePhoneVerificationState();
+
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const method = body?.method === 'call' ? 'call' : 'sms';
+    const normalizedPhone = normalizeRuPhone(body?.phone);
+
+    if (!normalizedPhone) {
+      return res.status(400).json({ ok: false, error: 'invalid_phone' });
+    }
+
+    if (!SMSRU_API_ID) {
+      return res.status(503).json({ ok: false, error: 'phone_provider_not_configured' });
+    }
+
+    const rate = await getPhoneVerificationRate(normalizedPhone);
+    if (rate.count >= PHONE_VERIFICATION_MAX_STARTS_PER_HOUR) {
+      const retryInSec = rate.lastStartedAt
+        ? Math.max(1, Math.ceil((rate.lastStartedAt.getTime() + 60 * 60 * 1000 - Date.now()) / 1000))
+        : 3600;
+      return res.status(429).json({
+        ok: false,
+        error: 'verification_rate_limit_exceeded',
+        retryInSec,
+      });
+    }
+
+    if (
+      rate.lastStartedAt &&
+      Date.now() - rate.lastStartedAt.getTime() < PHONE_VERIFICATION_MIN_RESTART_INTERVAL_MS
+    ) {
+      return res.status(429).json({
+        ok: false,
+        error: 'verification_too_many_requests',
+        retryInSec: Math.ceil(
+          (PHONE_VERIFICATION_MIN_RESTART_INTERVAL_MS - (Date.now() - rate.lastStartedAt.getTime())) /
+            1000
+        ),
+      });
+    }
+
+    const verificationId = createPhoneVerificationId();
+    const expiresAt = new Date(Date.now() + PHONE_VERIFICATION_TTL_MS);
+    const session = {
+      id: verificationId,
+      phone: normalizedPhone,
+      method,
+      attemptsLeft: PHONE_VERIFICATION_MAX_ATTEMPTS,
+      expiresAt,
+      createdAt: Date.now(),
+      verified: false,
+      code: '',
+      callcheckId: '',
+      callPhone: '',
+    };
+
+    if (method === 'sms') {
+      const code = String(Math.floor(1000 + Math.random() * 9000));
+      await sendSmsRuCode({ phone: normalizedPhone, code });
+      session.code = code;
+    } else {
+      const callcheck = await startSmsRuCallcheck({ phone: normalizedPhone });
+      session.callcheckId = callcheck.checkId;
+      session.callPhone = callcheck.callPhone;
+    }
+
+    await createPhoneVerificationSession(session);
+
+    return res.json({
+      ok: true,
+      verificationId,
+      method,
+      maskedPhone: maskPhone(normalizedPhone),
+      expiresInSec: Math.max(1, Math.floor((expiresAt - Date.now()) / 1000)),
+      callPhone: session.callPhone || undefined,
+    });
+  } catch (error) {
+    console.error('auth/phone/start error', error);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.post('/auth/phone/check', async (req, res) => {
+  try {
+    await prunePhoneVerificationState();
+
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const verificationId =
+      typeof body?.verificationId === 'string' ? body.verificationId.trim() : '';
+    const code = typeof body?.code === 'string' ? body.code.trim() : '';
+
+    if (!verificationId) {
+      return res.status(400).json({ ok: false, error: 'verification_id_required' });
+    }
+
+    const session = await getPhoneVerificationSession(verificationId);
+    if (!session) {
+      return res.status(404).json({ ok: false, error: 'verification_not_found' });
+    }
+
+    if (session.consumedAt) {
+      return res.status(409).json({ ok: false, error: 'verification_already_consumed' });
+    }
+
+    if (new Date(session.expiresAt).getTime() <= Date.now()) {
+      await consumePhoneVerificationSession(verificationId, false);
+      return res.status(410).json({ ok: false, error: 'verification_expired' });
+    }
+
+    if (session.method === 'sms') {
+      if (!code) {
+        return res.status(400).json({ ok: false, error: 'code_required' });
+      }
+      if (Number(session.attemptsLeft || 0) <= 0) {
+        await consumePhoneVerificationSession(verificationId, false);
+        return res.status(429).json({ ok: false, error: 'verification_attempts_exceeded' });
+      }
+
+      if (code !== session.code) {
+        const updatedSession = await decrementPhoneVerificationAttempts(verificationId);
+        const attemptsLeft = Number(updatedSession?.attemptsLeft || 0);
+        if (attemptsLeft <= 0) {
+          await consumePhoneVerificationSession(verificationId, false);
+        }
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_code',
+          attemptsLeft,
+        });
+      }
+
+      await consumePhoneVerificationSession(verificationId, true);
+      return res.json({
+        ok: true,
+        verified: true,
+        phone: session.phone,
+      });
+    }
+
+    if (!session.callcheckId) {
+      return res.status(500).json({ ok: false, error: 'callcheck_not_initialized' });
+    }
+
+    const checkStatus = await getSmsRuCallcheckStatus({ checkId: session.callcheckId });
+    const isVerified = checkStatus === 401;
+    if (!isVerified) {
+      return res.status(202).json({
+        ok: true,
+        verified: false,
+        checkStatus,
+      });
+    }
+
+    await consumePhoneVerificationSession(verificationId, true);
+    return res.json({
+      ok: true,
+      verified: true,
+      phone: session.phone,
+    });
+  } catch (error) {
+    console.error('auth/phone/check error', error);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
 });
 
 app.post('/ai/chat', async (req, res) => {
