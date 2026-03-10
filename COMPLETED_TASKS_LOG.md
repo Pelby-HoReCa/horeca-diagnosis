@@ -308,3 +308,12 @@
    - Добавлена таблица `PhoneVerificationSession` и индексы через `ensureSchema`.
    - Эндпоинты `/auth/phone/start` и `/auth/phone/check` теперь читают/обновляют сессии в БД.
    - Поведение стало устойчивым к рестартам backend-инстанса.
+
+58. Backend/Frontend phone verification изменения отправлены в GitHub.
+   - Коммит: `88e284c` (`feat(auth): add real phone verification via SMS.ru`).
+   - В `main` запушены: `backend/src/index.js`, `backend/.env.example`, `src/screens/RegisterScreen1.tsx`, `COMPLETED_TASKS_LOG.md`.
+
+59. Продовая проверка после пуша выполнена.
+   - `GET /health` отвечает `200 OK`.
+   - `POST /auth/phone/start` и `POST /auth/phone/check` пока отвечают `404 Cannot POST`.
+   - Это означает, что Render еще не поднял ревизию с коммитом `88e284c` (нужен ручной deploy latest commit, если auto-deploy отключен/завис).
