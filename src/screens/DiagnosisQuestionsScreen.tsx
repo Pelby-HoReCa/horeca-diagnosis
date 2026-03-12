@@ -53,6 +53,7 @@ export default function DiagnosisQuestionsScreen({
   const [selectedAnswerId, setSelectedAnswerId] = useState<string | null>(null);
   const [backArrowSvg, setBackArrowSvg] = useState<string>('');
   const [savedAnswers, setSavedAnswers] = useState<Record<string, string>>({});
+  const [isRepeatMode, setIsRepeatMode] = useState(false);
   const [answersLoadedForBlock, setAnswersLoadedForBlock] = useState<string | null>(null);
   const autoPositionedBlockRef = useRef<string | null>(null);
   const [hasRestoredProgress, setHasRestoredProgress] = useState(false);
@@ -67,10 +68,12 @@ export default function DiagnosisQuestionsScreen({
   const totalQuestions = currentBlockQuestions.length;
   
   // Вычисляем прогресс (количество отвеченных вопросов в текущем блоке)
-  const answeredCountInBlock = currentBlockQuestions.filter(q => {
-    const questionKey = `${currentBlockId}_${q.id}`;
-    return savedAnswers[questionKey];
-  }).length;
+  const answeredCountInBlock = isRepeatMode
+    ? Math.min(currentQuestionIndex, totalQuestions)
+    : currentBlockQuestions.filter(q => {
+        const questionKey = `${currentBlockId}_${q.id}`;
+        return savedAnswers[questionKey];
+      }).length;
   const progress = totalQuestions > 0 ? answeredCountInBlock / totalQuestions : 0;
 
   // Загружаем SVG прогресс бара и переключатели
@@ -138,9 +141,14 @@ export default function DiagnosisQuestionsScreen({
         const userId = await getCurrentUserId();
         const venueId = await getSelectedVenueId(userId);
         if (!venueId) {
+          setIsRepeatMode(false);
           setAnswersLoadedForBlock(currentBlockId || null);
           return;
         }
+        const repeatModeRaw = await AsyncStorage.getItem(
+          getVenueScopedKey('diagnosis_repeat_mode', userId, venueId)
+        );
+        setIsRepeatMode(repeatModeRaw === 'true');
         const saved = await AsyncStorage.getItem(
           getVenueScopedKey(`diagnosis_answers_${currentBlockId}`, userId, venueId)
         );
@@ -164,6 +172,9 @@ export default function DiagnosisQuestionsScreen({
     if (!currentBlockId || currentBlockQuestions.length === 0) {
       return;
     }
+    if (isRepeatMode) {
+      return;
+    }
     if (autoPositionedBlockRef.current === currentBlockId) {
       return;
     }
@@ -177,7 +188,7 @@ export default function DiagnosisQuestionsScreen({
       setCurrentQuestionIndex(firstUnansweredIndex);
     }
     autoPositionedBlockRef.current = currentBlockId;
-  }, [currentBlockId, currentBlockQuestions, savedAnswers, answersLoadedForBlock]);
+  }, [currentBlockId, currentBlockQuestions, savedAnswers, answersLoadedForBlock, isRepeatMode]);
 
   useEffect(() => {
     const loadPersistedState = async () => {
@@ -261,6 +272,7 @@ export default function DiagnosisQuestionsScreen({
   // Загружаем сохраненный ответ для текущего вопроса
   useEffect(() => {
     if (currentQuestion) {
+      if (isRepeatMode) return;
       const questionKey = `${currentBlockId}_${currentQuestion.id}`;
       const savedAnswer = savedAnswers[questionKey];
       if (savedAnswer) {
@@ -269,7 +281,14 @@ export default function DiagnosisQuestionsScreen({
         setSelectedAnswerId(null);
       }
     }
-  }, [currentQuestionIndex, currentQuestion, savedAnswers, currentBlockId]);
+  }, [currentQuestionIndex, currentQuestion, savedAnswers, currentBlockId, isRepeatMode]);
+
+  // В режиме повторной диагностики не подставляем старые ответы,
+  // но при переходе к новому вопросу выбор должен сбрасываться.
+  useEffect(() => {
+    if (!isRepeatMode) return;
+    setSelectedAnswerId(null);
+  }, [currentQuestionIndex, currentBlockId, isRepeatMode]);
 
   // Получаем текущий вопрос
   const currentQuestion = currentBlockQuestions[currentQuestionIndex];
@@ -455,6 +474,10 @@ export default function DiagnosisQuestionsScreen({
                 <AnimatedPressable
                   key={option.id}
                   style={[styles.optionContainer, isSelected && styles.optionContainerSelected]}
+                  pressScale={0.97}
+                  pressFriction={7}
+                  pressTension={60}
+                  clampOvershoot
                   onPress={() => {
                     setSelectedAnswerId(option.id);
                     // Сохраняем ответ сразу при выборе

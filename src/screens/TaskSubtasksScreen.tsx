@@ -4,6 +4,7 @@ import { Asset } from 'expo-asset';
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   Keyboard,
@@ -38,6 +39,8 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
   const [emptyStateAvatarSvg, setEmptyStateAvatarSvg] = useState<string>('');
   const [backIconSvg, setBackIconSvg] = useState<string>('');
   const [menuIconSvg, setMenuIconSvg] = useState<string>('');
+  const [radioActiveSvg, setRadioActiveSvg] = useState<string>('');
+  const [radioInactiveSvg, setRadioInactiveSvg] = useState<string>('');
   const [modalCloseIconSvg, setModalCloseIconSvg] = useState<string>('');
   const [noteClearIconSvg, setNoteClearIconSvg] = useState<string>('');
   const [noteConfirmIconSvg, setNoteConfirmIconSvg] = useState<string>('');
@@ -46,6 +49,9 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
   const [showSubtaskEditor, setShowSubtaskEditor] = useState(false);
   const [subtaskDraft, setSubtaskDraft] = useState('');
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [hideCompletedSubtasks, setHideCompletedSubtasks] = useState(false);
+  const [subtasksSortMode, setSubtasksSortMode] = useState<'as_is' | 'incomplete_first'>('as_is');
   const deletingSubtaskRef = useRef<string | null>(null);
 
   const getTaskKey = (inputTask?: Task) => {
@@ -63,6 +69,8 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
         const backIcon = Asset.fromModule(require('../../assets/images/Frame 8 (3).svg'));
         const menuIcon = Asset.fromModule(require('../../assets/images/Frame 9.svg'));
         const closeIconAsset = Asset.fromModule(require('../../assets/images/compact-button-icon.svg'));
+        const radioActiveAsset = Asset.fromModule(require('../../assets/images/radio-active-icon.svg'));
+        const radioInactiveAsset = Asset.fromModule(require('../../assets/images/radio-inactive-icon.svg'));
         const clearAsset = Asset.fromModule(require('../../assets/images/Group 3362253.svg'));
         const confirmAsset = Asset.fromModule(require('../../assets/images/Checkbox [1.0] (2).svg'));
         const deleteAsset = Asset.fromModule(require('../../assets/images/delete-02.svg'));
@@ -72,6 +80,8 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
         await backIcon.downloadAsync();
         await menuIcon.downloadAsync();
         await closeIconAsset.downloadAsync();
+        await radioActiveAsset.downloadAsync();
+        await radioInactiveAsset.downloadAsync();
         await clearAsset.downloadAsync();
         await confirmAsset.downloadAsync();
         await deleteAsset.downloadAsync();
@@ -98,6 +108,14 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
         if (closeIconAsset.localUri) {
           const response = await fetch(closeIconAsset.localUri);
           setModalCloseIconSvg(await response.text());
+        }
+        if (radioActiveAsset.localUri) {
+          const response = await fetch(radioActiveAsset.localUri);
+          setRadioActiveSvg(await response.text());
+        }
+        if (radioInactiveAsset.localUri) {
+          const response = await fetch(radioInactiveAsset.localUri);
+          setRadioInactiveSvg(await response.text());
         }
         if (clearAsset.localUri) {
           const response = await fetch(clearAsset.localUri);
@@ -143,6 +161,8 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
 
   useFocusEffect(
     useCallback(() => {
+      // По умолчанию показываем выполненные, как на экране задач.
+      setHideCompletedSubtasks(false);
       loadSubtasks();
     }, [loadSubtasks])
   );
@@ -202,14 +222,50 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
     [noteDeleteIconSvg]
   );
 
+  const clearCompletedSubtasks = useCallback(async () => {
+    const completedCount = (subtasks || []).filter((item) => item?.completed).length;
+    setShowOptionsMenu(false);
+    if (completedCount === 0) {
+      return;
+    }
+    Alert.alert(
+      'Очистить выполненные?',
+      'Удалим только выполненные подзадачи в текущем списке.',
+      [
+        { text: 'Отмена', style: 'cancel' },
+        {
+          text: 'Очистить',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const nextList = (subtasks || []).filter((item) => !item?.completed);
+              await saveSubtasks(nextList);
+            })();
+          },
+        },
+      ]
+    );
+  }, [saveSubtasks, subtasks]);
+
   const rawTaskTitle = task?.title || task?.description || '';
   const normalizedTaskTitle = rawTaskTitle.trim().toLowerCase();
   const shouldHideTaskTitle =
     normalizedTaskTitle === 'рекомендация' || normalizedTaskTitle === 'recommendation';
   const taskTitle = shouldHideTaskTitle ? '' : rawTaskTitle;
-  const visibleSubtasks = Array.isArray(subtasks)
+  const normalizedSubtasks = Array.isArray(subtasks)
     ? subtasks.filter((item) => item && typeof item.title === 'string')
     : [];
+  const completedSubtasksCount = normalizedSubtasks.filter((item) => item.completed).length;
+  const subtasksAfterVisibility = hideCompletedSubtasks
+    ? normalizedSubtasks.filter((item) => !item.completed)
+    : normalizedSubtasks;
+  const visibleSubtasks =
+    subtasksSortMode === 'incomplete_first'
+      ? [...subtasksAfterVisibility].sort((a, b) => {
+          if (a.completed === b.completed) return 0;
+          return a.completed ? 1 : -1;
+        })
+      : subtasksAfterVisibility;
   const showFixedHelpCard = true;
 
   return (
@@ -223,7 +279,11 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
           )}
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Мои подзадачи</Text>
-        <TouchableOpacity style={styles.headerRight} activeOpacity={0.75}>
+        <TouchableOpacity
+          style={styles.headerRight}
+          activeOpacity={0.75}
+          onPress={() => setShowOptionsMenu(true)}
+        >
           {menuIconSvg ? (
             <SvgXml xml={menuIconSvg} width={24} height={24} />
           ) : (
@@ -360,6 +420,95 @@ export default function TaskSubtasksScreen({ route, navigation }: { route?: any;
       )}
 
       <Modal
+        visible={showOptionsMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOptionsMenu(false)}
+      >
+        <View style={styles.filterMenuOverlay}>
+          <TouchableOpacity
+            style={styles.filterMenuBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowOptionsMenu(false)}
+          />
+          <View style={[styles.filterMenuSheet, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
+            <View style={styles.filterMenuHeader}>
+              <Text style={styles.filterMenuTitle}>Подзадачи</Text>
+              <TouchableOpacity
+                style={styles.filterMenuCloseButton}
+                onPress={() => setShowOptionsMenu(false)}
+              >
+                {modalCloseIconSvg && <SvgXml xml={modalCloseIconSvg} width={23} height={23} />}
+              </TouchableOpacity>
+            </View>
+            <AnimatedPressable
+              style={[
+                styles.filterMenuOptionRow,
+                hideCompletedSubtasks && styles.filterMenuOptionRowActive,
+              ]}
+              onPress={() => setHideCompletedSubtasks((prev) => !prev)}
+            >
+              <Text style={styles.filterMenuOptionText}>Скрыть выполненные</Text>
+              {hideCompletedSubtasks && radioActiveSvg ? (
+                <SvgXml xml={radioActiveSvg} width={22} height={22} />
+              ) : radioInactiveSvg ? (
+                <SvgXml xml={radioInactiveSvg} width={22} height={22} />
+              ) : (
+                <View style={styles.filterMenuOptionCircle} />
+              )}
+            </AnimatedPressable>
+            <AnimatedPressable
+              style={[
+                styles.filterMenuOptionRow,
+                subtasksSortMode === 'incomplete_first' && styles.filterMenuOptionRowActive,
+              ]}
+              onPress={() =>
+                setSubtasksSortMode((prev) => (prev === 'incomplete_first' ? 'as_is' : 'incomplete_first'))
+              }
+            >
+              <Text style={styles.filterMenuOptionText}>Сначала невыполненные</Text>
+              {subtasksSortMode === 'incomplete_first' && radioActiveSvg ? (
+                <SvgXml xml={radioActiveSvg} width={22} height={22} />
+              ) : radioInactiveSvg ? (
+                <SvgXml xml={radioInactiveSvg} width={22} height={22} />
+              ) : (
+                <View style={styles.filterMenuOptionCircle} />
+              )}
+            </AnimatedPressable>
+            <AnimatedPressable
+              style={[
+                styles.filterMenuOptionRow,
+                styles.filterMenuOptionDangerRow,
+                completedSubtasksCount === 0 && styles.filterMenuOptionDisabledRow,
+              ]}
+              onPress={() => {
+                void clearCompletedSubtasks();
+              }}
+              disabled={completedSubtasksCount === 0}
+            >
+              <Text
+                style={[
+                  styles.filterMenuOptionText,
+                  styles.filterMenuOptionDangerText,
+                  completedSubtasksCount === 0 && styles.filterMenuOptionDisabledText,
+                ]}
+              >
+                Очистить выполненные
+              </Text>
+              <Text
+                style={[
+                  styles.filterMenuOptionCount,
+                  completedSubtasksCount === 0 && styles.filterMenuOptionDisabledText,
+                ]}
+              >
+                {completedSubtasksCount}
+              </Text>
+            </AnimatedPressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
         visible={showSubtaskEditor}
         transparent
         animationType="fade"
@@ -467,6 +616,85 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 15,
+  },
+  filterMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  filterMenuBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  filterMenuSheet: {
+    width: SCREEN_WIDTH,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingTop: 28,
+    paddingHorizontal: 16,
+    alignSelf: 'center',
+  },
+  filterMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    marginTop: -10,
+  },
+  filterMenuTitle: {
+    fontSize: 22,
+    fontWeight: '300',
+    color: '#0A0D14',
+  },
+  filterMenuCloseButton: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  filterMenuOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E2E4E9',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginBottom: 13,
+    backgroundColor: '#FFFFFF',
+  },
+  filterMenuOptionRowActive: {
+    borderColor: palette.accentBlue,
+  },
+  filterMenuOptionDangerRow: {
+    borderColor: '#F8C9D2',
+  },
+  filterMenuOptionDisabledRow: {
+    opacity: 0.55,
+  },
+  filterMenuOptionText: {
+    fontSize: 17,
+    fontWeight: '300',
+    color: '#0A0D14',
+  },
+  filterMenuOptionDangerText: {
+    color: '#DF1C41',
+  },
+  filterMenuOptionDisabledText: {
+    color: '#868C98',
+  },
+  filterMenuOptionCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#CDD0D5',
+  },
+  filterMenuOptionCount: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#DF1C41',
   },
   content: {
     paddingHorizontal: spacing.md,

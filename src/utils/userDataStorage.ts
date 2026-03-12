@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DiagnosisBlock } from '../data/diagnosisBlocks';
 import { Task } from './recommendationEngine';
+import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
 
 /**
  * Получение userId текущего пользователя
@@ -38,6 +39,149 @@ export const getVenueScopedKey = (
 ): string => {
   const resolvedVenueId = venueId || 'default';
   return userId ? `user_${userId}_${baseKey}_${resolvedVenueId}` : `${baseKey}_${resolvedVenueId}`;
+};
+
+export const startRepeatDiagnosisForVenue = async (
+  venueIdOverride?: string | null,
+  userIdOverride?: string | null
+): Promise<string | null> => {
+  try {
+    const userId = userIdOverride ?? (await getCurrentUserId());
+    const venueId = venueIdOverride ?? (await getSelectedVenueId(userId));
+    if (!venueId) {
+      return null;
+    }
+
+    const selectedBlocks = DEFAULT_BLOCKS.map((block) => block.id);
+    const selectedPayload = JSON.stringify(selectedBlocks);
+    const progressPayload = JSON.stringify({
+      blockIndex: 0,
+      questionIndex: 0,
+      blockId: selectedBlocks[0],
+      selectedBlocks,
+    });
+
+    const baselineEfficiencies: Record<string, number> = {};
+    try {
+      const resultsKey = userId
+        ? `user_${userId}_diagnosis_block_results_by_venue`
+        : 'diagnosis_block_results_by_venue';
+      const resultsRaw = await AsyncStorage.getItem(resultsKey);
+      const parsedResults = resultsRaw ? JSON.parse(resultsRaw) : null;
+      const venueResults = parsedResults?.[venueId];
+      if (venueResults && typeof venueResults === 'object') {
+        Object.entries(venueResults).forEach(([blockId, value]) => {
+          const efficiency = (value as any)?.efficiency;
+          if (typeof efficiency === 'number') {
+            baselineEfficiencies[blockId] = efficiency;
+          }
+        });
+      }
+      if (Object.keys(baselineEfficiencies).length === 0) {
+        const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
+        const blocksRaw = await AsyncStorage.getItem(blocksKey);
+        const parsedBlocks = blocksRaw ? JSON.parse(blocksRaw) : [];
+        if (Array.isArray(parsedBlocks)) {
+          parsedBlocks.forEach((block: any) => {
+            if (block?.id && block?.completed && typeof block?.efficiency === 'number') {
+              baselineEfficiencies[block.id] = block.efficiency;
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка подготовки baseline для повторной диагностики:', error);
+    }
+    const baselinePayload = JSON.stringify(baselineEfficiencies);
+
+    // Для repeat-диагностики очищаем только "рабочие" данные текущего прогона:
+    // ответы и текущие блоки. История/прошлые результаты/дашборд-метрики не трогаем.
+    const keysToRemove: string[] = [];
+    for (const block of DEFAULT_BLOCKS) {
+      keysToRemove.push(getVenueScopedKey(`diagnosis_answers_${block.id}`, userId, venueId));
+      keysToRemove.push(getVenueScopedKey(`diagnosis_answers_${block.id}`, null, venueId));
+      keysToRemove.push(getVenueScopedKey(`diagnosis_answers_backup_${block.id}`, userId, venueId));
+      keysToRemove.push(getVenueScopedKey(`diagnosis_answers_backup_${block.id}`, null, venueId));
+    }
+    keysToRemove.push(getVenueScopedKey('diagnosisBlocks', userId, venueId));
+    keysToRemove.push(getVenueScopedKey('diagnosisBlocks', null, venueId));
+    await AsyncStorage.multiRemove(Array.from(new Set(keysToRemove)));
+
+    if (userId) {
+      await AsyncStorage.setItem(`user_${userId}_diagnosis_selected_venue_id`, venueId);
+      await AsyncStorage.setItem(
+        getVenueScopedKey('diagnosis_selected_blocks', userId, venueId),
+        selectedPayload
+      );
+      await AsyncStorage.setItem(
+        getVenueScopedKey('diagnosis_progress', userId, venueId),
+        progressPayload
+      );
+      await AsyncStorage.setItem(
+        getVenueScopedKey('diagnosis_repeat_mode', userId, venueId),
+        'true'
+      );
+      await AsyncStorage.setItem(
+        getVenueScopedKey('diagnosis_repeat_baseline_block_efficiencies', userId, venueId),
+        baselinePayload
+      );
+    }
+
+    await AsyncStorage.setItem('diagnosis_selected_venue_id', venueId);
+    await AsyncStorage.setItem(
+      getVenueScopedKey('diagnosis_selected_blocks', null, venueId),
+      selectedPayload
+    );
+    await AsyncStorage.setItem(
+      getVenueScopedKey('diagnosis_progress', null, venueId),
+      progressPayload
+    );
+    await AsyncStorage.setItem(getVenueScopedKey('diagnosis_repeat_mode', null, venueId), 'true');
+    await AsyncStorage.setItem(
+      getVenueScopedKey('diagnosis_repeat_baseline_block_efficiencies', null, venueId),
+      baselinePayload
+    );
+
+    return venueId;
+  } catch (error) {
+    console.error('Ошибка запуска повторной диагностики:', error);
+    return null;
+  }
+};
+
+export const finalizeRepeatDiagnosisForVenue = async (
+  venueIdOverride?: string | null,
+  userIdOverride?: string | null
+): Promise<void> => {
+  try {
+    const userId = userIdOverride ?? (await getCurrentUserId());
+    const venueId = venueIdOverride ?? (await getSelectedVenueId(userId));
+    if (!venueId) {
+      return;
+    }
+
+    const blockIds = DEFAULT_BLOCKS.map((block) => block.id);
+
+    for (const blockId of blockIds) {
+      const backupUserKey = getVenueScopedKey(`diagnosis_answers_backup_${blockId}`, userId, venueId);
+      const backupGlobalKey = getVenueScopedKey(`diagnosis_answers_backup_${blockId}`, null, venueId);
+      await AsyncStorage.removeItem(backupUserKey);
+      await AsyncStorage.removeItem(backupGlobalKey);
+    }
+
+    if (userId) {
+      await AsyncStorage.setItem(getVenueScopedKey('diagnosis_repeat_mode', userId, venueId), 'false');
+      await AsyncStorage.removeItem(
+        getVenueScopedKey('diagnosis_repeat_baseline_block_efficiencies', userId, venueId)
+      );
+    }
+    await AsyncStorage.setItem(getVenueScopedKey('diagnosis_repeat_mode', null, venueId), 'false');
+    await AsyncStorage.removeItem(
+      getVenueScopedKey('diagnosis_repeat_baseline_block_efficiencies', null, venueId)
+    );
+  } catch (error) {
+    console.error('Ошибка завершения повторной диагностики:', error);
+  }
 };
 
 /**

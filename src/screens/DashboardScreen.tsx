@@ -13,13 +13,15 @@ import questionsData from '../data/questions.json';
 import { generateTasksFromAnswers } from '../utils/recommendationEngine';
 import { palette, radii, spacing } from '../styles/theme';
 import { getTasksByBlock, Task } from '../utils/recommendationEngine';
+import { getCityFromAddress } from '../utils/address';
 import {
     getCurrentUserId,
     getSelectedVenueId,
     getVenueScopedKey,
     loadUserDashboardData,
     loadUserQuestionnaire,
-    saveUserDashboardData
+    saveUserDashboardData,
+    startRepeatDiagnosisForVenue
 } from '../utils/userDataStorage';
 
 const COLORS = {
@@ -31,6 +33,9 @@ const COLORS = {
   red: palette.error,
   white: palette.white,
 };
+
+const DEBUG_FORCE_MAX_EFFICIENCY_ONCE_KEY = 'debug_force_max_efficiency_once';
+const PROFILE_OPEN_NOTIFICATIONS_ONCE_KEY = 'profile_open_notifications_once';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const cardWidth = SCREEN_WIDTH - spacing.md * 2;
@@ -74,6 +79,7 @@ export default function DashboardScreen({ navigation }: any) {
   const [businessAssessmentIconSvg, setBusinessAssessmentIconSvg] = useState<string>('');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [showAddWarningModal, setShowAddWarningModal] = useState(false);
+  const [warningIncompleteTasksCount, setWarningIncompleteTasksCount] = useState(0);
   const [filterMode, setFilterMode] = useState<'asc' | 'desc' | 'unfinished' | null>(null);
   const [pressedFilterOption, setPressedFilterOption] = useState<'asc' | 'desc' | 'unfinished' | null>(null);
   const [venueResultsByBlock, setVenueResultsByBlock] = useState<Record<string, any> | null>(null);
@@ -96,12 +102,14 @@ export default function DashboardScreen({ navigation }: any) {
   const [maxEfficiencyCheckSvg, setMaxEfficiencyCheckSvg] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
+  const selectedVenueIdRef = useRef<string | null>(null);
   const prevBlocksRef = useRef<string | null>(null);
   const dashboardDataLoadedRef = useRef(false);
   const prevComparisonRef = useRef<string | null>(null);
   const prevTasksRef = useRef<string | null>(null);
   const efficiencyIconsLoadedRef = useRef(false);
   const [forceMaxEfficiency, setForceMaxEfficiency] = useState(false);
+  const [previousBlockEfficiencies, setPreviousBlockEfficiencies] = useState<Record<string, number>>({});
 
   // Данные для отображения изменения эффективности в "Прошлая диагностика"
   const hasPreviousResult = comparison.previous !== null && comparison.previous !== undefined;
@@ -193,7 +201,20 @@ export default function DashboardScreen({ navigation }: any) {
   // Текущее значение для кружка — берём актуальную общую эффективность (обновляется после каждого пройденного блока)
   const currentBadgeValue = overallEfficiency ?? 0;
   const currentBadgeColors = getDiagnosisBadgeColors(currentBadgeValue);
-  const isMaxEfficiency = currentBadgeValue >= 100 || forceMaxEfficiency;
+  const previousBadgeValue = hasPreviousResult ? (comparison.previous as number) : null;
+  const previousBadgeColors =
+    previousBadgeValue === null
+      ? { bg: '#F6F8FA', text: '#525866' }
+      : getDiagnosisBadgeColors(previousBadgeValue);
+  const previousBadgeLabel =
+    previousBadgeValue === null ? '—' : `${previousBadgeValue}%`;
+  const completedBlocks = blockResults.filter(
+    (block) => block.completed && block.efficiency !== undefined
+  );
+  const hasStrictMaxEfficiency =
+    completedBlocks.length === DEFAULT_BLOCKS.length &&
+    completedBlocks.every((block) => (block.efficiency ?? 0) >= 100);
+  const isMaxEfficiency = hasStrictMaxEfficiency || forceMaxEfficiency;
   const completedBlocksCount = blockResults.filter(
     (block) => block.completed && block.efficiency !== undefined
   ).length;
@@ -202,6 +223,93 @@ export default function DashboardScreen({ navigation }: any) {
     if (values.length === 0) return allTasksCount || 0;
     return values.reduce((sum, item) => sum + Math.max(0, (item.total || 0) - (item.completed || 0)), 0);
   }, [tasksByBlock, allTasksCount]);
+
+  const refreshIncompleteTasksCount = useCallback(async (venueIdOverride?: string | null) => {
+    try {
+      const userId = await getCurrentUserId();
+      const venueId = venueIdOverride || selectedVenueIdRef.current || selectedVenueId || (await getSelectedVenueId(userId));
+      if (!venueId) {
+        setWarningIncompleteTasksCount(0);
+        return 0;
+      }
+      const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+      const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
+      const raw = await AsyncStorage.getItem(tasksKey);
+      const rawBlocks = await AsyncStorage.getItem(blocksKey);
+      if (!raw) {
+        setWarningIncompleteTasksCount(0);
+        return 0;
+      }
+      const parsed = JSON.parse(raw);
+      const parsedBlocks = rawBlocks ? JSON.parse(rawBlocks) : [];
+      const completedBlockIds = new Set(
+        Array.isArray(parsedBlocks)
+          ? parsedBlocks
+              .filter((block: any) => block?.completed && block?.efficiency !== undefined)
+              .map((block: any) => block?.id)
+              .filter(Boolean)
+          : []
+      );
+      const incompleteTasks = Array.isArray(parsed) ? parsed.filter((task: any) => !task?.completed) : [];
+      const filteredTasks =
+        completedBlockIds.size > 0
+          ? incompleteTasks.filter((task: any) => completedBlockIds.has(task?.blockId))
+          : [];
+      const count = filteredTasks.length;
+      setWarningIncompleteTasksCount(count);
+      return count;
+    } catch (error) {
+      console.error('Ошибка подсчета незавершенных задач (дашборд):', error);
+      setWarningIncompleteTasksCount(0);
+      return 0;
+    }
+  }, [selectedVenueId]);
+  const handleStartRepeatDiagnosis = useCallback(async () => {
+    setShowAddWarningModal(false);
+    const userId = await getCurrentUserId();
+    const venueId = selectedVenueIdRef.current || selectedVenueId;
+    await startRepeatDiagnosisForVenue(venueId, userId);
+    navigation.navigate('Register3', {
+      isRepeatMode: true,
+      venueId,
+    });
+  }, [navigation, selectedVenueId]);
+
+  const openNewDiagnosisModal = useCallback(async () => {
+    const count = await refreshIncompleteTasksCount(selectedVenueIdRef.current || selectedVenueId);
+    if (count <= 0) {
+      await handleStartRepeatDiagnosis();
+      return;
+    }
+    setShowAddWarningModal(true);
+  }, [handleStartRepeatDiagnosis, refreshIncompleteTasksCount, selectedVenueId]);
+
+  const openProfileNotificationsFromMax = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(PROFILE_OPEN_NOTIFICATIONS_ONCE_KEY, `${Date.now()}`);
+    } catch (error) {
+      console.error('Ошибка подготовки открытия уведомлений профиля:', error);
+    }
+
+    const parentNav = navigation.getParent?.();
+    if (parentNav) {
+      parentNav.navigate('Профиль');
+      return;
+    }
+    navigation.navigate('Профиль');
+  }, [navigation]);
+
+  const applyDebugForceMaxMode = useCallback(async () => {
+    try {
+      const debugToken = await AsyncStorage.getItem(DEBUG_FORCE_MAX_EFFICIENCY_ONCE_KEY);
+      if (debugToken) {
+        setForceMaxEfficiency(true);
+        await AsyncStorage.removeItem(DEBUG_FORCE_MAX_EFFICIENCY_ONCE_KEY);
+      }
+    } catch (error) {
+      console.error('Ошибка применения debug-режима max эффективности:', error);
+    }
+  }, []);
   const totalBlocksCount = DEFAULT_BLOCKS.length;
   const hasIncompleteBlocks = completedBlocksCount < totalBlocksCount;
   const lastUncompletedBlock = [...DEFAULT_BLOCKS]
@@ -237,13 +345,22 @@ export default function DashboardScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => {
+    selectedVenueIdRef.current = selectedVenueId;
+  }, [selectedVenueId]);
+
+  useEffect(() => {
+    refreshIncompleteTasksCount(selectedVenueId);
+  }, [selectedVenueId, refreshIncompleteTasksCount]);
+
+  useEffect(() => {
     // Загружаем данные дашборда только один раз при монтировании
     if (!dashboardDataLoadedRef.current) {
       loadDashboardData();
       dashboardDataLoadedRef.current = true;
     }
     checkAuthStatus();
-  }, []);
+    void applyDebugForceMaxMode();
+  }, [applyDebugForceMaxMode]);
 
   useEffect(() => {
     if (!selectedVenueId || !dashboardDataLoadedRef.current) {
@@ -257,8 +374,20 @@ export default function DashboardScreen({ navigation }: any) {
       if (!dashboardDataLoadedRef.current) {
         return;
       }
-      loadDashboardDataWithoutClearing();
-    }, [selectedVenueId])
+      (async () => {
+        await applyDebugForceMaxMode();
+        const userId = await getCurrentUserId();
+        const storedVenueId = await getSelectedVenueId(userId);
+        if (storedVenueId && storedVenueId !== selectedVenueIdRef.current) {
+          setSelectedVenueId(storedVenueId);
+          return;
+        }
+        loadDashboardDataWithoutClearing();
+      })();
+      return () => {
+        setForceMaxEfficiency(false);
+      };
+    }, [applyDebugForceMaxMode])
   );
 
   // Загружаем иконки эффективности отдельно, чтобы не вызывать ререндер шапки
@@ -554,6 +683,78 @@ export default function DashboardScreen({ navigation }: any) {
     }
   };
 
+  const loadPreviousBlockEfficiencies = useCallback(async (userId: string | null, venueId: string | null) => {
+    try {
+      if (!venueId) {
+        setPreviousBlockEfficiencies({});
+        return;
+      }
+      const repeatModeUserRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', userId, venueId)
+      );
+      const repeatModeGlobalRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', null, venueId)
+      );
+      const isRepeatMode = repeatModeUserRaw === 'true' || repeatModeGlobalRaw === 'true';
+      if (isRepeatMode) {
+        const baselineUserRaw = await AsyncStorage.getItem(
+          getVenueScopedKey('diagnosis_repeat_baseline_block_efficiencies', userId, venueId)
+        );
+        const baselineGlobalRaw = baselineUserRaw
+          ? null
+          : await AsyncStorage.getItem(
+              getVenueScopedKey('diagnosis_repeat_baseline_block_efficiencies', null, venueId)
+            );
+        const baselineRaw = baselineUserRaw || baselineGlobalRaw;
+        if (baselineRaw) {
+          const parsedBaseline = JSON.parse(baselineRaw);
+          if (parsedBaseline && typeof parsedBaseline === 'object') {
+            const normalizedBaseline: Record<string, number> = {};
+            Object.entries(parsedBaseline).forEach(([blockId, value]) => {
+              if (typeof value === 'number') {
+                normalizedBaseline[blockId] = value;
+              }
+            });
+            setPreviousBlockEfficiencies(normalizedBaseline);
+            return;
+          }
+        }
+      }
+      const historyKey = getVenueScopedKey('diagnosis_history', userId, venueId);
+      const raw = await AsyncStorage.getItem(historyKey);
+      const history = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(history) || history.length === 0) {
+        setPreviousBlockEfficiencies({});
+        return;
+      }
+      const entriesWithMaps = history.filter((entry: any) => {
+        const map = entry?.blockEfficiencies;
+        return !!map && typeof map === 'object' && Object.keys(map).length > 0;
+      });
+      if (entriesWithMaps.length < 2) {
+        setPreviousBlockEfficiencies({});
+        return;
+      }
+      const historyBeforeLatest = entriesWithMaps.slice(0, -1);
+      const mergedPreviousByBlock: Record<string, number> = {};
+      for (let i = historyBeforeLatest.length - 1; i >= 0; i -= 1) {
+        const map = historyBeforeLatest[i]?.blockEfficiencies as Record<string, number> | undefined;
+        if (!map || typeof map !== 'object') {
+          continue;
+        }
+        Object.entries(map).forEach(([blockId, value]) => {
+          if (typeof value === 'number' && mergedPreviousByBlock[blockId] === undefined) {
+            mergedPreviousByBlock[blockId] = value;
+          }
+        });
+      }
+      setPreviousBlockEfficiencies(mergedPreviousByBlock);
+    } catch (error) {
+      console.error('Ошибка загрузки дельты по блокам:', error);
+      setPreviousBlockEfficiencies({});
+    }
+  }, []);
+
   const generateTasksFromStoredAnswers = useCallback(
     async (userIdValue: string | null, venueIdValue: string | null, completedIds: string[]) => {
       try {
@@ -622,15 +823,7 @@ export default function DashboardScreen({ navigation }: any) {
         setAllTasksCount(0);
         setOverallEfficiency(0);
         setComparison({ previous: null, current: 0, change: undefined });
-        return;
-      }
-      if (!venueId) {
-        setBlockResults(DEFAULT_BLOCKS);
-        setTasks([]);
-        setTasksByBlock({});
-        setAllTasksCount(0);
-        setOverallEfficiency(0);
-        setComparison({ previous: null, current: 0, change: undefined });
+        setPreviousBlockEfficiencies({});
         return;
       }
       
@@ -639,6 +832,13 @@ export default function DashboardScreen({ navigation }: any) {
       let storedTasks: Task[] = [];
       let venueResults: Record<string, any> | null = null;
       let parsedResults: Record<string, any> | null = null;
+      const repeatModeUserRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', userId, venueId)
+      );
+      const repeatModeGlobalRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', null, venueId)
+      );
+      const isRepeatMode = repeatModeUserRaw === 'true' || repeatModeGlobalRaw === 'true';
       
       {
         const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
@@ -654,7 +854,7 @@ export default function DashboardScreen({ navigation }: any) {
         parsedResults = savedResults ? JSON.parse(savedResults) : null;
         venueResults = parsedResults?.[venueId] || null;
         setVenueResultsByBlock(venueResults);
-        if (!storedBlocks || storedBlocks.length === 0) {
+        if ((!storedBlocks || storedBlocks.length === 0) && !isRepeatMode) {
           const venueResultsMap = parsedResults?.[venueId] || {};
           const resultBlocks = Object.keys(venueResultsMap).map((id) => {
             const defaultBlock = DEFAULT_BLOCKS.find((b) => b.id === id);
@@ -673,7 +873,7 @@ export default function DashboardScreen({ navigation }: any) {
         const hasCompletedBlocks = Array.isArray(storedBlocks)
           ? storedBlocks.some((block) => block.completed && block.efficiency !== undefined)
           : false;
-        if (!hasCompletedBlocks) {
+        if (!hasCompletedBlocks && !isRepeatMode) {
           const venueResultsMap = parsedResults?.[venueId] || {};
           const resultBlocks = Object.keys(venueResultsMap).map((id) => {
             const defaultBlock = DEFAULT_BLOCKS.find((b) => b.id === id);
@@ -799,15 +999,25 @@ export default function DashboardScreen({ navigation }: any) {
             const efficiency = calculateBlockEfficiencyFromAnswers(block.id, answers);
             recalculatedBlocks.push({
               ...block,
-              completed: true,
-              efficiency,
-            });
+                completed: true,
+                efficiency,
+              });
           } else {
-            recalculatedBlocks.push({
-              ...block,
-              completed: false,
-              efficiency: undefined,
-            });
+            // Если ответов нет (например, после repeat-старта в старом флоу),
+            // сохраняем последний доступный результат блока вместо обнуления.
+            if (!isRepeatMode && block.completed && typeof block.efficiency === 'number') {
+              recalculatedBlocks.push({
+                ...block,
+                completed: true,
+                efficiency: block.efficiency,
+              });
+            } else {
+              recalculatedBlocks.push({
+                ...block,
+                completed: false,
+                efficiency: undefined,
+              });
+            }
           }
         }
         allBlocks = recalculatedBlocks;
@@ -850,8 +1060,7 @@ export default function DashboardScreen({ navigation }: any) {
               // previousResult не сохраняем при первом прохождении
             }
             await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
-          const newComparison = { previous: null, current: avgEfficiency, change: undefined };
-            await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
+            const newComparison = { previous: null, current: avgEfficiency, change: undefined };
             const comparisonJson = JSON.stringify(newComparison);
             if (prevComparisonRef.current !== comparisonJson) {
               prevComparisonRef.current = comparisonJson;
@@ -883,6 +1092,7 @@ export default function DashboardScreen({ navigation }: any) {
               }
             } else {
               // Результат не изменился - используем сохраненные значения
+              await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
               const change = previousValue !== null && currentValue !== previousValue ? currentValue - previousValue : undefined;
               const newComparison = { previous: previousValue, current: currentValue, change };
               const comparisonJson = JSON.stringify(newComparison);
@@ -897,12 +1107,23 @@ export default function DashboardScreen({ navigation }: any) {
           const avgEfficiency = completedBlocks.length > 0 
             ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
             : 0;
-          await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
-          const newComparison = { previous: null, current: avgEfficiency, change: undefined };
-          const comparisonJson = JSON.stringify(newComparison);
-          if (prevComparisonRef.current !== comparisonJson) {
-            prevComparisonRef.current = comparisonJson;
-            setComparison(newComparison);
+          if (isRepeatMode && completedBlocks.length === 0) {
+            const baseline = storedCurrent ? parseInt(storedCurrent, 10) : null;
+            const baselineValue = baseline !== null && !Number.isNaN(baseline) ? baseline : null;
+            const newComparison = { previous: baselineValue, current: 0, change: undefined };
+            const comparisonJson = JSON.stringify(newComparison);
+            if (prevComparisonRef.current !== comparisonJson) {
+              prevComparisonRef.current = comparisonJson;
+              setComparison(newComparison);
+            }
+          } else {
+            await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
+            const newComparison = { previous: null, current: avgEfficiency, change: undefined };
+            const comparisonJson = JSON.stringify(newComparison);
+            if (prevComparisonRef.current !== comparisonJson) {
+              prevComparisonRef.current = comparisonJson;
+              setComparison(newComparison);
+            }
           }
         }
       } else {
@@ -922,6 +1143,7 @@ export default function DashboardScreen({ navigation }: any) {
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
       
+      await loadPreviousBlockEfficiencies(userId, venueId);
       const generatedTasks = await generateTasksFromStoredAnswers(userId, venueId, completedBlockIds);
       if (generatedTasks.length > 0) {
         const tasksToShow = generatedTasks.slice(0, 3);
@@ -968,6 +1190,16 @@ export default function DashboardScreen({ navigation }: any) {
       
       const userId = await getCurrentUserId();
       const venueId = selectedVenueId || (await getSelectedVenueId(userId));
+      if (!venueId) {
+        setBlockResults(DEFAULT_BLOCKS);
+        setTasks([]);
+        setTasksByBlock({});
+        setAllTasksCount(0);
+        setOverallEfficiency(0);
+        setComparison({ previous: null, current: 0, change: undefined });
+        setPreviousBlockEfficiencies({});
+        return;
+      }
       
       // НЕ ЗАГРУЖАЕМ данные профиля здесь - они загружаются один раз в loadProfileData
       // Это предотвращает ре-рендеры шапки при фокусе экрана
@@ -977,6 +1209,13 @@ export default function DashboardScreen({ navigation }: any) {
       let storedTasks: Task[] = [];
       let venueResults: Record<string, any> | null = null;
       let parsedResults: Record<string, any> | null = null;
+      const repeatModeUserRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', userId, venueId)
+      );
+      const repeatModeGlobalRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', null, venueId)
+      );
+      const isRepeatMode = repeatModeUserRaw === 'true' || repeatModeGlobalRaw === 'true';
       
       {
         const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
@@ -992,7 +1231,7 @@ export default function DashboardScreen({ navigation }: any) {
         parsedResults = savedResults ? JSON.parse(savedResults) : null;
         venueResults = parsedResults?.[venueId] || null;
         setVenueResultsByBlock(venueResults);
-        if (!storedBlocks || storedBlocks.length === 0) {
+        if ((!storedBlocks || storedBlocks.length === 0) && !isRepeatMode) {
           const venueResultsMap = parsedResults?.[venueId] || {};
           const resultBlocks = Object.keys(venueResultsMap).map((id) => {
             const defaultBlock = DEFAULT_BLOCKS.find((b) => b.id === id);
@@ -1011,7 +1250,7 @@ export default function DashboardScreen({ navigation }: any) {
         const hasCompletedBlocks = Array.isArray(storedBlocks)
           ? storedBlocks.some((block) => block.completed && block.efficiency !== undefined)
           : false;
-        if (!hasCompletedBlocks) {
+        if (!hasCompletedBlocks && !isRepeatMode) {
           const venueResultsMap = parsedResults?.[venueId] || {};
           const resultBlocks = Object.keys(venueResultsMap).map((id) => {
             const defaultBlock = DEFAULT_BLOCKS.find((b) => b.id === id);
@@ -1135,15 +1374,25 @@ export default function DashboardScreen({ navigation }: any) {
             const efficiency = calculateBlockEfficiencyFromAnswers(block.id, answers);
             recalculatedBlocks.push({
               ...block,
-              completed: true,
-              efficiency,
-            });
+                completed: true,
+                efficiency,
+              });
           } else {
-            recalculatedBlocks.push({
-              ...block,
-              completed: false,
-              efficiency: undefined,
-            });
+            // Если ответов нет (например, после repeat-старта в старом флоу),
+            // сохраняем последний доступный результат блока вместо обнуления.
+            if (!isRepeatMode && block.completed && typeof block.efficiency === 'number') {
+              recalculatedBlocks.push({
+                ...block,
+                completed: true,
+                efficiency: block.efficiency,
+              });
+            } else {
+              recalculatedBlocks.push({
+                ...block,
+                completed: false,
+                efficiency: undefined,
+              });
+            }
           }
         }
         allBlocks = recalculatedBlocks;
@@ -1186,8 +1435,7 @@ export default function DashboardScreen({ navigation }: any) {
               // previousResult не сохраняем при первом прохождении
             }
             await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
-          const newComparison = { previous: null, current: avgEfficiency, change: undefined };
-            await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
+            const newComparison = { previous: null, current: avgEfficiency, change: undefined };
             const comparisonJson = JSON.stringify(newComparison);
             if (prevComparisonRef.current !== comparisonJson) {
               prevComparisonRef.current = comparisonJson;
@@ -1219,6 +1467,7 @@ export default function DashboardScreen({ navigation }: any) {
               }
             } else {
               // Результат не изменился - используем сохраненные значения
+              await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
               const change = previousValue !== null && currentValue !== previousValue ? currentValue - previousValue : undefined;
               const newComparison = { previous: previousValue, current: currentValue, change };
               const comparisonJson = JSON.stringify(newComparison);
@@ -1233,12 +1482,23 @@ export default function DashboardScreen({ navigation }: any) {
           const avgEfficiency = completedBlocks.length > 0 
             ? Math.round(completedBlocks.reduce((sum, b) => sum + (b.efficiency || 0), 0) / completedBlocks.length)
             : 0;
-          await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
-          const newComparison = { previous: null, current: avgEfficiency, change: undefined };
-          const comparisonJson = JSON.stringify(newComparison);
-          if (prevComparisonRef.current !== comparisonJson) {
-            prevComparisonRef.current = comparisonJson;
-            setComparison(newComparison);
+          if (isRepeatMode && completedBlocks.length === 0) {
+            const baseline = storedCurrent ? parseInt(storedCurrent, 10) : null;
+            const baselineValue = baseline !== null && !Number.isNaN(baseline) ? baseline : null;
+            const newComparison = { previous: baselineValue, current: 0, change: undefined };
+            const comparisonJson = JSON.stringify(newComparison);
+            if (prevComparisonRef.current !== comparisonJson) {
+              prevComparisonRef.current = comparisonJson;
+              setComparison(newComparison);
+            }
+          } else {
+            await appendHistoryEntryIfChanged(avgEfficiency, completedBlocks, userId, venueId);
+            const newComparison = { previous: null, current: avgEfficiency, change: undefined };
+            const comparisonJson = JSON.stringify(newComparison);
+            if (prevComparisonRef.current !== comparisonJson) {
+              prevComparisonRef.current = comparisonJson;
+              setComparison(newComparison);
+            }
           }
         }
       } else {
@@ -1258,6 +1518,7 @@ export default function DashboardScreen({ navigation }: any) {
         console.log('Блоков в хранилище нет, показываем дефолтные');
       }
 
+      await loadPreviousBlockEfficiencies(userId, venueId);
       const generatedTasks = await generateTasksFromStoredAnswers(userId, venueId, completedBlockIds);
       if (generatedTasks.length > 0) {
         const tasksToShow = generatedTasks.slice(0, 3);
@@ -1271,8 +1532,9 @@ export default function DashboardScreen({ navigation }: any) {
           console.log('Задачи сгенерированы из ответов:', generatedTasks.length);
         }
       } else {
-        if (venueResults) {
-          const tasksCountSum = Object.values(venueResults).reduce((sum: number, item: any) => {
+        if (venueResults && completedBlockIds.length > 0) {
+          const tasksCountSum = completedBlockIds.reduce((sum: number, blockId: string) => {
+            const item = venueResults?.[blockId];
             const count = typeof item?.tasksCount === 'number' ? item.tasksCount : 0;
             return sum + count;
           }, 0);
@@ -1339,11 +1601,7 @@ export default function DashboardScreen({ navigation }: any) {
   };
 
   const parseCityFromAddress = (address?: string) => {
-    if (!address) {
-      return 'город';
-    }
-    const firstPart = address.split(',')[0]?.trim();
-    return firstPart || 'город';
+    return getCityFromAddress(address, 'город');
   };
 
   useEffect(() => {
@@ -1422,6 +1680,7 @@ export default function DashboardScreen({ navigation }: any) {
   }, []);
 
   const toggleVenue = (venueId: string) => {
+    selectedVenueIdRef.current = venueId;
     setSelectedVenueId(venueId);
     (async () => {
       try {
@@ -1498,7 +1757,9 @@ export default function DashboardScreen({ navigation }: any) {
               {addIconSvg && (
                 <AnimatedPressable
                   style={styles.iconButton}
-                  onPress={() => setShowAddModal(true)}
+                  onPress={() => {
+                    void openNewDiagnosisModal();
+                  }}
                 >
                   <SvgXml xml={addIconSvg} width={36} height={36} />
                 </AnimatedPressable>
@@ -1562,9 +1823,9 @@ export default function DashboardScreen({ navigation }: any) {
                       </Text>
                     </View>
                   )}
-                <View style={[styles.metricBadge, styles.previousDiagnosisBadge, { backgroundColor: currentBadgeColors.bg }]}>
-                  <Text style={[styles.previousDiagnosisBadgeText, { color: currentBadgeColors.text }]}>
-                    {`${currentBadgeValue}%`}
+                <View style={[styles.metricBadge, styles.previousDiagnosisBadge, { backgroundColor: previousBadgeColors.bg }]}>
+                  <Text style={[styles.previousDiagnosisBadgeText, { color: previousBadgeColors.text }]}>
+                    {previousBadgeLabel}
                   </Text>
                 </View>
               </View>
@@ -1587,7 +1848,10 @@ export default function DashboardScreen({ navigation }: any) {
               <AnimatedPressable
                 style={styles.maxActionButton}
                 onPress={() =>
-                  navigation.navigate('Задачи', { screen: 'ActionPlanMain', params: { selectedTab: 'all' } })
+                  navigation.navigate('Задачи', {
+                    screen: 'ActionPlanMain',
+                    params: { selectedTab: 'all', venueId: selectedVenueId },
+                  })
                 }
               >
                 <Text style={styles.maxActionButtonText}>План улучшений</Text>
@@ -1595,7 +1859,10 @@ export default function DashboardScreen({ navigation }: any) {
               <AnimatedPressable
                 style={styles.improvementPlanButton}
                 onPress={() => {
-                  navigation.navigate('Register3');
+                  navigation.navigate('Диагностика', {
+                    screen: 'SelfDiagnosisBlocks',
+                    params: { initialTab: 'В процессе' },
+                  });
                 }}
               >
                 <Text style={styles.improvementPlanButtonText}>Продолжить диагностику</Text>
@@ -1606,7 +1873,12 @@ export default function DashboardScreen({ navigation }: any) {
           {!isMaxEfficiency && !hasIncompleteBlocks && (
             <AnimatedPressable
               style={[styles.improvementPlanButton, { marginTop: -20 }]}
-              onPress={() => navigation.navigate('Задачи', { screen: 'ActionPlanMain', params: { selectedTab: 'all' } })}
+              onPress={() =>
+                navigation.navigate('Задачи', {
+                  screen: 'ActionPlanMain',
+                  params: { selectedTab: 'all', venueId: selectedVenueId },
+                })
+              }
             >
               <Text style={styles.improvementPlanButtonText}>План улучшений</Text>
             </AnimatedPressable>
@@ -1648,10 +1920,10 @@ export default function DashboardScreen({ navigation }: any) {
                 оперативно реагировать на возможные изменения в бизнесе.
               </Text>
               <View style={styles.maxButtons}>
-                <AnimatedPressable style={styles.maxActionButton} onPress={() => {}}>
+                <AnimatedPressable style={styles.maxActionButton} onPress={() => { void openProfileNotificationsFromMax(); }}>
                   <Text style={styles.maxActionButtonText}>Настроить уведомления</Text>
                 </AnimatedPressable>
-                <AnimatedPressable style={styles.maxActionButton} onPress={() => navigation.navigate('Register2')}>
+                <AnimatedPressable style={styles.maxActionButton} onPress={() => { void handleStartRepeatDiagnosis(); }}>
                   <Text style={styles.maxActionButtonText}>Повторная диагностика</Text>
                 </AnimatedPressable>
               </View>
@@ -1698,13 +1970,33 @@ export default function DashboardScreen({ navigation }: any) {
               // Определяем цвет badge по тем же правилам, что и "Прошлая диагностика"
               const blockEfficiencyValue = block.completed && block.efficiency !== undefined ? block.efficiency : 0;
               const blockBadgeColors = getDiagnosisBadgeColors(blockEfficiencyValue);
+              const prevEfficiency = previousBlockEfficiencies[block.id];
+              const deltaValue =
+                block.completed &&
+                typeof block.efficiency === 'number' &&
+                typeof prevEfficiency === 'number'
+                  ? block.efficiency - prevEfficiency
+                  : null;
+              const deltaColor =
+                deltaValue === null
+                  ? '#525866'
+                  : deltaValue < 0
+                    ? '#DF1C41'
+                    : deltaValue > 0
+                      ? '#176448'
+                      : '#525866';
+              const deltaArrow = deltaValue !== null && deltaValue < 0 ? '▾' : '▴';
+              const deltaDisplay = deltaValue !== null ? Math.abs(deltaValue) : 0;
 
               return (
                 <AnimatedPressable
                   key={block.id}
                   style={styles.businessBlockCard}
                   onPress={() => {
-                    navigation.navigate('Задачи', { screen: 'ActionPlanMain', params: { selectedTab: block.id } });
+                    navigation.navigate('Задачи', {
+                      screen: 'ActionPlanMain',
+                      params: { selectedTab: block.id, venueId: selectedVenueId },
+                    });
                   }}
                 >
                   {/* Верх: иконка слева и процент эффективности в badge справа */}
@@ -1761,21 +2053,37 @@ export default function DashboardScreen({ navigation }: any) {
                       </View>
                     )}
                     {/* Процент эффективности в badge справа */}
-                    <View
-                      style={[
-                        styles.blockEfficiencyBadge,
-                        { backgroundColor: blockBadgeColors.bg },
-                      ]}
-                    >
-                      {block.completed && block.efficiency !== undefined ? (
-                        <Text style={[styles.blockEfficiencyPercent, { color: blockBadgeColors.text }]}>
-                          {`${block.efficiency}%`}
-                        </Text>
-                      ) : (
-                        <Text style={[styles.blockEfficiencyPercent, { color: '#525866' }]}>
-                          --
-                        </Text>
-                      )}
+                    <View style={styles.blockMetricColumn}>
+                      <View style={styles.blockMetricRow}>
+                        {deltaValue !== null && (
+                          <View style={styles.blockDeltaInline}>
+                            {deltaDisplay !== 0 && (
+                              <Text style={[styles.blockDeltaText, { color: deltaColor, marginRight: 2 }]}>
+                                {deltaArrow}
+                              </Text>
+                            )}
+                            <Text style={[styles.blockDeltaText, { color: deltaColor }]}>
+                              {deltaDisplay}%
+                            </Text>
+                          </View>
+                        )}
+                        <View
+                          style={[
+                            styles.blockEfficiencyBadge,
+                            { backgroundColor: blockBadgeColors.bg },
+                          ]}
+                        >
+                          {block.completed && block.efficiency !== undefined ? (
+                            <Text style={[styles.blockEfficiencyPercent, { color: blockBadgeColors.text }]}>
+                              {`${block.efficiency}%`}
+                            </Text>
+                          ) : (
+                            <Text style={[styles.blockEfficiencyPercent, { color: '#525866' }]}>
+                              --
+                            </Text>
+                          )}
+                        </View>
+                      </View>
                     </View>
                   </View>
 
@@ -1792,6 +2100,10 @@ export default function DashboardScreen({ navigation }: any) {
                     </View>
                     <Text style={styles.blockTasksText}>
                       {(() => {
+                        // Для непройденных блоков вместо числа задач показываем статус
+                        if (!block.completed || block.efficiency === undefined) {
+                          return 'нужна диагностика';
+                        }
                         // Если эффективность блока от 90% до 100% включительно - показываем "Все хорошо"
                         if (block.completed && block.efficiency !== undefined && block.efficiency >= 90 && block.efficiency <= 100) {
                           return 'Все хорошо';
@@ -1936,70 +2248,12 @@ export default function DashboardScreen({ navigation }: any) {
               )}
             </View>
             <View style={styles.venuesCard}>
-              {venues.length >= 5 ? (
-                <ScrollView
-                  style={styles.venuesScroll}
-                  contentContainerStyle={styles.venuesScrollContent}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {venues.map((venue, index) => {
-                    const isSelected = venue.id === selectedVenueId;
-                    return (
-                      <TouchableOpacity
-                        key={venue.id}
-                        style={[
-                          styles.venueRow,
-                          index === venues.length - 1 && styles.venueRowLast,
-                          { paddingHorizontal: 0 },
-                        ]}
-                        activeOpacity={0.8}
-                        onPress={() => toggleVenue(venue.id)}
-                      >
-                        <View style={styles.venueAvatar}>
-                          {venue.logoUri ? (
-                            <Image source={{ uri: venue.logoUri }} style={styles.venueLogo} />
-                          ) : logoPlaceholderSvg ? (
-                            <View style={styles.venueIconScaled}>
-                              <SvgXml xml={logoPlaceholderSvg} width={50} height={50} />
-                            </View>
-                          ) : (
-                            <Ionicons name="image-outline" size={30} color={palette.gray400} />
-                          )}
-                        </View>
-                        <View style={styles.venueInfo}>
-                          <Text style={styles.venueName}>{venue.name}</Text>
-                          <View style={styles.venueCityRow}>
-                            <Text style={styles.venueCity}>{venue.city}</Text>
-                            <View style={styles.venueCityIconContainer}>
-                              {cityIconSvg ? (
-                                <SvgXml xml={cityIconSvg} width={16} height={16} />
-                              ) : (
-                                <View style={{ width: 16, height: 16 }} />
-                              )}
-                            </View>
-                          </View>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.radioButton}
-                          activeOpacity={0.8}
-                          onPress={() => toggleVenue(venue.id)}
-                        >
-                          {isSelected && radioActiveSvg ? (
-                            <SvgXml xml={radioActiveSvg} width={20} height={20} />
-                          ) : radioInactiveSvg ? (
-                            <SvgXml xml={radioInactiveSvg} width={20} height={20} />
-                          ) : (
-                            <View style={[styles.radioOuter, isSelected && styles.radioOuterActive]}>
-                              {isSelected && <View style={styles.radioInner} />}
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              ) : (
-                venues.map((venue, index) => {
+              <ScrollView
+                style={styles.venuesScroll}
+                contentContainerStyle={styles.venuesScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {venues.map((venue, index) => {
                   const isSelected = venue.id === selectedVenueId;
                   return (
                     <TouchableOpacity
@@ -2053,19 +2307,14 @@ export default function DashboardScreen({ navigation }: any) {
                       </TouchableOpacity>
                     </TouchableOpacity>
                   );
-                })
-              )}
+                })}
+              </ScrollView>
             </View>
             <TouchableOpacity
               style={styles.addRestaurantRow}
               onPress={() => {
-                if (!isMaxEfficiency) {
-                  setShowAddModal(false);
-                  setShowAddWarningModal(true);
-                  return;
-                }
                 setShowAddModal(false);
-                navigation.navigate('Register2');
+                navigation.navigate('AddProject');
               }}
               activeOpacity={0.8}
             >
@@ -2225,17 +2474,14 @@ export default function DashboardScreen({ navigation }: any) {
             <Text style={styles.addWarningTitle}>Начать новую диагностику?</Text>
             <Text style={styles.addWarningText}>
               У вас есть{' '}
-              <Text style={styles.addWarningHighlight}>{incompleteTasksCount} незавершенных задач</Text>{' '}
+              <Text style={styles.addWarningHighlight}>{warningIncompleteTasksCount} незавершенных задач</Text>{' '}
               по предыдущей диагностике. Мы рекомендуем сначала выполнить их, чтобы улучшить ваши
               показатели эффективности.
             </Text>
             <View style={styles.addWarningButtons}>
               <AnimatedPressable
                 style={styles.maxActionButton}
-                onPress={() => {
-                  setShowAddWarningModal(false);
-                  navigation.navigate('Register2');
-                }}
+                onPress={() => { void handleStartRepeatDiagnosis(); }}
               >
                 <Text style={styles.addWarningPrimaryButtonText}>Все равно начать диагностику</Text>
               </AnimatedPressable>
@@ -2243,7 +2489,10 @@ export default function DashboardScreen({ navigation }: any) {
                 style={styles.improvementPlanButton}
                 onPress={() => {
                   setShowAddWarningModal(false);
-                  navigation.navigate('Задачи', { screen: 'ActionPlanMain', params: { selectedTab: 'all' } });
+                  navigation.navigate('Задачи', {
+                    screen: 'ActionPlanMain',
+                    params: { selectedTab: 'all', venueId: selectedVenueId },
+                  });
                 }}
               >
                 <Text style={styles.addWarningSecondaryButtonText}>К задачам</Text>
@@ -2637,8 +2886,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   addWarningBadgeText: {
     fontSize: 14,
@@ -2787,8 +3034,6 @@ const styles = StyleSheet.create({
     right: -10,
     bottom: -15,
     transform: [{ translateY: -9 }, { translateX: -5 }],
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
     borderRadius: 999,
   },
   maxTitle: {
@@ -2946,6 +3191,33 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     includeFontPadding: false,
   },
+  blockMetricColumn: {
+    alignItems: 'flex-end',
+  },
+  blockMetricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'nowrap',
+  },
+  blockDeltaInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 6,
+    marginLeft: -10,
+    minHeight: 14,
+  },
+  blockDeltaRow: {
+    marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 14,
+  },
+  blockDeltaText: {
+    fontSize: 11,
+    fontWeight: '500',
+    lineHeight: 14,
+  },
   blockTextGroup: {
     marginTop: 0,
   },
@@ -3045,12 +3317,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: '100%',
-    marginTop: SCREEN_HEIGHT * 0.54 - 25,
-    height: SCREEN_HEIGHT * 0.46 + 25,
+    marginTop: 'auto',
+    maxHeight: SCREEN_HEIGHT * 0.46 + 45,
     position: 'relative',
     overflow: 'hidden',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   addModalHeader: {
     flexDirection: 'row',
@@ -3087,6 +3360,7 @@ const styles = StyleSheet.create({
   venueRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 50,
     marginBottom: spacing.md,
   },
   venueRowLast: {
@@ -3113,6 +3387,7 @@ const styles = StyleSheet.create({
   },
   venueInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   venueName: {
     fontSize: 16,
@@ -3142,6 +3417,7 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     marginLeft: spacing.md,
   },
   radioOuter: {
@@ -3172,8 +3448,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md - 2,
-    marginBottom: spacing.md + 24,
+    marginTop: -10,
+    marginBottom: 0,
   },
   addRestaurantPlus: {
     fontSize: 23,

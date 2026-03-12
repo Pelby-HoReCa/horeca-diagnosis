@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL as SERVER_API_BASE_URL } from './config';
 
 // Базовый URL API (будет настроен позже)
 const API_BASE_URL = 'https://api.pelby.ru'; // TODO: Заменить на реальный URL
@@ -400,27 +401,85 @@ export const deleteAccount = async (): Promise<boolean> => {
       throw new Error('Пользователь не найден');
     }
 
+    const currentUser = await getUserData();
+    const fallbackEmail = await AsyncStorage.getItem('userEmail');
+
+    // Фиксируем удаление на сервере, но не удаляем серверный слепок:
+    // админка должна видеть историю и факт возврата пользователя.
+    try {
+      await fetch(`${SERVER_API_BASE_URL}/sync/delete-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          meta: {
+            email: currentUser?.email || fallbackEmail || '',
+            fullName: currentUser?.fullName || '',
+            phone: currentUser?.phone || '',
+          },
+        }),
+      });
+    } catch (syncError) {
+      console.error('Ошибка отправки метки удаления на сервер:', syncError);
+    }
+
     // Импортируем функцию удаления пользователя
     const { deleteUser } = await import('./usersStorage');
     const { clearUserData } = await import('./userDataStorage');
-    
-    // Удаляем данные пользователя
+
+    // Удаляем данные пользователя (локально)
     await clearUserData(userId);
-    
-    // Удаляем пользователя из хранилища
+
+    // Удаляем пользователя из локального хранилища зарегистрированных аккаунтов
     const deleted = await deleteUser(userId);
-    
     if (!deleted) {
-      throw new Error('Не удалось удалить пользователя');
+      console.warn(`Пользователь ${userId} не найден в registeredUsers`);
     }
 
+    // Дополнительно очищаем все ключи, которые относятся к текущему userId
+    const allKeys = await AsyncStorage.getAllKeys();
+    const userScopedPrefix = `user_${userId}_`;
+    const userScopedKeys = allKeys.filter(
+      (key) => key.startsWith(userScopedPrefix) || key.includes(`_${userId}_`)
+    );
+
+    const commonKeysToRemove = [
+      'registrationStep1',
+      'registrationStep2',
+      'registrationStep3',
+      'questionnaireData',
+      'questionnaireCompleted',
+      'diagnosis_selected_venue_id',
+      'diagnosis_selected_blocks',
+      'diagnosis_progress',
+      'diagnosis_repeat_mode',
+      'diagnosis_block_results_by_venue',
+      'diagnosisBlocks',
+      'actionPlanTasks',
+      'actionPlanSubtasks',
+      'userDiagnosisHistory',
+      'surveyHistory',
+      'dashboardAllBlocksCompleted',
+      'dashboardPreviousResult',
+      'dashboardCurrentResult',
+      `user_${userId}_profile_avatar_uri`,
+    ];
+
+    await AsyncStorage.multiRemove(
+      Array.from(
+        new Set([
+          ...userScopedKeys,
+          ...commonKeysToRemove,
+          'authToken',
+          'isAuthenticated',
+          'userEmail',
+          'userId',
+          'userAvatar',
+        ])
+      )
+    );
+
     // Очищаем данные авторизации
-    await AsyncStorage.removeItem('authToken');
-    await AsyncStorage.removeItem('isAuthenticated');
-    await AsyncStorage.removeItem('userEmail');
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('userAvatar');
-    
     console.log('Аккаунт удален успешно');
     return true;
   } catch (error) {
@@ -428,4 +487,3 @@ export const deleteAccount = async (): Promise<boolean> => {
     throw error;
   }
 };
-

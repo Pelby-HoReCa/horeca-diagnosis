@@ -25,6 +25,15 @@ interface RegisterScreen1Props {
   onOpenConsentDocument?: () => void;
 }
 
+const normalizePhoneDigits = (value: string | null | undefined): string => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 10) return digits;
+  if (digits.length === 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+    return digits.slice(1);
+  }
+  return '';
+};
+
 export default function RegisterScreen1({
   onContinue,
   onSkip,
@@ -114,8 +123,11 @@ export default function RegisterScreen1({
     if (errorCode === 'verification_already_consumed') return 'Эта сессия уже использована. Запросите новый код';
     if (errorCode === 'verification_attempts_exceeded') return 'Лимит попыток исчерпан. Запросите новый код';
     if (errorCode === 'code_required') return 'Введите код подтверждения';
+    if (errorCode === 'sms_sender_not_configured') {
+      return 'На сервере не задан отправитель SMS.ru. Укажите SMSRU_FROM и перезапустите backend.';
+    }
     if (errorCode === 'sms_sender_not_approved') {
-      return 'В SMS.ru не настроен буквенный отправитель. Завершите настройку и повторите.';
+      return 'Отправитель SMS.ru не подтвержден или отличается от SMSRU_FROM.';
     }
     if (errorCode === 'sms_provider_error') return 'SMS-провайдер временно недоступен. Повторите позже.';
     return 'Не удалось выполнить верификацию. Повторите позже';
@@ -201,6 +213,11 @@ export default function RegisterScreen1({
       newErrors.phone = 'Обязательное поле';
     }
 
+    // Валидация верификации телефона (показываем ошибку сразу вместе с остальными)
+    if (phoneDigits.length >= 10 && (!isPhoneVerified || verifiedPhoneDigits !== phoneDigits)) {
+      newErrors.phoneVerification = 'Требуется верификация';
+    }
+
     // Валидация согласия
     if (!consent) {
       newErrors.consent = 'Необходимо дать согласие на обработку персональных данных';
@@ -213,27 +230,41 @@ export default function RegisterScreen1({
   const completeRegistration = async (skipPhoneVerificationCheck = false) => {
     const currentPhoneDigits = getPhoneDigits();
     if (!skipPhoneVerificationCheck && (!isPhoneVerified || verifiedPhoneDigits !== currentPhoneDigits)) {
-      setErrors(prev => ({ ...prev, phoneVerification: 'Требуется верификация' }));
       return;
     }
+    const isCurrentPhoneVerified = isPhoneVerified && verifiedPhoneDigits === currentPhoneDigits;
+    const nowIso = new Date().toISOString();
 
     const payload = {
       fullName: name,
       email,
       phone,
       consent,
+      phoneVerified: isCurrentPhoneVerified,
+      verifiedPhoneDigits: isCurrentPhoneVerified ? currentPhoneDigits : null,
+      phoneVerifiedAt: isCurrentPhoneVerified ? nowIso : null,
     };
 
     await AsyncStorage.setItem('registrationStep1', JSON.stringify(payload));
 
     const existingUser = await findUserByEmail(email);
     if (existingUser) {
+      const existingVerifiedDigits = normalizePhoneDigits(existingUser.verifiedPhoneDigits);
+      const hasExistingVerificationForCurrentPhone =
+        existingUser.phoneVerified === true &&
+        Boolean(existingVerifiedDigits) &&
+        existingVerifiedDigits === currentPhoneDigits;
+      const shouldPersistVerified = isCurrentPhoneVerified || hasExistingVerificationForCurrentPhone;
+
       await updateUser(existingUser.id, {
         fullName: name,
         phone,
         email,
         agreePersonalData: consent,
         agreePrivacy: consent,
+        phoneVerified: shouldPersistVerified,
+        verifiedPhoneDigits: shouldPersistVerified ? currentPhoneDigits : null,
+        phoneVerifiedAt: shouldPersistVerified ? existingUser.phoneVerifiedAt || nowIso : null,
       });
       await AsyncStorage.setItem('userId', existingUser.id);
     } else {
@@ -244,6 +275,9 @@ export default function RegisterScreen1({
         phone,
         agreePersonalData: consent,
         agreePrivacy: consent,
+        phoneVerified: isCurrentPhoneVerified,
+        verifiedPhoneDigits: isCurrentPhoneVerified ? currentPhoneDigits : null,
+        phoneVerifiedAt: isCurrentPhoneVerified ? nowIso : null,
       });
       await AsyncStorage.setItem('userId', newUser.id);
     }
@@ -304,7 +338,6 @@ export default function RegisterScreen1({
       setVerificationError('');
       setVerificationId('');
       setErrors(prev => ({ ...prev, phoneVerification: '' }));
-      await completeRegistration(true);
     } catch (error) {
       console.error('Ошибка проверки кода телефона:', error);
       setVerificationError('Нет соединения с сервером. Проверьте интернет');
@@ -331,15 +364,56 @@ export default function RegisterScreen1({
   useEffect(() => {
     const loadSavedRegistration = async () => {
       const saved = await AsyncStorage.getItem('registrationStep1');
+      let currentEmail = '';
+      let currentPhoneDigits = '';
+
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          if (parsed.fullName) setName(parsed.fullName);
-          if (parsed.email) setEmail(parsed.email);
-          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.fullName) {
+            setName(parsed.fullName);
+          }
+          if (parsed.email) {
+            setEmail(parsed.email);
+            currentEmail = String(parsed.email);
+          }
+          if (parsed.phone) {
+            setPhone(parsed.phone);
+            currentPhoneDigits = normalizePhoneDigits(parsed.phone);
+          }
+          const savedVerifiedDigits =
+            typeof parsed.verifiedPhoneDigits === 'string'
+              ? normalizePhoneDigits(parsed.verifiedPhoneDigits)
+              : '';
+          if (
+            parsed.phoneVerified === true &&
+            currentPhoneDigits &&
+            currentPhoneDigits === savedVerifiedDigits
+          ) {
+            setIsPhoneVerified(true);
+            setVerifiedPhoneDigits(savedVerifiedDigits);
+          }
         } catch (error) {
           console.error('Ошибка чтения данных регистрации (шаг 1):', error);
         }
+      }
+
+      const fallbackEmail = currentEmail || (await AsyncStorage.getItem('userEmail')) || '';
+      if (!fallbackEmail) return;
+
+      const existingUser = await findUserByEmail(fallbackEmail);
+      if (!existingUser) return;
+
+      const userPhoneDigits = normalizePhoneDigits(existingUser.phone);
+      const effectivePhoneDigits = currentPhoneDigits || userPhoneDigits;
+      const existingVerifiedDigits = normalizePhoneDigits(existingUser.verifiedPhoneDigits);
+      if (
+        existingUser.phoneVerified === true &&
+        effectivePhoneDigits &&
+        effectivePhoneDigits === existingVerifiedDigits
+      ) {
+        setIsPhoneVerified(true);
+        setVerifiedPhoneDigits(existingVerifiedDigits);
       }
     };
 
@@ -409,6 +483,32 @@ export default function RegisterScreen1({
     loadRussiaFlagIcon();
     loadCheckboxActive();
   }, []);
+
+  useEffect(() => {
+    const syncVerificationFromExistingUser = async () => {
+      const currentEmail = email.trim();
+      const currentPhoneDigits = phone.replace(/\D/g, '');
+      if (!currentEmail || currentPhoneDigits.length !== 10) return;
+
+      try {
+        const existingUser = await findUserByEmail(currentEmail);
+        if (!existingUser || existingUser.phoneVerified !== true) return;
+
+        const existingVerifiedDigits = normalizePhoneDigits(existingUser.verifiedPhoneDigits);
+        if (!existingVerifiedDigits || existingVerifiedDigits !== currentPhoneDigits) return;
+
+        setIsPhoneVerified(true);
+        setVerifiedPhoneDigits(existingVerifiedDigits);
+        if (errors.phoneVerification) {
+          setErrors((prev) => ({ ...prev, phoneVerification: '' }));
+        }
+      } catch (error) {
+        console.error('Ошибка восстановления статуса верификации телефона:', error);
+      }
+    };
+
+    void syncVerificationFromExistingUser();
+  }, [email, phone, errors.phoneVerification]);
 
   return (
     <View style={styles.container}>
@@ -545,12 +645,7 @@ export default function RegisterScreen1({
               </View>
             ) : null}
             {!!errors.phoneVerification && (
-              <View style={styles.phoneVerificationErrorRow}>
-                <Text style={styles.phoneVerificationErrorText}>{errors.phoneVerification}</Text>
-                <AnimatedPressable style={styles.phoneVerificationErrorLinkWrap} onPress={openVerificationModal}>
-                  <Text style={styles.phoneVerificationErrorLink}>Верифицировать</Text>
-                </AnimatedPressable>
-              </View>
+              <Text style={styles.phoneVerificationErrorText}>{errors.phoneVerification}</Text>
             )}
           </View>
         </View>
@@ -989,27 +1084,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     transform: [{ translateY: 0.5 }],
   },
-  phoneVerificationErrorRow: {
+  phoneVerificationErrorText: {
     marginTop: spacing.xxs,
     marginLeft: spacing.xs,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  phoneVerificationErrorText: {
     fontSize: 12,
     lineHeight: 17,
     color: '#FF4D57',
     fontFamily: 'Manrope-Regular',
-  },
-  phoneVerificationErrorLinkWrap: {
-    marginLeft: 8,
-    paddingVertical: 1,
-  },
-  phoneVerificationErrorLink: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: '#191BDF',
-    fontFamily: 'Manrope-Medium',
   },
   verificationBackdrop: {
     flex: 1,

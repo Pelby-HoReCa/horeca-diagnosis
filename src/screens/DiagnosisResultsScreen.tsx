@@ -25,7 +25,12 @@ import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { palette, radii, spacing } from '../styles/theme';
 import { generateTasksFromAnswers } from '../utils/recommendationEngine';
-import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey } from '../utils/userDataStorage';
+import {
+  finalizeRepeatDiagnosisForVenue,
+  getCurrentUserId,
+  getSelectedVenueId,
+  getVenueScopedKey,
+} from '../utils/userDataStorage';
 
 const logo = require('../../assets/images/logo-pelby.png');
 
@@ -87,6 +92,7 @@ const DiagnosisResultsScreen: React.FC<DiagnosisResultsScreenProps> = ({
   const [noteClearIconSvg, setNoteClearIconSvg] = useState<string>('');
   const [noteConfirmIconSvg, setNoteConfirmIconSvg] = useState<string>('');
   const [noteDeleteIconSvg, setNoteDeleteIconSvg] = useState<string>('');
+  const repeatFinalizeRef = useRef(false);
 
   // Загружаем вопросы из JSON
   const questions: Record<string, any[]> = {};
@@ -144,6 +150,19 @@ const DiagnosisResultsScreen: React.FC<DiagnosisResultsScreenProps> = ({
     if (priority === 'high') return 0;
     return 0;
   };
+
+  useEffect(() => {
+    const finalizeRepeat = async () => {
+      if (repeatFinalizeRef.current) {
+        return;
+      }
+      repeatFinalizeRef.current = true;
+      const userId = await getCurrentUserId();
+      const venueId = await getSelectedVenueId(userId);
+      await finalizeRepeatDiagnosisForVenue(venueId, userId);
+    };
+    finalizeRepeat();
+  }, []);
 
   useEffect(() => {
     const loadIcons = async () => {

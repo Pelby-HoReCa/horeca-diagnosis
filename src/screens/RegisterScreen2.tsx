@@ -283,15 +283,19 @@ export default function RegisterScreen2({
       return;
     }
     if (mapSelection && mapTargetIndex !== null && mapTargetIndex >= 0) {
+      const nextAddress = (mapSelection.address || '').trim();
+      if (!nextAddress) {
+        return;
+      }
       setRestaurants((prev) =>
         prev.map((item, idx) =>
-          idx === mapTargetIndex ? { ...item, address: mapSelection.address } : item
+          idx === mapTargetIndex ? { ...item, address: nextAddress } : item
         )
       );
-      const restaurantId = restaurants[mapTargetIndex]?.id;
-      if (restaurantId) {
-        setAddressSuggestions((prev) => ({ ...prev, [restaurantId]: [] }));
-      }
+      setAddressSuggestions({});
+      setAddressErrors({});
+      setFocusedAddressId(null);
+      Keyboard.dismiss();
       onMapAddressApplied?.();
     }
   }, [mapSelection, mapTargetIndex, onMapAddressApplied, hasLoadedRegistration]);
@@ -348,6 +352,16 @@ export default function RegisterScreen2({
     if (trimmed.length < 3) {
       return [];
     }
+    const composeAddressValue = (titleRaw: string, subtitleRaw: string) => {
+      const title = String(titleRaw || '').trim();
+      const subtitle = String(subtitleRaw || '').trim();
+      if (!subtitle) return title;
+      const lowerTitle = title.toLowerCase();
+      const lowerSubtitle = subtitle.toLowerCase();
+      if (lowerTitle.includes(lowerSubtitle)) return title;
+      if (lowerSubtitle.includes(lowerTitle)) return subtitle;
+      return `${subtitle}, ${title}`;
+    };
     const suggestUrl = `https://suggest-maps.yandex.ru/v1/suggest?apikey=${YANDEX_SUGGEST_API_KEY}&text=${encodeURIComponent(trimmed)}&lang=ru_RU&results=6&types=geo,biz,house`;
     const searchUrl = `https://search-maps.yandex.ru/v1/?apikey=${YANDEX_SEARCH_API_KEY}&text=${encodeURIComponent(trimmed)}&lang=ru_RU&type=biz&results=6`;
     const geocodeUrl = `https://geocode-maps.yandex.ru/1.x/?apikey=${YANDEX_GEOCODER_API_KEY}&format=json&lang=ru_RU&results=6&geocode=${encodeURIComponent(trimmed)}`;
@@ -380,11 +394,12 @@ export default function RegisterScreen2({
     const suggestions = suggestResults.map((item: any, index: number) => {
       const title = item?.title?.text || item?.text || trimmed;
       const subtitle = item?.subtitle?.text || item?.subtitle || '';
+      const value = composeAddressValue(title, subtitle);
       return {
         id: `suggest-${title}-${index}`,
         text: title,
         subtitle,
-        value: title,
+        value,
       };
     });
 
@@ -579,8 +594,8 @@ export default function RegisterScreen2({
           ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="always"
-          keyboardDismissMode="none"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           onTouchStart={(event) => {
             const { pageX, pageY } = event.nativeEvent;
             touchStartRef.current = { x: pageX, y: pageY };

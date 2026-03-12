@@ -2,6 +2,7 @@ import { Asset } from 'expo-asset';
 import * as Location from 'expo-location';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Dimensions,
   Keyboard,
@@ -10,6 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -111,6 +113,7 @@ export default function MapPickerScreen({ onBack, onConfirm }: MapPickerScreenPr
   const [showCenterPin, setShowCenterPin] = useState(true);
   const [showAddressBadge, setShowAddressBadge] = useState(false);
   const [isManualEntry, setIsManualEntry] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [initialCenter] = useState<{ lat: number; lon: number }>(DEFAULT_CENTER);
   const [isMapReady, setIsMapReady] = useState(false);
   const webViewRef = React.useRef<WebView>(null);
@@ -129,6 +132,11 @@ export default function MapPickerScreen({ onBack, onConfirm }: MapPickerScreenPr
       duration,
       useNativeDriver: true,
     }).start();
+  };
+
+  const dismissAddressInput = () => {
+    Keyboard.dismiss();
+    animateSheet(0);
   };
 
   const centerMap = (lat: number, lon: number, zoom = 16) => {
@@ -252,11 +260,13 @@ export default function MapPickerScreen({ onBack, onConfirm }: MapPickerScreenPr
     const showSub = Keyboard.addListener(showEvent, (event) => {
       const keyboardHeight = event.endCoordinates?.height ?? 0;
       keyboardHeightRef.current = keyboardHeight;
+      setIsKeyboardVisible(true);
       animateSheet(-Math.max(keyboardHeight, 0), Platform.OS === 'ios' ? event.duration ?? 250 : 200);
     });
 
     const hideSub = Keyboard.addListener(hideEvent, (event) => {
       keyboardHeightRef.current = 0;
+      setIsKeyboardVisible(false);
       animateSheet(0, Platform.OS === 'ios' ? event.duration ?? 250 : 200);
     });
 
@@ -374,6 +384,10 @@ export default function MapPickerScreen({ onBack, onConfirm }: MapPickerScreenPr
         });
       return;
     }
+    if (!address.trim()) {
+      Alert.alert('Адрес не выбран', 'Укажите адрес на карте или введите его вручную.');
+      return;
+    }
     if (onConfirm) {
       onConfirm(address);
       return;
@@ -410,6 +424,9 @@ export default function MapPickerScreen({ onBack, onConfirm }: MapPickerScreenPr
                 return;
               }
               if (message === 'hideAddress') {
+                if (isKeyboardVisible) {
+                  dismissAddressInput();
+                }
                 if (addressBadgeTimerRef.current) {
                   clearTimeout(addressBadgeTimerRef.current);
                 }
@@ -471,40 +488,52 @@ export default function MapPickerScreen({ onBack, onConfirm }: MapPickerScreenPr
             <SvgXml xml={basicInputRightSvg} width={43} height={43} />
           </TouchableOpacity>
         )}
+        {isKeyboardVisible && (
+          <TouchableOpacity
+            style={styles.keyboardDismissOverlay}
+            activeOpacity={1}
+            onPress={dismissAddressInput}
+          />
+        )}
       </View>
       <Animated.View style={[styles.sheetWrapper, { transform: [{ translateY: sheetTranslateY }] }]}>
         <View style={styles.restContainer}>
-          <View style={styles.titleGroup}>
-            <Text style={styles.sheetTitle}>Выберите адрес</Text>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Адрес заведения</Text>
-              <View style={styles.inputContainer}>
-                {mapPinSvg && (
-                  <View style={styles.inputIcon}>
-                    <SvgXml xml={mapPinSvg} width={20} height={20} />
-                  </View>
-                )}
-                <TextInput
-                  style={[styles.input, address ? styles.inputFilled : styles.inputEmpty]}
-                  placeholder="Краснодар, ул. Володи Головатого, 311"
-                  placeholderTextColor="#868C98"
-                  value={address}
-                  onChangeText={(value) => {
-                    setAddress(value);
-                    setIsManualEntry(true);
-                  }}
-                  onFocus={() => {
-                    if (keyboardHeightRef.current > 0) {
-                      animateSheet(-Math.max(keyboardHeightRef.current, 0));
-                      return;
-                    }
-                    animateSheet(-Math.round(SCREEN_HEIGHT * 0.45));
-                  }}
-                  onBlur={() => animateSheet(0)}
-                />
+          <TouchableWithoutFeedback onPress={dismissAddressInput}>
+            <View style={styles.titleGroup}>
+              <Text style={styles.sheetTitle}>Выберите адрес</Text>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Адрес заведения</Text>
+                <View style={styles.inputContainer}>
+                  {mapPinSvg && (
+                    <View style={styles.inputIcon}>
+                      <SvgXml xml={mapPinSvg} width={20} height={20} />
+                    </View>
+                  )}
+                  <TextInput
+                    style={[styles.input, address ? styles.inputFilled : styles.inputEmpty]}
+                    placeholder="Краснодар, ул. Володи Головатого, 311"
+                    placeholderTextColor="#868C98"
+                    value={address}
+                    onChangeText={(value) => {
+                      setAddress(value);
+                      setIsManualEntry(true);
+                    }}
+                    onFocus={() => {
+                      if (keyboardHeightRef.current > 0) {
+                        animateSheet(-Math.max(keyboardHeightRef.current, 0));
+                        return;
+                      }
+                      animateSheet(-Math.round(SCREEN_HEIGHT * 0.45));
+                    }}
+                    onBlur={() => animateSheet(0)}
+                    returnKeyType="done"
+                    blurOnSubmit
+                    onSubmitEditing={dismissAddressInput}
+                  />
+                </View>
               </View>
             </View>
-          </View>
+          </TouchableWithoutFeedback>
         </View>
         <View style={styles.continueButtonContainer}>
           <AnimatedPressable style={styles.continueButton} onPress={handleContinuePress}>

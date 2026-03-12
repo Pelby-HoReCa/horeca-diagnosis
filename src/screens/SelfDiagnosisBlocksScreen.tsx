@@ -10,13 +10,21 @@ import DashboardHeader from '../components/DashboardHeader';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { palette, radii, spacing, typography } from '../styles/theme';
-import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey, loadUserQuestionnaire, saveUserBlocks } from '../utils/userDataStorage';
+import {
+  getCurrentUserId,
+  getSelectedVenueId,
+  getVenueScopedKey,
+  loadUserQuestionnaire,
+  saveUserBlocks,
+  startRepeatDiagnosisForVenue,
+} from '../utils/userDataStorage';
+import { getCityFromAddress } from '../utils/address';
 
 const logo = require('../../assets/images/logo-pelby.png');
 const { width: screenWidth, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const cardWidth = screenWidth - spacing.md * 2;
 
-export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
+export default function SelfDiagnosisBlocksScreen({ navigation, route }: any) {
   const [restaurantName, setRestaurantName] = useState('Проект');
   const [city, setCity] = useState<string>('');
   const [projectAvatarUri, setProjectAvatarUri] = useState<string | null>(null);
@@ -53,7 +61,17 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   const [showAllCompletedModal, setShowAllCompletedModal] = useState(false);
   const [showAddWarningModal, setShowAddWarningModal] = useState(false);
   const [incompleteTasksCount, setIncompleteTasksCount] = useState(0);
+  const [incompleteTasksByBlock, setIncompleteTasksByBlock] = useState<Record<string, number>>({});
   const selectedVenueIdRef = useRef<string | null>(null);
+  const blockProgressRef = useRef<Record<string, { answered: number; total: number; efficiency?: number }>>({});
+  const resolveVenueId = async (userId?: string | null) =>
+    selectedVenueIdRef.current || selectedVenueId || (await getSelectedVenueId(userId || null));
+  const sectionOffsetsRef = useRef<Record<string, number>>({
+    all: 0,
+    completed: 0,
+    toPass: 0,
+    inProgress: 0,
+  });
 
   const questionsByBlock: Record<string, any[]> = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -71,6 +89,24 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   useEffect(() => {
     selectedVenueIdRef.current = selectedVenueId;
   }, [selectedVenueId]);
+
+  useEffect(() => {
+    blockProgressRef.current = blockProgress;
+  }, [blockProgress]);
+
+  useEffect(() => {
+    const initialTab = route?.params?.initialTab;
+    if (!initialTab) {
+      return;
+    }
+    const normalizedInitialTab = initialTab === 'Начатые' ? 'В процессе' : initialTab;
+    setActiveTab(normalizedInitialTab);
+    const timer = setTimeout(() => {
+      handleTabPress(normalizedInitialTab);
+      navigation?.setParams?.({ initialTab: undefined });
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [route?.params?.initialTab]);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,9 +137,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         const restaurants = Array.isArray(questionnaireData?.restaurants)
           ? questionnaireData.restaurants
           : [];
-        const selectedVenueId =
-          (await AsyncStorage.getItem(`user_${userId}_diagnosis_selected_venue_id`)) ||
-          (await AsyncStorage.getItem('diagnosis_selected_venue_id'));
+        const selectedVenueId = await resolveVenueId(userId);
         const selectedVenue =
           restaurants.find((venue: any) => venue.id === selectedVenueId) ||
           restaurants[0];
@@ -115,7 +149,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         }
 
         if (selectedVenue?.address) {
-          const cityPart = selectedVenue.address.split(',')[0]?.trim();
+          const cityPart = getCityFromAddress(selectedVenue.address, 'город');
           if (cityPart) {
             nextCity = cityPart;
           }
@@ -147,9 +181,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   };
 
   const parseCityFromAddress = (address?: string) => {
-    if (!address) return 'город';
-    const firstPart = address.split(',')[0]?.trim();
-    return firstPart || 'город';
+    return getCityFromAddress(address, 'город');
   };
 
   useEffect(() => {
@@ -231,6 +263,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   }, [selectedVenueId]);
 
   const toggleVenue = (venueId: string) => {
+    selectedVenueIdRef.current = venueId;
     setSelectedVenueId(venueId);
     const venue = venues.find((item) => item.id === venueId);
     if (venue) {
@@ -462,35 +495,102 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
     loadBlockIcons();
   };
 
+  const refreshIncompleteTasks = useCallback(async (venueIdOverride?: string | null) => {
+    try {
+      const userId = await getCurrentUserId();
+      const venueId = venueIdOverride || selectedVenueIdRef.current || selectedVenueId || (await getSelectedVenueId(userId));
+      if (!venueId) {
+        setIncompleteTasksCount(0);
+        setIncompleteTasksByBlock({});
+        return;
+      }
+      const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+      const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
+      const storedTasks = await AsyncStorage.getItem(tasksKey);
+      if (storedTasks) {
+        const tasks = JSON.parse(storedTasks);
+        const incompleteTasks = Array.isArray(tasks) ? tasks.filter((t) => !t?.completed) : [];
+        const completedBlockIdsFromProgress = new Set(
+          Object.entries(blockProgressRef.current)
+            .filter(([, progress]) => {
+              const total = progress?.total ?? 0;
+              const answered = progress?.answered ?? 0;
+              return total > 0 && answered >= total;
+            })
+            .map(([blockId]) => blockId)
+        );
+        const completedBlockIds = new Set<string>(completedBlockIdsFromProgress);
+
+        // На первом рендере blockProgress может быть еще пустым, берем fallback из сохраненных блоков.
+        if (completedBlockIds.size === 0) {
+          const storedBlocks = await AsyncStorage.getItem(blocksKey);
+          if (storedBlocks) {
+            const parsedBlocks = JSON.parse(storedBlocks);
+            if (Array.isArray(parsedBlocks)) {
+              parsedBlocks.forEach((block: any) => {
+                if (block?.id && block?.completed && block?.efficiency !== undefined) {
+                  completedBlockIds.add(block.id);
+                }
+              });
+            }
+          }
+        }
+
+        const filteredTasks =
+          completedBlockIds.size > 0
+            ? incompleteTasks.filter((task: any) => completedBlockIds.has(task?.blockId))
+            : [];
+        const count = filteredTasks.length;
+        const byBlock: Record<string, number> = {};
+        filteredTasks.forEach((task: any) => {
+          const blockId = task?.blockId;
+          if (!blockId) return;
+          byBlock[blockId] = (byBlock[blockId] || 0) + 1;
+        });
+        setIncompleteTasksCount(count);
+        setIncompleteTasksByBlock(byBlock);
+      } else {
+        setIncompleteTasksCount(0);
+        setIncompleteTasksByBlock({});
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки незавершенных задач:', error);
+      setIncompleteTasksCount(0);
+      setIncompleteTasksByBlock({});
+    }
+  }, [selectedVenueId]);
+  const handleStartRepeatDiagnosis = useCallback(async () => {
+    setShowAddWarningModal(false);
+    const userId = await getCurrentUserId();
+    const venueId = selectedVenueIdRef.current || selectedVenueId;
+    await startRepeatDiagnosisForVenue(venueId, userId);
+    navigation.navigate('Register3', {
+      isRepeatMode: true,
+      venueId,
+    });
+  }, [navigation, selectedVenueId]);
+
+  const openNewDiagnosisModal = useCallback(async () => {
+    const count = await refreshIncompleteTasks(selectedVenueIdRef.current || selectedVenueId);
+    if (count <= 0) {
+      await handleStartRepeatDiagnosis();
+      return;
+    }
+    setShowAddWarningModal(true);
+  }, [handleStartRepeatDiagnosis, refreshIncompleteTasks, selectedVenueId]);
+
   // Обновляем блоки при возврате на экран (БЕЗ очистки данных)
   useFocusEffect(
     useCallback(() => {
       console.log('Экран блоков получил фокус, обновляем блоки...');
       loadBlocksWithoutClearing();
-      const loadIncompleteTasks = async () => {
-        try {
-          const userId = await getCurrentUserId();
-          const venueId = selectedVenueId || (await getSelectedVenueId(userId));
-          if (!venueId) {
-            setIncompleteTasksCount(0);
-            return;
-          }
-          const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
-          const storedTasks = await AsyncStorage.getItem(tasksKey);
-          if (storedTasks) {
-            const tasks = JSON.parse(storedTasks);
-            const count = Array.isArray(tasks) ? tasks.filter((t) => !t.completed).length : 0;
-            setIncompleteTasksCount(count);
-          } else {
-            setIncompleteTasksCount(0);
-          }
-        } catch (error) {
-          console.error('Ошибка загрузки незавершенных задач:', error);
-        }
-      };
-      loadIncompleteTasks();
-    }, [])
+      refreshIncompleteTasks();
+    }, [refreshIncompleteTasks])
   );
+
+  useEffect(() => {
+    refreshIncompleteTasks(selectedVenueId);
+  }, [selectedVenueId, refreshIncompleteTasks]);
 
 
   const mergeBlocksWithDefaults = (source: DiagnosisBlock[]): DiagnosisBlock[] =>
@@ -579,12 +679,63 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
   };
   const handleBlockPress = (block: DiagnosisBlock) => {
     console.log('Нажата карточка блока:', block.title);
-    const parentNav = navigation.getParent?.();
-    if (parentNav) {
-      parentNav.navigate('Задачи', { screen: 'ActionPlanMain', params: { selectedTab: block.id } });
-    } else {
-      navigation.navigate('ActionPlanMain', { selectedTab: block.id });
+    const targetVenueId = selectedVenueIdRef.current || selectedVenueId;
+    const jumpNonce = Date.now();
+    const progress = blockProgress[block.id];
+    const total = progress?.total ?? getQuestionCountForBlock(block.id);
+    const answered = progress?.answered ?? 0;
+    const isToPass = answered === 0;
+    const isInProgress = answered > 0 && answered < total;
+    const isCompleted = answered >= total && total > 0;
+
+    if (isToPass || isInProgress) {
+      const remainingBlockIds = blocks
+        .filter((item) => {
+          const itemProgress = blockProgress[item.id];
+          const itemTotal = itemProgress?.total ?? getQuestionCountForBlock(item.id);
+          const itemAnswered = itemProgress?.answered ?? 0;
+          return itemAnswered < itemTotal;
+        })
+        .map((item) => item.id);
+      const selectedBlocks = [block.id, ...remainingBlockIds.filter((id) => id !== block.id)];
+      navigation.navigate('NextBlock', {
+        blockId: block.id,
+        origin: 'diagnosis',
+        selectedBlocks: Array.from(new Set(selectedBlocks)),
+        venueId: targetVenueId,
+      });
+      return;
     }
+
+    if (isCompleted) {
+      const parentNav = navigation.getParent?.();
+      if (parentNav) {
+        parentNav.navigate('Задачи', {
+          screen: 'ActionPlanMain',
+          params: {
+            selectedTab: block.id,
+            targetBlockId: block.id,
+            jumpNonce,
+            venueId: targetVenueId,
+          },
+        });
+      } else {
+        navigation.navigate('ActionPlanMain', {
+          selectedTab: block.id,
+          targetBlockId: block.id,
+          jumpNonce,
+          venueId: targetVenueId,
+        });
+      }
+      return;
+    }
+
+    navigation.navigate('NextBlock', {
+      blockId: block.id,
+      origin: 'diagnosis',
+      selectedBlocks: [block.id],
+      venueId: targetVenueId,
+    });
   };
 
   const getNextUncompletedBlock = () => {
@@ -638,6 +789,15 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
     return 'вопросов';
   };
 
+  const getTaskWord = (count: number): string => {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod100 >= 11 && mod100 <= 14) return 'задач';
+    if (mod10 === 1) return 'задача';
+    if (mod10 >= 2 && mod10 <= 4) return 'задачи';
+    return 'задач';
+  };
+
   const getOptionScore = (option: any): number => {
     if (!option) return 0;
     if (option.correct === true) return 1;
@@ -670,7 +830,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
 
   const buildBlocksFromProgress = async (source: DiagnosisBlock[]) => {
     const userId = await getCurrentUserId();
-    const venueId = await getSelectedVenueId(userId);
+    const venueId = await resolveVenueId(userId);
     const progressMap: Record<string, { answered: number; total: number; efficiency?: number }> = {};
     const nextBlocks: DiagnosisBlock[] = [];
 
@@ -695,12 +855,12 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
       }
 
       const efficiency = answered > 0 ? Math.round((scoreSum / answered) * 100) : undefined;
-      const completed = answered > 0 ? answered >= total : block.completed;
+      const completed = total > 0 ? answered >= total : !!block.completed;
       progressMap[block.id] = { answered, total, efficiency };
       nextBlocks.push({
         ...block,
-        completed: completed || block.completed,
-        efficiency: completed && efficiency !== undefined ? efficiency : block.efficiency,
+        completed,
+        efficiency: completed && efficiency !== undefined ? efficiency : undefined,
       });
     }
 
@@ -764,6 +924,19 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
     );
   };
 
+  const handleTabPress = (tab: string) => {
+    setActiveTab(tab);
+    if (!scrollViewRef.current) return;
+
+    let y = 0;
+    if (tab === 'Завершенные') y = sectionOffsetsRef.current.completed;
+    if (tab === 'К прохождению') y = sectionOffsetsRef.current.toPass;
+    if (tab === 'В процессе' || tab === 'Начатые') y = sectionOffsetsRef.current.inProgress;
+    if (tab === 'Все') y = sectionOffsetsRef.current.all;
+
+    scrollViewRef.current.scrollTo({ y: Math.max(y - 12, 0), animated: true });
+  };
+
   const completedCount = blocks.filter(block => block.completed).length;
   const completedWithEfficiency = blocks.filter(
     (block) => block.completed && block.efficiency !== undefined
@@ -787,16 +960,6 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <ScrollView 
-        ref={scrollViewRef}
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        onScroll={(event) => {
-          const offsetY = event.nativeEvent.contentOffset.y;
-          // Обработка скролла
-        }}
-        scrollEventThrottle={16}
-      >
       {headerJSX}
 
       {/* Секция с иконками часов и плюсика */}
@@ -807,12 +970,20 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
           </View>
           <View style={styles.efficiencyIcons}>
             {refreshIconSvg && (
-              <AnimatedPressable style={styles.iconButton}>
+              <AnimatedPressable
+                style={styles.iconButton}
+                onPress={() => navigation.navigate('DiagnosisHistory')}
+              >
                 <SvgXml xml={refreshIconSvg} width={38} height={38} />
               </AnimatedPressable>
             )}
             {addIconSvg && (
-              <AnimatedPressable style={styles.iconButton} onPress={() => setShowAddModal(true)}>
+              <AnimatedPressable
+                style={styles.iconButton}
+                onPress={() => {
+                  void openNewDiagnosisModal();
+                }}
+              >
                 <SvgXml xml={addIconSvg} width={38} height={38} />
               </AnimatedPressable>
             )}
@@ -832,7 +1003,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
               styles.tabButton,
               activeTab === 'Все' && styles.tabButtonActive
             ]}
-            onPress={() => setActiveTab('Все')}
+            onPress={() => handleTabPress('Все')}
           >
             <Text style={[
               styles.tabButtonText,
@@ -846,7 +1017,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
               styles.tabButton,
               activeTab === 'К прохождению' && styles.tabButtonActive
             ]}
-            onPress={() => setActiveTab('К прохождению')}
+            onPress={() => handleTabPress('К прохождению')}
           >
             <Text style={[
               styles.tabButtonText,
@@ -858,15 +1029,15 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
           <TouchableOpacity 
             style={[
               styles.tabButton,
-              activeTab === 'Начатые' && styles.tabButtonActive
+              activeTab === 'В процессе' && styles.tabButtonActive
             ]}
-            onPress={() => setActiveTab('Начатые')}
+            onPress={() => handleTabPress('В процессе')}
           >
             <Text style={[
               styles.tabButtonText,
-              activeTab === 'Начатые' && styles.tabButtonTextActive
+              activeTab === 'В процессе' && styles.tabButtonTextActive
             ]}>
-              Начатые
+              В процессе
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -874,7 +1045,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
               styles.tabButton,
               activeTab === 'Завершенные' && styles.tabButtonActive
             ]}
-            onPress={() => setActiveTab('Завершенные')}
+            onPress={() => handleTabPress('Завершенные')}
           >
             <Text style={[
               styles.tabButtonText,
@@ -889,67 +1060,22 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
       {/* Серая линия под табами */}
       <View style={styles.tabsDivider} />
 
-      {/* Заголовок "Завершенные блоки" */}
-      {(activeTab === 'Все' || activeTab === 'Завершенные') && (
-      <View style={styles.completedSection}>
-        <View style={styles.completedHeader}>
-          <Text style={styles.completedTitle}>Завершенные блоки</Text>
-          <Text style={styles.completedCount}>
-            {blocks.filter((b) => b.completed && b.efficiency !== undefined).length}/{DEFAULT_BLOCKS.length}
-          </Text>
-        </View>
-        <View style={styles.completedBlocksContainer}>
-          {blocks
-            .filter((block) => block.completed && block.efficiency !== undefined)
-            .sort((a, b) => (a.efficiency ?? 0) - (b.efficiency ?? 0))
-            .map((block) => {
-              const efficiency = block.efficiency ?? 0;
-              const badgeColors = getDiagnosisBadgeColors(efficiency);
-              return (
-                <TouchableOpacity
-                  key={block.id}
-                  style={styles.completedBlockCard}
-                  onPress={() => handleBlockPress(block)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.completedBlockTopRow}>
-                    <View style={styles.completedBlockIconCircle}>
-                      <View style={styles.completedBlockIconScaled}>
-                        {(() => {
-                          const icon = getBlockIconSvg(block.id);
-                          return icon ? (
-                            <SvgXml xml={icon} width={38} height={38} />
-                          ) : (
-                            <Ionicons name="cube-outline" size={38} color={palette.primaryBlue} />
-                          );
-                        })()}
-                      </View>
-                    </View>
-                    <View style={styles.completedBlockTextContainer}>
-                      <Text style={styles.completedBlockTitle}>{block.title}</Text>
-                      <Text style={styles.completedBlockSubtitle}>{getQuestionCountForBlock(block.id)} вопросов</Text>
-                    </View>
-                    <View style={[styles.completedBlockEfficiencyBadge, { backgroundColor: badgeColors.bg }]}>
-                      <Text style={[styles.completedBlockEfficiencyPercent, { color: badgeColors.text }]}>
-                        {efficiency}%
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-        </View>
-      </View>
-      )}
-
-      {/* Серая линия под секцией "Завершенные блоки" */}
-      {(activeTab === 'Все' || activeTab === 'Завершенные') && (
-      <View style={styles.blocksDivider} />
-      )}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+      >
 
       {/* Заголовок "К прохождению" и блоки */}
-      {(activeTab === 'Все' || activeTab === 'К прохождению') && (
-      <View style={styles.toPassSection}>
+      <View
+        style={styles.toPassSection}
+        onLayout={(event) => {
+          const y = event.nativeEvent.layout.y;
+          sectionOffsetsRef.current.toPass = y;
+          sectionOffsetsRef.current.all = y;
+        }}
+      >
         <Text style={styles.toPassTitle}>К прохождению</Text>
         <View style={styles.toPassBlocksContainer}>
           {blocks
@@ -990,16 +1116,17 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
             ))}
         </View>
       </View>
-      )}
 
       {/* Серая линия под блоком "Концепция и позиционирование" */}
-      {(activeTab === 'Все' || activeTab === 'К прохождению') && (
       <View style={styles.blocksDivider} />
-      )}
 
       {/* Заголовок "В процессе" */}
-      {(activeTab === 'Все' || activeTab === 'Начатые') && (
-      <View style={styles.inProgressSection}>
+      <View
+        style={styles.inProgressSection}
+        onLayout={(event) => {
+          sectionOffsetsRef.current.inProgress = event.nativeEvent.layout.y;
+        }}
+      >
           <Text style={styles.inProgressTitle}>В процессе</Text>
           <View style={styles.inProgressBlocksContainer}>
             {blocks
@@ -1047,12 +1174,72 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
               })}
           </View>
         </View>
-      )}
 
-      {/* Серая линия под блоком "Управление и организация" */}
-      {(activeTab === 'Все' || activeTab === 'Начатые') && (
+      {/* Серая линия под секцией "В процессе" */}
       <View style={styles.blocksDivider} />
-      )}
+
+      {/* Заголовок "Завершенные блоки" */}
+      <View
+        style={styles.completedSection}
+        onLayout={(event) => {
+          const y = event.nativeEvent.layout.y;
+          sectionOffsetsRef.current.completed = y;
+        }}
+      >
+        <View style={styles.completedHeader}>
+          <Text style={styles.completedTitle}>Завершенные блоки</Text>
+          <Text style={styles.completedCount}>
+            {blocks.filter((b) => b.completed && b.efficiency !== undefined).length}/{DEFAULT_BLOCKS.length}
+          </Text>
+        </View>
+        <View style={styles.completedBlocksContainer}>
+          {blocks
+            .filter((block) => block.completed && block.efficiency !== undefined)
+            .sort((a, b) => (a.efficiency ?? 0) - (b.efficiency ?? 0))
+            .map((block) => {
+              const efficiency = block.efficiency ?? 0;
+              const badgeColors = getDiagnosisBadgeColors(efficiency);
+              const remainingTasks = incompleteTasksByBlock[block.id] || 0;
+              return (
+                <TouchableOpacity
+                  key={block.id}
+                  style={styles.completedBlockCard}
+                  onPress={() => handleBlockPress(block)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.completedBlockTopRow}>
+                    <View style={styles.completedBlockIconCircle}>
+                      <View style={styles.completedBlockIconScaled}>
+                        {(() => {
+                          const icon = getBlockIconSvg(block.id);
+                          return icon ? (
+                            <SvgXml xml={icon} width={38} height={38} />
+                          ) : (
+                            <Ionicons name="cube-outline" size={38} color={palette.primaryBlue} />
+                          );
+                        })()}
+                      </View>
+                    </View>
+                    <View style={styles.completedBlockTextContainer}>
+                      <Text style={styles.completedBlockTitle}>{block.title}</Text>
+                      <Text style={styles.completedBlockSubtitle}>
+                        {remainingTasks} {getTaskWord(remainingTasks)}
+                      </Text>
+                    </View>
+                    <View style={[styles.completedBlockEfficiencyBadge, { backgroundColor: badgeColors.bg }]}>
+                      <Text style={[styles.completedBlockEfficiencyPercent, { color: badgeColors.text }]}>
+                        {efficiency}%
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+        </View>
+      </View>
+
+      {/* Серая линия под блоком "Завершенные блоки" */}
+      <View style={styles.blocksDivider} />
 
       {/* Кнопки под серой линией */}
       <View style={styles.buttonsContainer}>
@@ -1061,11 +1248,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
           onPress={() => {
             const nextBlock = getNextUncompletedBlock();
             if (nextBlock) {
-              navigation.navigate('BlockQuestions', {
-                blockId: nextBlock.id,
-                blockTitle: nextBlock.title,
-                venueId: selectedVenueId,
-              });
+              handleBlockPress(nextBlock);
             } else {
               setShowAllCompletedModal(true);
             }
@@ -1077,7 +1260,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         <AnimatedPressable
           style={styles.secondButton}
           onPress={() => {
-            navigation.navigate('Register2');
+            void openNewDiagnosisModal();
           }}
         >
           <Text style={styles.secondButtonText}>Новая диагностика</Text>
@@ -1159,70 +1342,12 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
               </TouchableOpacity>
             </View>
             <View style={styles.venuesCard}>
-              {venues.length >= 5 ? (
-                <ScrollView
-                  style={styles.venuesScroll}
-                  contentContainerStyle={styles.venuesScrollContent}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {venues.map((venue, index) => {
-                    const isSelected = venue.id === selectedVenueId;
-                    return (
-                      <TouchableOpacity
-                        key={venue.id}
-                        style={[
-                          styles.venueRow,
-                          index === venues.length - 1 && styles.venueRowLast,
-                          { paddingHorizontal: 0 },
-                        ]}
-                        activeOpacity={0.8}
-                        onPress={() => toggleVenue(venue.id)}
-                      >
-                        <View style={styles.venueAvatar}>
-                          {venue.logoUri ? (
-                            <Image source={{ uri: venue.logoUri }} style={styles.venueLogo} />
-                          ) : logoPlaceholderSvg ? (
-                            <View style={styles.venueIconScaled}>
-                              <SvgXml xml={logoPlaceholderSvg} width={50} height={50} />
-                            </View>
-                          ) : (
-                            <Ionicons name="image-outline" size={30} color={palette.gray400} />
-                          )}
-                        </View>
-                        <View style={styles.venueInfo}>
-                          <Text style={styles.venueName}>{venue.name}</Text>
-                          <View style={styles.venueCityRow}>
-                            <Text style={styles.venueCity}>{venue.city}</Text>
-                            <View style={styles.venueCityIconContainer}>
-                              {cityIconSvg ? (
-                                <SvgXml xml={cityIconSvg} width={16} height={16} />
-                              ) : (
-                                <View style={{ width: 16, height: 16 }} />
-                              )}
-                            </View>
-                          </View>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.radioButton}
-                          activeOpacity={0.8}
-                          onPress={() => toggleVenue(venue.id)}
-                        >
-                          {isSelected && radioActiveSvg ? (
-                            <SvgXml xml={radioActiveSvg} width={20} height={20} />
-                          ) : radioInactiveSvg ? (
-                            <SvgXml xml={radioInactiveSvg} width={20} height={20} />
-                          ) : (
-                            <View style={[styles.radioOuter, isSelected && styles.radioOuterActive]}>
-                              {isSelected && <View style={styles.radioInner} />}
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              ) : (
-                venues.map((venue, index) => {
+              <ScrollView
+                style={styles.venuesScroll}
+                contentContainerStyle={styles.venuesScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {venues.map((venue, index) => {
                   const isSelected = venue.id === selectedVenueId;
                   return (
                     <TouchableOpacity
@@ -1276,22 +1401,14 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
                       </TouchableOpacity>
                     </TouchableOpacity>
                   );
-                })
-              )}
+                })}
+              </ScrollView>
             </View>
             <TouchableOpacity
               style={styles.addRestaurantRow}
               onPress={() => {
-                const isMaxEfficiency =
-                  blocks.length === DEFAULT_BLOCKS.length &&
-                  blocks.every((b) => b.completed && (b.efficiency ?? 0) >= 100);
-                if (!isMaxEfficiency) {
-                  setShowAddModal(false);
-                  setShowAddWarningModal(true);
-                  return;
-                }
                 setShowAddModal(false);
-                navigation.navigate('Register2');
+                navigation.navigate('AddProject');
               }}
               activeOpacity={0.8}
             >
@@ -1309,6 +1426,11 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
         onRequestClose={() => setShowAddWarningModal(false)}
       >
         <View style={styles.addWarningOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setShowAddWarningModal(false)}
+          />
           <View style={styles.addWarningContent}>
             <View style={styles.addWarningHeader}>
               <View style={styles.addWarningLogo}>
@@ -1357,8 +1479,7 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
               <AnimatedPressable
                 style={styles.maxActionButton}
                 onPress={() => {
-                  setShowAddWarningModal(false);
-                  navigation.navigate('Register2');
+                  void handleStartRepeatDiagnosis();
                 }}
               >
                 <Text style={styles.addWarningPrimaryButtonText}>Все равно начать диагностику</Text>
@@ -1367,7 +1488,13 @@ export default function SelfDiagnosisBlocksScreen({ navigation }: any) {
                 style={styles.improvementPlanButton}
                 onPress={() => {
                   setShowAddWarningModal(false);
-                  navigation.navigate('Задачи', { screen: 'ActionPlanMain', params: { selectedTab: 'all' } });
+                  navigation.navigate('Задачи', {
+                    screen: 'ActionPlanMain',
+                    params: {
+                      selectedTab: 'all',
+                      venueId: selectedVenueIdRef.current || selectedVenueId,
+                    },
+                  });
                 }}
               >
                 <Text style={styles.addWarningSecondaryButtonText}>К задачам</Text>
@@ -1617,12 +1744,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: '100%',
-    marginTop: SCREEN_HEIGHT * 0.54 - 25,
-    height: SCREEN_HEIGHT * 0.46 + 25,
+    marginTop: 'auto',
+    maxHeight: SCREEN_HEIGHT * 0.46 + 45,
     position: 'relative',
     overflow: 'hidden',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   addModalHeader: {
     flexDirection: 'row',
@@ -1659,6 +1787,7 @@ const styles = StyleSheet.create({
   venueRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 50,
     marginBottom: spacing.md,
   },
   venueRowLast: {
@@ -1685,6 +1814,7 @@ const styles = StyleSheet.create({
   },
   venueInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   venueName: {
     fontSize: 16,
@@ -1714,6 +1844,7 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     marginLeft: spacing.md,
   },
   radioOuter: {
@@ -1738,8 +1869,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md - 2,
-    marginBottom: spacing.md + 24,
+    marginTop: -10,
+    marginBottom: 0,
   },
   addRestaurantPlus: {
     fontSize: 23,
@@ -1882,6 +2013,11 @@ const styles = StyleSheet.create({
     borderRadius: 99,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  improvementPlanButtonText: {
+    fontSize: 17,
+    fontWeight: '300',
+    color: '#EBF1FF',
   },
   headerHidden: {
     opacity: 0,
@@ -2320,7 +2456,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   notificationButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     color: '#FD680A',
     fontFamily: 'Manrope-Medium',

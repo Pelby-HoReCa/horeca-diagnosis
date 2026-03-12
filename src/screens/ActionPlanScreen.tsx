@@ -10,7 +10,16 @@ import DashboardHeader from '../components/DashboardHeader';
 import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { generateTasksFromAnswers, getTasksByBlock, Task } from '../utils/recommendationEngine';
-import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey, loadUserQuestionnaire, loadUserTasks, saveUserTasks } from '../utils/userDataStorage';
+import {
+  getCurrentUserId,
+  getSelectedVenueId,
+  getVenueScopedKey,
+  loadUserQuestionnaire,
+  loadUserTasks,
+  saveUserTasks,
+  startRepeatDiagnosisForVenue,
+} from '../utils/userDataStorage';
+import { getCityFromAddress } from '../utils/address';
 import { palette, radii, spacing, typography } from '../styles/theme';
 
 const logo = require('../../assets/images/logo-pelby.png');
@@ -22,6 +31,62 @@ const questionsByBlock: Record<string, any[]> = {};
 (questionsData as any[]).forEach((block: any) => {
   questionsByBlock[block.id] = block.questions;
 });
+
+const normalizeBlockKey = (value?: string | null) =>
+  (value || '')
+    .replace(/\u00A0/g, ' ')
+    .trim()
+    .toLowerCase();
+
+const BLOCK_TITLE_TO_ID = DEFAULT_BLOCKS.reduce<Record<string, string>>((acc, block) => {
+  acc[normalizeBlockKey(block.title)] = block.id;
+  return acc;
+}, {});
+
+const LEGACY_BLOCK_ID_MAP: Record<string, string> = {
+  concept_and_positioning: 'concept',
+  conceptpositioning: 'concept',
+  product: 'menu',
+  operational: 'operations',
+  operations_management: 'operations',
+  customer_experience: 'client_experience',
+  clientexperience: 'client_experience',
+  infrastructure_and_equipment: 'infrastructure',
+  risks_and_norms: 'risks',
+  development_strategy: 'strategy',
+};
+
+const LEGACY_BLOCK_TITLE_TO_ID: Record<string, string> = {
+  [normalizeBlockKey('Концепция')]: 'concept',
+  [normalizeBlockKey('Продукт')]: 'menu',
+  [normalizeBlockKey('Операционка')]: 'operations',
+};
+
+const resolveStoredTaskBlockId = (task: any): string => {
+  const rawId = normalizeBlockKey(task?.blockId);
+  const rawTitle = normalizeBlockKey(task?.blockTitle || task?.blockName || task?.category);
+
+  if (rawId && DEFAULT_BLOCKS.some((block) => block.id === rawId)) {
+    return rawId;
+  }
+  if (rawId && LEGACY_BLOCK_ID_MAP[rawId]) {
+    return LEGACY_BLOCK_ID_MAP[rawId];
+  }
+  if (rawId && BLOCK_TITLE_TO_ID[rawId]) {
+    return BLOCK_TITLE_TO_ID[rawId];
+  }
+  if (rawTitle && BLOCK_TITLE_TO_ID[rawTitle]) {
+    return BLOCK_TITLE_TO_ID[rawTitle];
+  }
+  if (rawTitle && LEGACY_BLOCK_TITLE_TO_ID[rawTitle]) {
+    return LEGACY_BLOCK_TITLE_TO_ID[rawTitle];
+  }
+
+  return task?.blockId || '';
+};
+
+const getBlockTitleById = (blockId: string) =>
+  DEFAULT_BLOCKS.find((block) => block.id === blockId)?.title || '';
 
 // Task interface теперь импортируется из recommendationEngine
 
@@ -64,12 +129,15 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     Record<string, Array<{ id: string; title: string; completed: boolean }>>
   >({});
   const [showAddWarningModal, setShowAddWarningModal] = useState(false);
+  const [warningIncompleteTasksCount, setWarningIncompleteTasksCount] = useState(0);
   const [pendingTaskCompletion, setPendingTaskCompletion] = useState<{
     taskId: string;
     incompleteSubtasks: number;
   } | null>(null);
   const [collapsedBlocks, setCollapsedBlocks] = useState<Record<string, boolean>>({});
   const selectedVenueIdRef = useRef<string | null>(null);
+  const resolveVenueId = async (userId?: string | null) =>
+    selectedVenueIdRef.current || selectedVenueId || (await getSelectedVenueId(userId || null));
 
   const getTaskKey = (task: Task) => {
     const baseId = (task as any).id || task.title || 'task';
@@ -93,6 +161,69 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       (fallbackIdKey ? subtasksByTask[fallbackIdKey] : []) ||
       [];
     return (Array.isArray(list) ? list : []).filter((subtask: any) => !subtask?.completed).length;
+  };
+
+  const normalizeLoadedTasks = (source: any[]): Task[] =>
+    source.map((task: any, index: number) => {
+      const normalizedBlockId = resolveStoredTaskBlockId(task);
+      const normalizedBlockTitle =
+        task?.blockTitle || (normalizedBlockId ? getBlockTitleById(normalizedBlockId) : '');
+
+      return {
+        ...task,
+        blockId: normalizedBlockId || task?.blockId || '',
+        blockTitle: normalizedBlockTitle || task?.blockTitle || '',
+        id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
+        completed: Boolean(task.completed),
+      };
+    });
+
+  const getCompletedBlockIdsFromStorage = async (
+    userId: string | null,
+    venueId: string | null
+  ): Promise<string[]> => {
+    if (!venueId) return [];
+    try {
+      const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
+      const blocksRaw = await AsyncStorage.getItem(blocksKey);
+      const parsed = blocksRaw ? JSON.parse(blocksRaw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((block: any) => block?.completed && block?.efficiency !== undefined)
+        .map((block: any) => String(block.id))
+        .filter(Boolean);
+    } catch (error) {
+      console.error('Ошибка чтения завершенных блоков для синхронизации задач:', error);
+      return [];
+    }
+  };
+
+  const reconcileMissingCompletedBlockTasks = async (
+    source: Task[],
+    userId: string | null,
+    venueId: string | null
+  ): Promise<Task[]> => {
+    const normalizedSource = normalizeLoadedTasks(source);
+    if (!venueId) return normalizedSource;
+
+    const completedBlockIds = await getCompletedBlockIdsFromStorage(userId, venueId);
+    if (completedBlockIds.length === 0) return normalizedSource;
+
+    const existingBlockIds = new Set(
+      normalizedSource.map((task) => resolveStoredTaskBlockId(task)).filter(Boolean)
+    );
+    const missingBlockIds = completedBlockIds.filter((blockId) => !existingBlockIds.has(blockId));
+    if (missingBlockIds.length === 0) return normalizedSource;
+
+    const generated = await generateTasksFromStoredAnswers(userId, venueId);
+    const normalizedGenerated = normalizeLoadedTasks(generated);
+    const generatedForMissing = normalizedGenerated.filter((task) =>
+      missingBlockIds.includes(task.blockId)
+    );
+
+    if (generatedForMissing.length === 0) return normalizedSource;
+
+    return [...normalizedSource, ...generatedForMissing];
   };
 
   useEffect(() => {
@@ -135,9 +266,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
         const restaurants = Array.isArray(questionnaireData?.restaurants)
           ? questionnaireData.restaurants
           : [];
-        const selectedVenueId =
-          (await AsyncStorage.getItem(`user_${userId}_diagnosis_selected_venue_id`)) ||
-          (await AsyncStorage.getItem('diagnosis_selected_venue_id'));
+        const selectedVenueId = await resolveVenueId(userId);
         const selectedVenue =
           restaurants.find((venue: any) => venue.id === selectedVenueId) ||
           restaurants[0];
@@ -149,7 +278,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
         }
 
         if (selectedVenue?.address) {
-          const cityPart = selectedVenue.address.split(',')[0]?.trim();
+          const cityPart = getCityFromAddress(selectedVenue.address, 'город');
           if (cityPart) {
             nextCity = cityPart;
           }
@@ -181,9 +310,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
   };
 
   const parseCityFromAddress = (address?: string) => {
-    if (!address) return 'город';
-    const firstPart = address.split(',')[0]?.trim();
-    return firstPart || 'город';
+    return getCityFromAddress(address, 'город');
   };
 
   useEffect(() => {
@@ -268,6 +395,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
   }, [selectedVenueId]);
 
   const toggleVenue = (venueId: string) => {
+    selectedVenueIdRef.current = venueId;
     setSelectedVenueId(venueId);
     const venue = venues.find((item) => item.id === venueId);
     if (venue) {
@@ -505,7 +633,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
   const loadCompletedBlocks = async () => {
     try {
       const userId = await getCurrentUserId();
-      const venueId = selectedVenueId || (await getSelectedVenueId(userId));
+      const venueId = await resolveVenueId(userId);
       if (!venueId) {
         setCompletedBlocks([]);
         setAllBlocks(DEFAULT_BLOCKS);
@@ -738,12 +866,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       console.log('Загружаем задачи без очистки...');
       let tasksSource: Task[] = [];
       const userId = await getCurrentUserId();
+      const venueId = await resolveVenueId(userId);
       if (userId) {
-        tasksSource = await loadUserTasks(userId);
+        const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+        const storedTasks = await AsyncStorage.getItem(tasksKey);
+        tasksSource = storedTasks ? JSON.parse(storedTasks) : [];
       }
 
       if (!userId && tasksSource.length === 0) {
-        const venueId = await getSelectedVenueId(userId);
         const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
         const storedTasks = await AsyncStorage.getItem(tasksKey);
         if (storedTasks) {
@@ -754,25 +884,22 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       if (tasksSource.length > 0) {
         console.log('=== ЗАГРУЗКА ЗАДАЧ В ЭКШЕН ПЛАНЕ ===');
         console.log('Найдены задачи:', tasksSource.length);
-        const tasksWithDefaults = tasksSource.map((task: any, index: number) => ({
-          ...task,
-          id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
-          completed: task.completed || false,
-        }));
+        const tasksWithDefaults = await reconcileMissingCompletedBlockTasks(
+          tasksSource,
+          userId,
+          venueId
+        );
         setTasks(tasksWithDefaults);
         console.log('Загружены задачи:', tasksWithDefaults.map((t: Task) => ({ id: t.id, title: t.title, blockId: t.blockId })));
+        const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+        await AsyncStorage.setItem(tasksKey, JSON.stringify(tasksWithDefaults));
         if (userId) {
           await saveUserTasks(userId, tasksWithDefaults);
         }
       } else {
-        const venueId = await getSelectedVenueId(userId);
         const generatedTasks = await generateTasksFromStoredAnswers(userId, venueId);
         if (generatedTasks.length > 0) {
-          const tasksWithDefaults = generatedTasks.map((task: any, index: number) => ({
-            ...task,
-            id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
-            completed: task.completed || false,
-          }));
+          const tasksWithDefaults = normalizeLoadedTasks(generatedTasks);
           setTasks(tasksWithDefaults);
           const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
           await AsyncStorage.setItem(tasksKey, JSON.stringify(tasksWithDefaults));
@@ -786,7 +913,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       }
 
       // Подзадачи нужны для счетчиков на карточках задач
-      const venueId = await getSelectedVenueId(userId);
       const subtasksKey = getVenueScopedKey('actionPlanSubtasks', userId, venueId);
       const subtasksJson = await AsyncStorage.getItem(subtasksKey);
       const subtasksParsed = subtasksJson ? JSON.parse(subtasksJson) : {};
@@ -814,19 +940,64 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     }
   }, [route?.params?.selectedTab]);
 
+  useEffect(() => {
+    const jumpNonce = route?.params?.jumpNonce;
+    const targetBlockId = route?.params?.targetBlockId || route?.params?.selectedTab;
+    if (!jumpNonce || !targetBlockId || targetBlockId === 'all') return;
+
+    setSelectedTab(targetBlockId);
+
+    let attempts = 0;
+    const maxAttempts = 16;
+    const timer = setInterval(() => {
+      const hasOffset = blockOffsetsRef.current[targetBlockId] !== undefined;
+      if (hasOffset) {
+        scrollToBlock(targetBlockId);
+        clearInterval(timer);
+        return;
+      }
+      attempts += 1;
+      if (attempts >= maxAttempts) {
+        clearInterval(timer);
+      }
+    }, 50);
+
+    return () => clearInterval(timer);
+  }, [route?.params?.jumpNonce, route?.params?.targetBlockId, route?.params?.selectedTab, selectedVenueId]);
+
+  useEffect(() => {
+    const routeVenueId = route?.params?.venueId;
+    if (!routeVenueId) return;
+    if (routeVenueId === selectedVenueIdRef.current) return;
+    setSelectedVenueId(routeVenueId);
+    (async () => {
+      try {
+        const userId = await getCurrentUserId();
+        await AsyncStorage.setItem('diagnosis_selected_venue_id', routeVenueId);
+        if (userId) {
+          await AsyncStorage.setItem(`user_${userId}_diagnosis_selected_venue_id`, routeVenueId);
+        }
+      } catch (error) {
+        console.error('Ошибка синхронизации проекта из route params (задачи):', error);
+      }
+    })();
+  }, [route?.params?.venueId]);
+
   const loadTasks = async () => {
     try {
       console.log('Загружаем задачи из AsyncStorage...');
       
       let tasksSource: Task[] = [];
       const userId = await getCurrentUserId();
+      const venueId = await resolveVenueId(userId);
 
       if (userId) {
-        tasksSource = await loadUserTasks(userId);
+        const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+        const storedTasks = await AsyncStorage.getItem(tasksKey);
+        tasksSource = storedTasks ? JSON.parse(storedTasks) : [];
       }
 
       if (!userId && tasksSource.length === 0) {
-        const venueId = await getSelectedVenueId(userId);
         const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
         const storedTasks = await AsyncStorage.getItem(tasksKey);
         if (storedTasks) {
@@ -837,25 +1008,22 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       if (tasksSource.length > 0) {
         console.log('Найдены задачи:', tasksSource.length);
         console.log('Сырые задачи:', tasksSource);
-        const tasksWithDefaults = tasksSource.map((task: any, index: number) => ({
-          ...task,
-          id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
-          completed: task.completed || false,
-        }));
+        const tasksWithDefaults = await reconcileMissingCompletedBlockTasks(
+          tasksSource,
+          userId,
+          venueId
+        );
         setTasks(tasksWithDefaults);
         console.log('Загружены задачи:', tasksWithDefaults.map((t: Task) => ({ id: t.id, title: t.title, blockId: t.blockId })));
+        const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+        await AsyncStorage.setItem(tasksKey, JSON.stringify(tasksWithDefaults));
         if (userId) {
           await saveUserTasks(userId, tasksWithDefaults);
         }
       } else {
-        const venueId = await getSelectedVenueId(userId);
         const generatedTasks = await generateTasksFromStoredAnswers(userId, venueId);
         if (generatedTasks.length > 0) {
-          const tasksWithDefaults = generatedTasks.map((task: any, index: number) => ({
-            ...task,
-            id: task.id || `task_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 5)}`,
-            completed: task.completed || false,
-          }));
+          const tasksWithDefaults = normalizeLoadedTasks(generatedTasks);
           setTasks(tasksWithDefaults);
           const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
           await AsyncStorage.setItem(tasksKey, JSON.stringify(tasksWithDefaults));
@@ -869,7 +1037,6 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       }
 
       // Загружаем подзадачи
-      const venueId = await getSelectedVenueId(userId);
       const subtasksKey = getVenueScopedKey('actionPlanSubtasks', userId, venueId);
       const subtasksJson = await AsyncStorage.getItem(subtasksKey);
       const subtasksParsed = subtasksJson ? JSON.parse(subtasksJson) : {};
@@ -891,7 +1058,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       setTasks(updatedTasks);
 
       const userId = await getCurrentUserId();
-      const venueId = await getSelectedVenueId(userId);
+      const venueId = await resolveVenueId(userId);
       const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
       await AsyncStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
 
@@ -924,7 +1091,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     try {
       setSubtasksByTask(next);
       const userId = await getCurrentUserId();
-      const venueId = await getSelectedVenueId(userId);
+      const venueId = await resolveVenueId(userId);
       const subtasksKey = getVenueScopedKey('actionPlanSubtasks', userId, venueId);
       await AsyncStorage.setItem(subtasksKey, JSON.stringify(next));
     } catch (error) {
@@ -961,7 +1128,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       const updatedTasks = tasks.filter(task => task.id !== taskId);
       setTasks(updatedTasks);
       const userId = await getCurrentUserId();
-      const venueId = await getSelectedVenueId(userId);
+      const venueId = await resolveVenueId(userId);
       const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
       await AsyncStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
 
@@ -978,7 +1145,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
       console.log('Очищаем все задачи...');
       setTasks([]);
       const userId = await getCurrentUserId();
-      const venueId = await getSelectedVenueId(userId);
+      const venueId = await resolveVenueId(userId);
       const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
       await AsyncStorage.removeItem(tasksKey);
       console.log('Все задачи очищены');
@@ -1120,6 +1287,51 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     : 0;
   const incompleteTasksCount = tasks.filter((task) => !task.completed).length;
 
+  const refreshIncompleteTasksCount = useCallback(async (venueIdOverride?: string | null) => {
+    try {
+      const userId = await getCurrentUserId();
+      const venueId = venueIdOverride || selectedVenueIdRef.current || selectedVenueId || (await getSelectedVenueId(userId));
+      if (!venueId) {
+        setWarningIncompleteTasksCount(0);
+        return 0;
+      }
+      const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+      const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
+      const raw = await AsyncStorage.getItem(tasksKey);
+      const rawBlocks = await AsyncStorage.getItem(blocksKey);
+      if (!raw) {
+        setWarningIncompleteTasksCount(0);
+        return 0;
+      }
+      const parsed = JSON.parse(raw);
+      const parsedBlocks = rawBlocks ? JSON.parse(rawBlocks) : [];
+      const completedBlockIds = new Set(
+        Array.isArray(parsedBlocks)
+          ? parsedBlocks
+              .filter((block: any) => block?.completed && block?.efficiency !== undefined)
+              .map((block: any) => block?.id)
+              .filter(Boolean)
+          : []
+      );
+      const incompleteTasks = Array.isArray(parsed) ? parsed.filter((task: any) => !task?.completed) : [];
+      const filteredTasks =
+        completedBlockIds.size > 0
+          ? incompleteTasks.filter((task: any) => completedBlockIds.has(task?.blockId))
+          : [];
+      const count = filteredTasks.length;
+      setWarningIncompleteTasksCount(count);
+      return count;
+    } catch (error) {
+      console.error('Ошибка подсчета незавершенных задач (задачи):', error);
+      setWarningIncompleteTasksCount(0);
+      return 0;
+    }
+  }, [selectedVenueId]);
+
+  useEffect(() => {
+    refreshIncompleteTasksCount(selectedVenueId);
+  }, [selectedVenueId, refreshIncompleteTasksCount, incompleteTasksCount]);
+
   // Непройденные блоки берём из актуальных данных
   const uncompletedBlocksToDisplay: DiagnosisBlock[] = allBlocks.filter(
     (block) => !block.completed || block.efficiency === undefined
@@ -1130,7 +1342,7 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
 
   // Сортируем только завершенные блоки по динамической эффективности (от меньшей к большей)
   // Непройденные блоки остаются в конце без сортировки
-  const completedSorted = completedBlocksToDisplay.sort((a, b) => {
+  const completedSorted = [...completedBlocksToDisplay].sort((a, b) => {
     const efficiencyA = getBlockTasksEfficiency(a);
     const efficiencyB = getBlockTasksEfficiency(b);
     return efficiencyA - efficiencyB; // От меньшей к большей
@@ -1165,17 +1377,32 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
     }, 350);
   };
 
-  const toggleBlockCollapse = (blockId: string) => {
-    setCollapsedBlocks((prev) => ({ ...prev, [blockId]: !prev[blockId] }));
-  };
+  const toggleBlockCollapse = useCallback((blockId: string) => {
+    if (!blockId) return;
+    setCollapsedBlocks((prev) => ({
+      ...prev,
+      [blockId]: !Boolean(prev[blockId]),
+    }));
+  }, []);
 
   useEffect(() => {
     if (!selectedTab || selectedTab === 'all') return;
-    const timeout = setTimeout(() => {
-      scrollToBlock(selectedTab);
+    let attempts = 0;
+    const maxAttempts = 12;
+    const timer = setInterval(() => {
+      const hasOffset = blockOffsetsRef.current[selectedTab] !== undefined;
+      if (hasOffset) {
+        scrollToBlock(selectedTab);
+        clearInterval(timer);
+        return;
+      }
+      attempts += 1;
+      if (attempts >= maxAttempts) {
+        clearInterval(timer);
+      }
     }, 50);
-    return () => clearTimeout(timeout);
-  }, [selectedTab]);
+    return () => clearInterval(timer);
+  }, [selectedTab, selectedVenueId, displayedBlocks.length]);
 
   // Мемоизируем JSX шапки для предотвращения ре-рендеров
   const headerJSX = useMemo(() => {
@@ -1332,13 +1559,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                 }}
               >
                 {/* Заголовок блока с иконкой и "-%" */}
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.blockHeaderCard,
-                    styles.blockHeaderCardUncompleted,
-                    pressed && styles.blockHeaderCardPressed,
-                  ]}
+                <AnimatedPressable
+                  style={[styles.blockHeaderCard, styles.blockHeaderCardUncompleted]}
                   onPress={() => toggleBlockCollapse(block.id)}
+                  hitSlop={8}
+                  pressScale={0.98}
+                  pressFriction={7}
+                  pressTension={80}
+                  clampOvershoot
                 >
                   <View style={styles.blockHeaderTopRow}>
                     {blockIconSvg && (
@@ -1351,16 +1579,11 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                     <View style={styles.blockHeaderTextContainer}>
                       <Text style={styles.blockHeaderTitle}>{block.title}</Text>
                     </View>
-                    <View style={styles.blockHeaderRight}>
+                    <View style={styles.blockHeaderRightUncompleted}>
                       <Text style={styles.blockUncompletedPercent}>-%</Text>
-                      <Ionicons
-                        name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-                        size={18}
-                        color="#868C98"
-                      />
                     </View>
                   </View>
-                </Pressable>
+                </AnimatedPressable>
 
                 {/* Контент для непройденного блока */}
                 {!isCollapsed && (
@@ -1428,12 +1651,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
               }}
             >
               {/* Заголовок блока с иконкой и эффективностью */}
-              <Pressable
-                style={({ pressed }) => [
-                  styles.blockHeaderCard,
-                  pressed && styles.blockHeaderCardPressed,
-                ]}
+              <AnimatedPressable
+                style={styles.blockHeaderCard}
                 onPress={() => toggleBlockCollapse(block.id)}
+                hitSlop={8}
+                pressScale={0.98}
+                pressFriction={7}
+                pressTension={80}
+                clampOvershoot
               >
                 <View style={styles.blockHeaderTopRow}>
                   {blockIconSvg && (
@@ -1468,16 +1693,21 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                     style={styles.blockHeaderChevron}
                   />
                 </View>
-              </Pressable>
+              </AnimatedPressable>
 
               {/* Задачи */}
               {!isCollapsed && (
               <View style={styles.tasksContainer}>
-                {sortedBlockTasks.map((task, taskIndex) => {
+                {sortedBlockTasks.length === 0 ? (
+                  <View style={styles.emptyCompletedTasksCard}>
+                    <Text style={styles.emptyCompletedTasksText}>
+                      По этому блоку задачи пока не сформированы
+                    </Text>
+                  </View>
+                ) : sortedBlockTasks.map((task, taskIndex) => {
                   const efficiencyGain = Number.isFinite(task.efficiencyGain) ? task.efficiencyGain : 0;
                   const subtaskCount = getIncompleteSubtaskCount(task);
                   const isCompleted = task.completed;
-                  const completedColor = '#868C98';
                   const rawTitle = (task.title || '').trim();
                   const displayTitle =
                     rawTitle && rawTitle.toLowerCase() !== 'рекомендация'
@@ -1587,70 +1817,12 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
             </TouchableOpacity>
           </View>
           <View style={styles.venuesCard}>
-            {venues.length >= 5 ? (
-              <ScrollView
-                style={styles.venuesScroll}
-                contentContainerStyle={styles.venuesScrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                {venues.map((venue, index) => {
-                  const isSelected = venue.id === selectedVenueId;
-                  return (
-                    <TouchableOpacity
-                      key={venue.id}
-                      style={[
-                        styles.venueRow,
-                        index === venues.length - 1 && styles.venueRowLast,
-                        { paddingHorizontal: 0 },
-                      ]}
-                      activeOpacity={0.8}
-                      onPress={() => toggleVenue(venue.id)}
-                    >
-                      <View style={styles.venueAvatar}>
-                        {venue.logoUri ? (
-                          <Image source={{ uri: venue.logoUri }} style={styles.venueLogo} />
-                        ) : logoPlaceholderSvg ? (
-                          <View style={styles.venueIconScaled}>
-                            <SvgXml xml={logoPlaceholderSvg} width={50} height={50} />
-                          </View>
-                        ) : (
-                          <Ionicons name="image-outline" size={30} color={palette.gray400} />
-                        )}
-                      </View>
-                      <View style={styles.venueInfo}>
-                        <Text style={styles.venueName}>{venue.name}</Text>
-                        <View style={styles.venueCityRow}>
-                          <Text style={styles.venueCity}>{venue.city}</Text>
-                          <View style={styles.venueCityIconContainer}>
-                            {cityIconSvg ? (
-                              <SvgXml xml={cityIconSvg} width={16} height={16} />
-                            ) : (
-                              <View style={{ width: 16, height: 16 }} />
-                            )}
-                          </View>
-                        </View>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.radioButton}
-                        activeOpacity={0.8}
-                        onPress={() => toggleVenue(venue.id)}
-                      >
-                        {isSelected && radioActiveSvg ? (
-                          <SvgXml xml={radioActiveSvg} width={20} height={20} />
-                        ) : radioInactiveSvg ? (
-                          <SvgXml xml={radioInactiveSvg} width={20} height={20} />
-                        ) : (
-                          <View style={[styles.radioOuter, isSelected && styles.radioOuterActive]}>
-                            {isSelected && <View style={styles.radioInner} />}
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            ) : (
-              venues.map((venue, index) => {
+            <ScrollView
+              style={styles.venuesScroll}
+              contentContainerStyle={styles.venuesScrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {venues.map((venue, index) => {
                 const isSelected = venue.id === selectedVenueId;
                 return (
                   <TouchableOpacity
@@ -1704,19 +1876,14 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
                     </TouchableOpacity>
                   </TouchableOpacity>
                 );
-              })
-            )}
+              })}
+            </ScrollView>
           </View>
           <TouchableOpacity
             style={styles.addRestaurantRow}
             onPress={() => {
-              if (!isMaxEfficiency) {
-                setShowAddModal(false);
-                setShowAddWarningModal(true);
-                return;
-              }
               setShowAddModal(false);
-              navigation.navigate('Register2');
+              navigation.navigate('AddProject');
             }}
             activeOpacity={0.8}
           >
@@ -1772,18 +1939,23 @@ export default function ActionPlanScreen({ route, navigation }: { route?: any; n
             )}
           </View>
           <Text style={styles.addWarningTitle}>Начать новую диагностику?</Text>
-          <Text style={styles.addWarningText}>
-            У вас есть{' '}
-            <Text style={styles.addWarningHighlight}>{incompleteTasksCount} незавершенных задач</Text>{' '}
-            по предыдущей диагностике. Мы рекомендуем сначала выполнить их, чтобы улучшить ваши
-            показатели эффективности.
-          </Text>
+            <Text style={styles.addWarningText}>
+              У вас есть{' '}
+              <Text style={styles.addWarningHighlight}>{warningIncompleteTasksCount} незавершенных задач</Text>{' '}
+              по предыдущей диагностике. Мы рекомендуем сначала выполнить их, чтобы улучшить ваши
+              показатели эффективности.
+            </Text>
           <View style={styles.addWarningButtons}>
             <AnimatedPressable
               style={styles.maxActionButton}
-              onPress={() => {
+              onPress={async () => {
                 setShowAddWarningModal(false);
-                navigation.navigate('Register2');
+                const userId = await getCurrentUserId();
+                await startRepeatDiagnosisForVenue(selectedVenueId, userId);
+                navigation.navigate('Register3', {
+                  isRepeatMode: true,
+                  venueId: selectedVenueId,
+                });
               }}
             >
               <Text style={styles.addWarningPrimaryButtonText}>Все равно начать диагностику</Text>
@@ -1987,12 +2159,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     width: '100%',
-    marginTop: SCREEN_HEIGHT * 0.54 - 25,
-    height: SCREEN_HEIGHT * 0.46 + 25,
+    marginTop: 'auto',
+    maxHeight: SCREEN_HEIGHT * 0.46 + 45,
     position: 'relative',
     overflow: 'hidden',
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   addModalHeader: {
     flexDirection: 'row',
@@ -2029,6 +2202,7 @@ const styles = StyleSheet.create({
   venueRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 50,
     marginBottom: spacing.md,
   },
   venueRowLast: {
@@ -2055,6 +2229,7 @@ const styles = StyleSheet.create({
   },
   venueInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   venueName: {
     fontSize: 16,
@@ -2084,6 +2259,7 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
     marginLeft: spacing.md,
   },
   radioOuter: {
@@ -2108,8 +2284,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.md - 2,
-    marginBottom: spacing.md + 24,
+    marginTop: -10,
+    marginBottom: 0,
   },
   addRestaurantPlus: {
     fontSize: 23,
@@ -2219,8 +2395,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md, // Такие же отступы как у блоков (эталон)
     marginTop: spacing.md + 10, // Отступ сверху увеличен на 10px (было +5, теперь +10)
     marginBottom: spacing.md, // Отступ снизу такой же, как paddingVertical в stepItem
-    zIndex: 1,
-    position: 'relative',
+    pointerEvents: 'none',
   },
   // Стили для модального окна задачи
   modalOverlay: {
@@ -2341,6 +2516,11 @@ const styles = StyleSheet.create({
     borderRadius: 99,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  improvementPlanButtonText: {
+    fontSize: 17,
+    fontWeight: '300',
+    color: '#EBF1FF',
   },
   addWarningPrimaryButtonText: {
     fontSize: 17,
@@ -2482,9 +2662,6 @@ const styles = StyleSheet.create({
   blockHeaderCard: {
     marginBottom: 10, // Уменьшено на 5px (было 15, стало 10)
   },
-  blockHeaderCardPressed: {
-    opacity: 0.68,
-  },
   blockHeaderCardUncompleted: {
     marginTop: 0, // Выровнено с завершенными блоками
   },
@@ -2538,6 +2715,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     marginLeft: spacing.sm,
+  },
+  blockHeaderRightUncompleted: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: spacing.md,
   },
   blockUncompletedPercent: {
     fontSize: 14,
@@ -2610,6 +2792,22 @@ const styles = StyleSheet.create({
   tasksContainer: {
     gap: 15,
     marginBottom: 0, // Отступ снизу убираем, так как серая линия будет снаружи с marginTop
+  },
+  emptyCompletedTasksCard: {
+    width: cardWidth,
+    minHeight: 72,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E4E9',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+  },
+  emptyCompletedTasksText: {
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '400',
+    color: '#525866',
   },
   taskCard: {
     width: cardWidth,

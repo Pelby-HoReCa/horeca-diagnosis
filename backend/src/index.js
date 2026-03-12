@@ -189,7 +189,13 @@ const sendSmsRuCode = async ({ phone, code }) => {
   if (!isOk) {
     const smsStatusCode = Number(smsStatus?.status_code || 0);
     const error = new Error(`smsru_sms_failed:${JSON.stringify(body)}`);
-    error.code = smsStatusCode === 221 ? 'sms_sender_not_approved' : 'sms_provider_error';
+    if (smsStatusCode === 221) {
+      error.code = 'sms_sender_not_approved';
+    } else if (smsStatusCode === 201) {
+      error.code = 'sms_balance_insufficient';
+    } else {
+      error.code = 'sms_provider_error';
+    }
     throw error;
   }
 };
@@ -561,6 +567,10 @@ app.post('/auth/phone/start', async (req, res) => {
       return res.status(503).json({ ok: false, error: 'phone_provider_not_configured' });
     }
 
+    if (method === 'sms' && !SMSRU_FROM) {
+      return res.status(503).json({ ok: false, error: 'sms_sender_not_configured' });
+    }
+
     const rate = await getPhoneVerificationRate(normalizedPhone);
     if (rate.count >= PHONE_VERIFICATION_MAX_STARTS_PER_HOUR) {
       const retryInSec = rate.lastStartedAt
@@ -626,6 +636,9 @@ app.post('/auth/phone/start', async (req, res) => {
     console.error('auth/phone/start error', error);
     if (error?.code === 'sms_sender_not_approved') {
       return res.status(400).json({ ok: false, error: 'sms_sender_not_approved' });
+    }
+    if (error?.code === 'sms_balance_insufficient') {
+      return res.status(502).json({ ok: false, error: 'sms_provider_error' });
     }
     if (error?.code === 'sms_provider_error') {
       return res.status(502).json({ ok: false, error: 'sms_provider_error' });

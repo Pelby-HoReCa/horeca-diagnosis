@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { BottomTabBarProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CommonActions, getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Asset } from 'expo-asset';
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, Text, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 import ActionPlanScreen from '../screens/ActionPlanScreen';
@@ -16,7 +16,6 @@ import BlockResultsScreen from '../screens/BlockResultsScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import DiagnosisHistoryScreen from '../screens/DiagnosisHistoryScreen';
 import HelpScreen from '../screens/HelpScreen';
-import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SelfDiagnosisBlocksScreen from '../screens/SelfDiagnosisBlocksScreen';
 import { clearDataOnAppLaunch } from '../utils/appState';
@@ -32,7 +31,6 @@ const COLORS = {
   inactive: '#868C98',
   active: '#375DFB',
 };
-
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
@@ -57,6 +55,10 @@ function HomeStack() {
             // Скрываем таб-бар при открытии экрана Help
           },
         }}
+      />
+      <Stack.Screen
+        name="DiagnosisHistory"
+        component={DiagnosisHistoryScreen}
       />
     </Stack.Navigator>
   );
@@ -91,6 +93,15 @@ function DashboardBlockResultsScreen({ route, navigation }: any) {
   const { blockId } = route.params || {};
   const blockIndex = DEFAULT_BLOCKS.findIndex((block) => block.id === blockId);
   const totalBlocks = DEFAULT_BLOCKS.length;
+  const targetBlockId = typeof blockId === 'string' && blockId ? blockId : 'all';
+  const actionPlanRouteParams = {
+    screen: 'ActionPlanMain',
+    params: {
+      selectedTab: targetBlockId,
+      targetBlockId,
+      jumpNonce: Date.now(),
+    },
+  };
 
   return (
     <BlockResultsScreen
@@ -103,9 +114,9 @@ function DashboardBlockResultsScreen({ route, navigation }: any) {
       onViewTasks={() => {
         const parentNav = navigation.getParent?.();
         if (parentNav) {
-          parentNav.navigate('Задачи');
+          parentNav.navigate('Задачи', actionPlanRouteParams);
         } else {
-          navigation.navigate('Задачи');
+          navigation.navigate('Задачи', actionPlanRouteParams);
         }
       }}
     />
@@ -119,6 +130,23 @@ function ActionPlanStack() {
       <Stack.Screen name="TaskSubtasks" component={TaskSubtasksScreen} />
       <Stack.Screen 
         name="Help" 
+        component={HelpScreen}
+        listeners={{
+          focus: () => {
+            // Скрываем таб-бар при открытии экрана Help
+          },
+        }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+function AIAssistantStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AIAssistantMain" component={AIAssistantScreen} />
+      <Stack.Screen
+        name="Help"
         component={HelpScreen}
         listeners={{
           focus: () => {
@@ -271,9 +299,9 @@ export default function AppNavigator({ route }: { route?: any }) {
     backgroundColor: COLORS.white,
     borderTopWidth: 1,
     borderTopColor: COLORS.gray,
-    paddingBottom: 6,
-    paddingTop: -8,
-    height: 75,
+    paddingBottom: 11,
+    paddingTop: 3,
+    height: 73,
     paddingHorizontal: 0,
     elevation: 8, // Для Android
     shadowColor: '#000', // Для iOS
@@ -283,19 +311,107 @@ export default function AppNavigator({ route }: { route?: any }) {
   };
 
   const fixedTabBarLabelStyle = {
-    fontSize: 11,
+    fontSize: 10,
+    lineHeight: 12,
     fontWeight: '400' as const,
-    marginTop: 4,
+    marginTop: 3,
+    width: '100%',
+    textAlign: 'center' as const,
+    includeFontPadding: false,
   };
 
   const fixedTabBarItemStyle = {
     paddingHorizontal: 0,
-    paddingTop: 5,
+    paddingTop: 2,
+    paddingBottom: 2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
+  const baseIconSlotStyle = {
+    marginTop: 2,
+    width: 23,
+    height: 23,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
+  const renderFixedTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
+    const focusedDescriptor = descriptors[state.routes[state.index].key];
+    const focusedTabBarStyle = StyleSheet.flatten(focusedDescriptor?.options?.tabBarStyle as any);
+    if (focusedTabBarStyle?.display === 'none') {
+      return null;
+    }
+
+    return (
+      <View style={fixedTabBarStyle}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', width: '100%' }}>
+          {state.routes.map((route, index) => {
+            const descriptor = descriptors[route.key];
+            const { options } = descriptor;
+            const isFocused = state.index === index;
+            const color = isFocused ? COLORS.active : COLORS.inactive;
+            const label =
+              typeof options.tabBarLabel === 'string'
+                ? options.tabBarLabel
+                : typeof options.title === 'string'
+                  ? options.title
+                  : route.name;
+
+            const icon =
+              typeof options.tabBarIcon === 'function'
+                ? options.tabBarIcon({ focused: isFocused, color, size: 23 })
+                : null;
+
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name as never);
+              }
+            };
+
+            const onLongPress = () => {
+              navigation.emit({
+                type: 'tabLongPress',
+                target: route.key,
+              });
+            };
+
+            return (
+              <TouchableOpacity
+                key={route.key}
+                accessibilityRole="button"
+                accessibilityState={isFocused ? { selected: true } : {}}
+                onPress={onPress}
+                onLongPress={onLongPress}
+                activeOpacity={0.85}
+                style={[
+                  fixedTabBarItemStyle,
+                  {
+                    width: `${100 / state.routes.length}%`,
+                    minWidth: `${100 / state.routes.length}%`,
+                    maxWidth: `${100 / state.routes.length}%`,
+                  },
+                ]}
+              >
+                {icon}
+                <Text style={[fixedTabBarLabelStyle, { color }]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
   };
 
   return (
     <Tab.Navigator
       ref={tabRef}
+      tabBar={renderFixedTabBar}
       initialRouteName={route?.params?.tab && tabNames.includes(route?.params?.tab) ? route?.params?.tab : 'Главная'}
       screenOptions={({ route }) => {
         const focusedRouteName = getFocusedRouteNameFromRoute(route) ?? '';
@@ -310,16 +426,7 @@ export default function AppNavigator({ route }: { route?: any }) {
               enabled: false,
             },
           }),
-          tabBarStyle: hideTabBar ? { display: 'none' } : fixedTabBarStyle,
-          tabBarLabelStyle: fixedTabBarLabelStyle,
-          tabBarItemStyle: fixedTabBarItemStyle,
-          tabBarBackground: () =>
-            hideTabBar ? null : (
-              <View
-                pointerEvents="none"
-                style={[StyleSheet.absoluteFillObject, { backgroundColor: COLORS.white }]}
-              />
-            ),
+          tabBarStyle: hideTabBar ? { display: 'none' } : undefined,
         };
       }}
     >
@@ -328,15 +435,12 @@ export default function AppNavigator({ route }: { route?: any }) {
         component={DashboardStack}
         options={{
           tabBarLabel: 'Главная',
-          tabBarItemStyle: {
-            transform: [{ translateX: 9 }], // Сдвигаем иконку и подпись вправо на 9px
-          },
           tabBarIcon: ({ focused, color, size }) => {
             if (homeIconSvg) {
               const iconColor = focused ? COLORS.active : COLORS.inactive;
               const coloredSvg = homeIconSvg.replace(/#868C98/g, iconColor);
               return (
-                <View style={{ marginTop: 2 }}>
+                <View style={baseIconSlotStyle}>
                   <SvgXml 
                     xml={coloredSvg} 
                     width={23} 
@@ -346,7 +450,7 @@ export default function AppNavigator({ route }: { route?: any }) {
               );
             }
             return (
-              <View style={{ marginTop: 2 }}>
+              <View style={baseIconSlotStyle}>
                 <Ionicons 
                   name={focused ? 'home' : 'home-outline'} 
                   size={23} 
@@ -390,15 +494,12 @@ export default function AppNavigator({ route }: { route?: any }) {
         component={ActionPlanStack}
         options={{
           tabBarLabel: 'Задачи',
-          tabBarItemStyle: {
-            transform: [{ translateX: 20 }], // Сдвигаем иконку и подпись вправо на 20px (было 18, сдвинули вправо на 2px)
-          },
           tabBarIcon: ({ focused, color, size }) => {
             if (taskIconSvg) {
               const iconColor = focused ? COLORS.active : COLORS.inactive;
               const coloredSvg = taskIconSvg.replace(/#868C98/g, iconColor);
               return (
-                <View style={{ marginTop: 2 }}>
+                <View style={baseIconSlotStyle}>
                   <SvgXml 
                     xml={coloredSvg} 
                     width={23} 
@@ -408,7 +509,7 @@ export default function AppNavigator({ route }: { route?: any }) {
               );
             }
             return (
-              <View style={{ marginTop: 2 }}>
+              <View style={baseIconSlotStyle}>
                 <Ionicons 
                   name={focused ? 'checkmark-circle' : 'checkmark-circle-outline'} 
                   size={23} 
@@ -424,18 +525,12 @@ export default function AppNavigator({ route }: { route?: any }) {
         component={HomeStack}
         options={{
           tabBarLabel: 'Диагностика',
-          tabBarItemStyle: {
-            flexShrink: 0, // Предотвращаем сжатие элемента таба
-            minWidth: 90, // Минимальная ширина для полного отображения подписи
-            paddingHorizontal: 4, // Уменьшаем горизонтальный padding для уменьшения области нажатия (было 8)
-            transform: [{ translateX: -3 }], // Сдвигаем иконку и подпись влево на 3px (было -5, сдвинули вправо на 2px)
-          },
           tabBarIcon: ({ focused, color, size }) => {
             if (diagnosisIconSvg) {
               const iconColor = focused ? COLORS.active : COLORS.inactive;
               const coloredSvg = diagnosisIconSvg.replace(/#868C98/g, iconColor);
               return (
-                <View style={{ marginTop: 2 }}>
+                <View style={baseIconSlotStyle}>
                   <SvgXml 
                     xml={coloredSvg} 
                     width={23} 
@@ -445,7 +540,7 @@ export default function AppNavigator({ route }: { route?: any }) {
               );
             }
             return (
-              <View style={{ marginTop: 2 }}>
+              <View style={baseIconSlotStyle}>
                 <Ionicons 
                   name={focused ? 'add-circle' : 'add-circle-outline'} 
                   size={23} 
@@ -458,18 +553,15 @@ export default function AppNavigator({ route }: { route?: any }) {
       />
       <Tab.Screen 
         name="AI-агент" 
-        component={AIAssistantScreen}
+        component={AIAssistantStack}
         options={{
           tabBarLabel: 'AI-агент',
-          tabBarItemStyle: {
-            transform: [{ translateX: -25 }], // Сдвигаем иконку и подпись влево на 25px (было -27, сдвинули вправо на 2px)
-          },
           tabBarIcon: ({ focused, color, size }) => {
             if (aiAgentIconSvg) {
               const iconColor = focused ? COLORS.active : COLORS.inactive;
               const coloredSvg = aiAgentIconSvg.replace(/#868C98/g, iconColor);
               return (
-                <View style={{ marginTop: 2 }}>
+                <View style={baseIconSlotStyle}>
                   <SvgXml 
                     xml={coloredSvg} 
                     width={23} 
@@ -479,7 +571,7 @@ export default function AppNavigator({ route }: { route?: any }) {
               );
             }
             return (
-              <View style={{ marginTop: 2 }}>
+              <View style={baseIconSlotStyle}>
                 <Ionicons 
                   name={focused ? 'chatbubble' : 'chatbubble-outline'} 
                   size={23} 
@@ -495,19 +587,12 @@ export default function AppNavigator({ route }: { route?: any }) {
         component={ProfileScreen}
         options={{
           tabBarLabel: 'Профиль',
-          tabBarLabelStyle: {
-            ...fixedTabBarLabelStyle,
-            minWidth: 60,
-          },
-          tabBarItemStyle: {
-            transform: [{ translateX: -14 }], // Сдвигаем иконку и подпись влево на 14px
-          },
           tabBarIcon: ({ focused, color, size }) => {
             if (userIconSvg) {
               const iconColor = focused ? COLORS.active : COLORS.inactive;
               const coloredSvg = userIconSvg.replace(/#868C98/g, iconColor);
               return (
-                <View style={{ marginTop: 2 }}>
+                <View style={baseIconSlotStyle}>
                   <SvgXml 
                     xml={coloredSvg} 
                     width={23} 
@@ -517,7 +602,7 @@ export default function AppNavigator({ route }: { route?: any }) {
               );
             }
             return (
-              <View style={{ marginTop: 2 }}>
+              <View style={baseIconSlotStyle}>
                 <Ionicons 
                   name={focused ? 'person' : 'person-outline'} 
                   size={23} 

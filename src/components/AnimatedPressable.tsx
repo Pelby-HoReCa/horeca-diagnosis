@@ -3,6 +3,10 @@ import { Animated, TouchableOpacity, TouchableOpacityProps } from 'react-native'
 
 interface AnimatedPressableProps extends TouchableOpacityProps {
   children: React.ReactNode;
+  pressScale?: number;
+  pressFriction?: number;
+  pressTension?: number;
+  clampOvershoot?: boolean;
 }
 
 export default function AnimatedPressable({
@@ -10,6 +14,10 @@ export default function AnimatedPressable({
   onPressIn,
   onPressOut,
   style,
+  pressScale = 0.92,
+  pressFriction = 5,
+  pressTension = 45,
+  clampOvershoot = false,
   ...props
 }: AnimatedPressableProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -18,9 +26,10 @@ export default function AnimatedPressable({
     if (props.disabled) return;
     
     Animated.spring(scaleAnim, {
-      toValue: 0.92,
-      friction: 5,
-      tension: 45,
+      toValue: pressScale,
+      friction: pressFriction,
+      tension: pressTension,
+      overshootClamping: clampOvershoot,
       useNativeDriver: true,
     }).start();
 
@@ -30,8 +39,9 @@ export default function AnimatedPressable({
   const handlePressOut = (e: any) => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      friction: 5,
-      tension: 45,
+      friction: pressFriction,
+      tension: pressTension,
+      overshootClamping: clampOvershoot,
       useNativeDriver: true,
     }).start();
 

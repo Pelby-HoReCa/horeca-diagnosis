@@ -10,6 +10,9 @@ export interface UserData {
   socialLink?: string;
   agreePersonalData?: boolean;
   agreePrivacy?: boolean;
+  phoneVerified?: boolean;
+  verifiedPhoneDigits?: string | null;
+  phoneVerifiedAt?: string | null;
   // Данные о бизнесе (шаг 2 регистрации)
   projectName?: string;
   outletsCount?: string;

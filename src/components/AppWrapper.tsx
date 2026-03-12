@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Manrope_300Light, Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold, Manrope_800ExtraBold } from '@expo-google-fonts/manrope';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { NavigationIndependentTree, CommonActions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { AppContext, AppContextType } from '../context/AppContext';
 import AppNavigator from '../navigation/AppNavigator';
@@ -12,6 +12,11 @@ import OnboardingScreen2 from '../screens/OnboardingScreen2';
 import OnboardingScreen3 from '../screens/OnboardingScreen3';
 import RegisterScreen1 from '../screens/RegisterScreen1';
 import RegisterScreen2 from '../screens/RegisterScreen2';
+import PersonalDataPolicyScreen from '../screens/PersonalDataPolicyScreen';
+import AddProjectScreen from '../screens/AddProjectScreen';
+import EditProjectScreen from '../screens/EditProjectScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import ErrorScreen from '../screens/ErrorScreen';
 import MapPickerScreen from '../screens/MapPickerScreen';
 import RegisterScreen3 from '../screens/RegisterScreen3';
 import DiagnosisQuestionsScreen from '../screens/DiagnosisQuestionsScreen';
@@ -22,22 +27,29 @@ import SplashScreen from '../screens/SplashScreen';
 import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey, loadUserQuestionnaire } from '../utils/userDataStorage';
+import { generateTasksFromAnswers, Task } from '../utils/recommendationEngine';
 import { pushLocalDataToServer, pullServerDataToLocal } from '../utils/syncService';
 
 const Stack = createStackNavigator();
 
 export default function AppWrapper() {
+  const MAP_TARGET_ADD_PROJECT = -1;
+  const MAP_TARGET_EDIT_PROJECT = -2;
   const [selectedBlocksForDiagnosis, setSelectedBlocksForDiagnosis] = useState<string[]>([]);
   const [completedBlockId, setCompletedBlockId] = useState<string | null>(null);
   const [nextBlockId, setNextBlockId] = useState<string | null>(null);
   const [mapTargetIndex, setMapTargetIndex] = useState<number | null>(null);
   const [mapSelection, setMapSelection] = useState<{ address: string; token: number } | null>(null);
   const [mapSelectionToken, setMapSelectionToken] = useState(0);
+  const syncInFlightRef = useRef(false);
 
-  const questionsMap: Record<string, any[]> = {};
-  questionsData.forEach((block: any) => {
-    questionsMap[block.id] = block.questions;
-  });
+  const questionsMap: Record<string, any[]> = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    questionsData.forEach((block: any) => {
+      map[block.id] = block.questions;
+    });
+    return map;
+  }, []);
 
   const [fontsLoaded] = useFonts({
     'Manrope-Light': Manrope_300Light,
@@ -54,16 +66,45 @@ export default function AppWrapper() {
 
   const contextValue: AppContextType = useMemo(() => ({ navigateToAuth }), []);
 
+  const syncLocalSnapshot = useCallback(async () => {
+    if (syncInFlightRef.current) {
+      return false;
+    }
+
+    try {
+      const [authToken, isAuthenticated, userId] = await Promise.all([
+        AsyncStorage.getItem('authToken'),
+        AsyncStorage.getItem('isAuthenticated'),
+        AsyncStorage.getItem('userId'),
+      ]);
+      const isAuthorized = Boolean(authToken && userId && isAuthenticated === 'true');
+      if (!isAuthorized) {
+        return false;
+      }
+
+      syncInFlightRef.current = true;
+      const pushed = await pushLocalDataToServer();
+      if (pushed) {
+        await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
+      }
+      return pushed;
+    } catch (error) {
+      console.error('Ошибка фоновой синхронизации:', error);
+      return false;
+    } finally {
+      syncInFlightRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     const syncOnce = async () => {
       try {
         const syncedFlag = await AsyncStorage.getItem('serverSyncCompleted_v1');
-        if (syncedFlag) return;
-        // 1) пробуем подтянуть с сервера, если на устройстве пусто
-        await pullServerDataToLocal(false);
-        // 2) отправляем локальные данные на сервер (резервная копия)
-        const pushed = await pushLocalDataToServer();
-        if (pushed) {
+        // Первая инициализация: пробуем подтянуть данные сервера только до первичного sync-флага.
+        const pulled = syncedFlag ? false : await pullServerDataToLocal(false);
+        // Затем всегда пытаемся отправить локальные изменения (внутри есть проверка хеша).
+        const pushed = await syncLocalSnapshot();
+        if (!syncedFlag && (pulled || pushed)) {
           await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
         }
       } catch (error) {
@@ -72,7 +113,25 @@ export default function AppWrapper() {
     };
 
     syncOnce();
-  }, []);
+  }, [syncLocalSnapshot]);
+
+  useEffect(() => {
+    const syncOnActive = (state: string) => {
+      if (state === 'active') {
+        void syncLocalSnapshot();
+      }
+    };
+
+    const appStateSubscription = AppState.addEventListener('change', syncOnActive);
+    const syncIntervalId = setInterval(() => {
+      void syncLocalSnapshot();
+    }, 45000);
+
+    return () => {
+      appStateSubscription.remove();
+      clearInterval(syncIntervalId);
+    };
+  }, [syncLocalSnapshot]);
 
   useEffect(() => {
     const resetDiagnosisAnswersOnce = async () => {
@@ -317,6 +376,12 @@ export default function AppWrapper() {
       if (!venueId || total === 0) {
         return false;
       }
+      const repeatModeRaw = await AsyncStorage.getItem(
+        getVenueScopedKey('diagnosis_repeat_mode', userId, venueId)
+      );
+      if (repeatModeRaw === 'true') {
+        return false;
+      }
       const answersKey = getVenueScopedKey(`diagnosis_answers_${blockId}`, userId, venueId);
       const saved = await AsyncStorage.getItem(answersKey);
       const parsed = saved ? JSON.parse(saved) : {};
@@ -330,9 +395,151 @@ export default function AppWrapper() {
     }
   };
 
+  const getOptionScore = (option: any): number => {
+    if (!option) return 0;
+    if (option.correct === true) return 1;
+    const priority = option.recommendation?.priority;
+    if (priority === 'low') return 1;
+    if (priority === 'medium') return 0.5;
+    if (priority === 'high') return 0;
+    return 0;
+  };
+
+  const syncCompletedBlockData = useCallback(
+    async (blockId: string) => {
+      try {
+        const userId = await getCurrentUserId();
+        const venueId = await getSelectedVenueId(userId);
+        if (!venueId || !blockId) {
+          return;
+        }
+
+        const blockQuestions = questionsMap[blockId] || [];
+        if (blockQuestions.length === 0) {
+          return;
+        }
+
+        const answersKey = getVenueScopedKey(`diagnosis_answers_${blockId}`, userId, venueId);
+        const answersRaw = await AsyncStorage.getItem(answersKey);
+        const parsedAnswers = answersRaw ? JSON.parse(answersRaw) : {};
+
+        const blockAnswers: Record<string, string> = {};
+        let scoreSum = 0;
+        let answeredCount = 0;
+
+        blockQuestions.forEach((question: any) => {
+          const questionKey = `${blockId}_${question.id}`;
+          const selectedAnswerId = parsedAnswers[questionKey];
+          if (!selectedAnswerId) return;
+
+          const selectedOption = question.options.find((opt: any) => opt.id === selectedAnswerId);
+          if (!selectedOption) return;
+
+          if (selectedOption.value) {
+            blockAnswers[question.id] = selectedOption.value;
+          }
+          scoreSum += getOptionScore(selectedOption);
+          answeredCount += 1;
+        });
+
+        const blockEfficiency =
+          answeredCount > 0 ? Math.round((scoreSum / answeredCount) * 100) : 0;
+
+        const blocksKey = getVenueScopedKey('diagnosisBlocks', userId, venueId);
+        const storedBlocksRaw = await AsyncStorage.getItem(blocksKey);
+        const storedBlocks = storedBlocksRaw ? JSON.parse(storedBlocksRaw) : [];
+        const normalizedBlocks = DEFAULT_BLOCKS.map((defaultBlock) => {
+          const found = Array.isArray(storedBlocks)
+            ? storedBlocks.find((block: any) => block?.id === defaultBlock.id)
+            : null;
+          if (found) {
+            return {
+              ...defaultBlock,
+              ...found,
+              title: defaultBlock.title,
+              description: defaultBlock.description,
+            };
+          }
+          return {
+            ...defaultBlock,
+            completed: false,
+            efficiency: undefined,
+          };
+        });
+
+        const updatedBlocks = normalizedBlocks.map((block) =>
+          block.id === blockId
+            ? {
+                ...block,
+                completed: true,
+                completedAt: new Date().toLocaleDateString('ru-RU'),
+                efficiency: blockEfficiency,
+                answers: blockAnswers,
+              }
+            : block
+        );
+        await AsyncStorage.setItem(blocksKey, JSON.stringify(updatedBlocks));
+
+        const currentBlockTitle =
+          DEFAULT_BLOCKS.find((block) => block.id === blockId)?.title || blockId;
+        const generatedBlockTasks = generateTasksFromAnswers(
+          blockId,
+          blockAnswers,
+          blockQuestions,
+          currentBlockTitle
+        );
+
+        const tasksKey = getVenueScopedKey('actionPlanTasks', userId, venueId);
+        const existingTasksRaw = await AsyncStorage.getItem(tasksKey);
+        const existingTasks = existingTasksRaw ? JSON.parse(existingTasksRaw) : [];
+        const tasksWithoutBlock = (Array.isArray(existingTasks) ? existingTasks : []).filter(
+          (task: Task | any) => String(task?.blockId || '') !== blockId
+        );
+        const updatedTasks = [...tasksWithoutBlock, ...generatedBlockTasks];
+        await AsyncStorage.setItem(tasksKey, JSON.stringify(updatedTasks));
+      } catch (error) {
+        console.error('Ошибка синхронизации задач/статуса завершенного блока:', error);
+      }
+    },
+    [questionsMap]
+  );
+
   if (!fontsLoaded) {
     return null;
   }
+
+  const handleSplashFinish = async (navigation: any) => {
+    try {
+      const [authToken, isAuthenticated, userId, hasSeenOnboarding] = await Promise.all([
+        AsyncStorage.getItem('authToken'),
+        AsyncStorage.getItem('isAuthenticated'),
+        AsyncStorage.getItem('userId'),
+        AsyncStorage.getItem('hasSeenOnboarding'),
+      ]);
+
+      const isRegisteredUser = Boolean(
+        authToken && userId && isAuthenticated === 'true'
+      );
+
+      if (isRegisteredUser) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+        return;
+      }
+
+      if (hasSeenOnboarding === 'true') {
+        navigation.replace('Register1');
+        return;
+      }
+
+      navigation.replace('Onboarding1');
+    } catch (error) {
+      console.error('Ошибка определения стартового маршрута:', error);
+      navigation.replace('Onboarding1');
+    }
+  };
 
   return (
     <AppContext.Provider value={contextValue}>
@@ -341,7 +548,7 @@ export default function AppWrapper() {
           <Stack.Screen name="Splash">
             {(props) => (
               <SplashScreen
-                onFinish={() => props.navigation.replace('Onboarding1')}
+                onFinish={() => handleSplashFinish(props.navigation)}
               />
             )}
           </Stack.Screen>
@@ -382,7 +589,16 @@ export default function AppWrapper() {
                 onContinue={() => props.navigation.navigate('Register2')}
                 onSkip={() => props.navigation.navigate('Register2')}
                 onBack={() => props.navigation.goBack()}
+                onOpenConsentDocument={() =>
+                  props.navigation.navigate('PersonalDataPolicy', { origin: 'register1' })
+                }
               />
+            )}
+          </Stack.Screen>
+
+          <Stack.Screen name="PersonalDataPolicy">
+            {(props) => (
+              <PersonalDataPolicyScreen navigation={props.navigation} route={props.route} />
             )}
           </Stack.Screen>
 
@@ -406,6 +622,60 @@ export default function AppWrapper() {
             )}
           </Stack.Screen>
 
+          <Stack.Screen name="AddProject">
+            {(props) => (
+              <AddProjectScreen
+                onBack={() => props.navigation.goBack()}
+                onAdded={() => props.navigation.goBack()}
+                onOpenMap={() => {
+                  setMapTargetIndex(MAP_TARGET_ADD_PROJECT);
+                  props.navigation.navigate('MapPicker');
+                }}
+                mapSelection={mapSelection}
+                mapTargetIndex={mapTargetIndex}
+                onMapAddressApplied={() => {
+                  setMapSelection(null);
+                  setMapTargetIndex(null);
+                }}
+              />
+            )}
+          </Stack.Screen>
+
+          <Stack.Screen name="EditProject">
+            {(props) => (
+              <EditProjectScreen
+                venueId={props.route.params?.venueId}
+                onBack={() => props.navigation.goBack()}
+                onSaved={() => props.navigation.goBack()}
+                onDeleted={() => props.navigation.goBack()}
+                onOpenMap={() => {
+                  setMapTargetIndex(MAP_TARGET_EDIT_PROJECT);
+                  props.navigation.navigate('MapPicker');
+                }}
+                mapSelection={mapSelection}
+                mapTargetIndex={mapTargetIndex}
+                onMapAddressApplied={() => {
+                  setMapSelection(null);
+                  setMapTargetIndex(null);
+                }}
+              />
+            )}
+          </Stack.Screen>
+
+          <Stack.Screen name="EditProfile">
+            {(props) => (
+              <EditProfileScreen
+                onBack={() => props.navigation.goBack()}
+                startEmpty={Boolean(props.route.params?.startEmpty)}
+                onOpenConsentDocument={() =>
+                  props.navigation.navigate('PersonalDataPolicy', { origin: 'editProfile' })
+                }
+              />
+            )}
+          </Stack.Screen>
+
+          <Stack.Screen name="ErrorScreen" component={ErrorScreen} />
+
           <Stack.Screen name="MapPicker">
             {(props) => (
               <MapPickerScreen
@@ -425,6 +695,8 @@ export default function AppWrapper() {
           <Stack.Screen name="Register3">
             {(props) => (
               <RegisterScreen3
+                isRepeatMode={Boolean(props.route.params?.isRepeatMode)}
+                repeatVenueId={props.route.params?.venueId ?? null}
                 onContinue={async (selectedBlocks) => {
                   await AsyncStorage.setItem('registrationStep3Completed', 'true');
                   setSelectedBlocksForDiagnosis(selectedBlocks);
@@ -483,8 +755,9 @@ export default function AppWrapper() {
                   currentBlockId={props.route.params?.blockId}
                   onBack={() => props.navigation.goBack()}
                   onSkip={() => props.navigation.goBack()}
-                  onBlockComplete={(blockId) => {
+                  onBlockComplete={async (blockId) => {
                     setCompletedBlockId(blockId);
+                    await syncCompletedBlockData(blockId);
                     props.navigation.replace('BlockResults', {
                       blockId,
                       selectedBlocks: effectiveSelectedBlocks,
@@ -538,10 +811,27 @@ export default function AppWrapper() {
                     }
                   }}
                   onViewTasks={() => {
+                    const jumpNonce = Date.now();
                     props.navigation.dispatch(
                       CommonActions.reset({
                         index: 0,
-                        routes: [{ name: 'MainTabs', params: { tab: 'Задачи' } }],
+                        routes: [
+                          {
+                            name: 'MainTabs',
+                            params: {
+                              tab: 'Задачи',
+                              screen: 'Задачи',
+                              params: {
+                                screen: 'ActionPlanMain',
+                                params: {
+                                  selectedTab: blockId,
+                                  targetBlockId: blockId,
+                                  jumpNonce,
+                                },
+                              },
+                            },
+                          },
+                        ],
                       })
                     );
                   }}
@@ -589,18 +879,24 @@ export default function AppWrapper() {
                       const venueId = await getSelectedVenueId(userId);
                       const total = questionsMap[blockId]?.length || 0;
                       if (venueId && total > 0) {
-                        const answersKey = getVenueScopedKey(`diagnosis_answers_${blockId}`, userId, venueId);
-                        const saved = await AsyncStorage.getItem(answersKey);
-                        const parsed = saved ? JSON.parse(saved) : {};
-                        const answered = Object.values(parsed || {}).filter(
-                          (value) => value !== null && value !== undefined && value !== ''
-                        ).length;
-                        if (answered >= total) {
-                          props.navigation.replace('BlockResults', {
-                            blockId,
-                            selectedBlocks: effectiveSelectedBlocks,
-                          });
-                          return;
+                        const repeatModeRaw = await AsyncStorage.getItem(
+                          getVenueScopedKey('diagnosis_repeat_mode', userId, venueId)
+                        );
+                        if (repeatModeRaw !== 'true') {
+                          const answersKey = getVenueScopedKey(`diagnosis_answers_${blockId}`, userId, venueId);
+                          const saved = await AsyncStorage.getItem(answersKey);
+                          const parsed = saved ? JSON.parse(saved) : {};
+                          const answered = Object.values(parsed || {}).filter(
+                            (value) => value !== null && value !== undefined && value !== ''
+                          ).length;
+                          if (answered >= total) {
+                            await syncCompletedBlockData(blockId);
+                            props.navigation.replace('BlockResults', {
+                              blockId,
+                              selectedBlocks: effectiveSelectedBlocks,
+                            });
+                            return;
+                          }
                         }
                       }
                     } catch (error) {

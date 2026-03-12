@@ -1,20 +1,36 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Asset } from 'expo-asset';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import AnimatedPressable from './AnimatedPressable';
 import { getCurrentUserId, loadUserQuestionnaire } from '../utils/userDataStorage';
+import { getCityFromAddress } from '../utils/address';
 import { palette, spacing } from '../styles/theme';
 
 interface DashboardHeaderProps {
   navigation: any;
   onHeaderPress?: () => void;
   selectedVenueId?: string | null;
+  leftContent?: ReactNode;
+  compact?: boolean;
 }
 
-export default function DashboardHeader({ navigation, onHeaderPress, selectedVenueId }: DashboardHeaderProps) {
+const getValidLogoUri = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
+  return trimmed;
+};
+
+export default function DashboardHeader({
+  navigation,
+  onHeaderPress,
+  selectedVenueId,
+  leftContent,
+  compact = false,
+}: DashboardHeaderProps) {
   const [projectAvatarUri, setProjectAvatarUri] = useState<string | null>(null);
   const [projectName, setProjectName] = useState<string>('Проект');
   const [city, setCity] = useState<string>('');
@@ -30,22 +46,57 @@ export default function DashboardHeader({ navigation, onHeaderPress, selectedVen
         let newCity = 'город';
         let newAvatar: string | null = null;
         let newProjectName = 'Проект';
+        let fallbackLogo: string | null = null;
+        let questionnaireData: any = null;
+        let restaurants: any[] = [];
+
+        const registrationRaw = await AsyncStorage.getItem('registrationStep2');
+        if (registrationRaw) {
+          const registrationData = JSON.parse(registrationRaw);
+          if (registrationData?.restaurantName) {
+            newProjectName = registrationData.restaurantName;
+          }
+          fallbackLogo = getValidLogoUri(
+            registrationData?.logoUri || registrationData?.projectLogoUri || registrationData?.logo
+          );
+          restaurants = Array.isArray(registrationData?.restaurants) ? registrationData.restaurants : [];
+        }
 
         if (userId) {
-          const questionnaireData = await loadUserQuestionnaire(userId);
-          const restaurants = Array.isArray(questionnaireData?.restaurants)
+          questionnaireData = await loadUserQuestionnaire(userId);
+          const questionnaireRestaurants = Array.isArray(questionnaireData?.restaurants)
             ? questionnaireData.restaurants
             : [];
+          if (restaurants.length === 0) {
+            restaurants = questionnaireRestaurants;
+          }
+          if (questionnaireData?.restaurantName) {
+            newProjectName = questionnaireData.restaurantName;
+          }
+          fallbackLogo =
+            getValidLogoUri(
+              questionnaireData?.projectLogoUri || questionnaireData?.logoUri || questionnaireData?.logo
+            ) || fallbackLogo;
+        }
+
+        const normalizedRestaurants = restaurants.map((venue: any, index: number) => ({
+          id: venue?.id || `venue_${index}`,
+          name: venue?.name || newProjectName || 'Проект',
+          address: venue?.address || '',
+          logoUri: getValidLogoUri(venue?.logoUri || venue?.projectLogoUri || venue?.logo) || fallbackLogo,
+        }));
+
+        if (normalizedRestaurants.length > 0) {
           const storedVenueId =
             (await AsyncStorage.getItem(`user_${userId}_diagnosis_selected_venue_id`)) ||
             (await AsyncStorage.getItem('diagnosis_selected_venue_id'));
           const effectiveVenueId = selectedVenueId || storedVenueId;
           const selectedVenue =
-            restaurants.find((venue: any) => venue.id === effectiveVenueId) ||
-            restaurants[0];
+            normalizedRestaurants.find((venue: any) => venue.id === effectiveVenueId) ||
+            normalizedRestaurants[0];
 
           if (selectedVenue?.address) {
-            const cityPart = selectedVenue.address.split(',')[0]?.trim();
+            const cityPart = getCityFromAddress(selectedVenue.address, 'город');
             if (cityPart) {
               newCity = cityPart;
             }
@@ -60,6 +111,8 @@ export default function DashboardHeader({ navigation, onHeaderPress, selectedVen
           if (selectedVenue?.logoUri) {
             newAvatar = selectedVenue.logoUri;
           }
+        } else if (questionnaireData?.city) {
+          newCity = questionnaireData.city;
         }
 
         if (!newAvatar) {
@@ -67,8 +120,8 @@ export default function DashboardHeader({ navigation, onHeaderPress, selectedVen
             (userId && (await AsyncStorage.getItem(`user_${userId}_diagnosis_selected_venue_logo_uri`))) ||
             (await AsyncStorage.getItem('diagnosis_selected_venue_logo_uri')) ||
             (await AsyncStorage.getItem('projectAvatar'));
-          if (savedSelectedLogo) {
-            newAvatar = savedSelectedLogo;
+          if (savedSelectedLogo || fallbackLogo) {
+            newAvatar = getValidLogoUri(savedSelectedLogo) || fallbackLogo;
           }
         }
 
@@ -126,37 +179,41 @@ export default function DashboardHeader({ navigation, onHeaderPress, selectedVen
   // Мемоизируем JSX шапки
   const headerJSX = useMemo(() => {
     return (
-      <View style={[styles.section, styles.profileSection]}>
-        <Pressable
-          style={({ pressed }) => [styles.profileInfo, pressed && styles.profileInfoPressed]}
-          onPress={() => onHeaderPress?.()}
-        >
-          {/* Аватар компании */}
-          <View style={styles.avatarContainer}>
-            {projectAvatarUri ? (
-              <Image source={{ uri: projectAvatarUri }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="business" size={32} color={palette.gray400} />
-              </View>
-            )}
-          </View>
-          
-          {/* Название и город */}
-          <View style={[styles.projectInfo, !headerReady && styles.headerHidden]}>
-            <Text style={styles.projectName}>{projectName || 'Проект'}</Text>
-            <View style={styles.cityContainer}>
-              <Text style={styles.cityText}>{city || 'город'}</Text>
-              <View style={styles.cityIconContainer}>
-                {cityIconSvg ? (
-                  <SvgXml xml={cityIconSvg} width={16} height={16} />
-                ) : (
-                  <View style={{ width: 16, height: 16 }} />
-                )}
+      <View style={[styles.section, styles.profileSection, compact && styles.profileSectionCompact]}>
+        {leftContent ? (
+          <View style={styles.customLeftContentWrap}>{leftContent}</View>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.profileInfo, pressed && styles.profileInfoPressed]}
+            onPress={() => onHeaderPress?.()}
+          >
+            {/* Аватар компании */}
+            <View style={styles.avatarContainer}>
+              {projectAvatarUri ? (
+                <Image source={{ uri: projectAvatarUri }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Ionicons name="business" size={32} color={palette.gray400} />
+                </View>
+              )}
+            </View>
+            
+            {/* Название и город */}
+            <View style={[styles.projectInfo, !headerReady && styles.headerHidden]}>
+              <Text style={styles.projectName}>{projectName || 'Проект'}</Text>
+              <View style={styles.cityContainer}>
+                <Text style={styles.cityText}>{city || 'город'}</Text>
+                <View style={styles.cityIconContainer}>
+                  {cityIconSvg ? (
+                    <SvgXml xml={cityIconSvg} width={16} height={16} />
+                  ) : (
+                    <View style={{ width: 16, height: 16 }} />
+                  )}
+                </View>
               </View>
             </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        )}
         
         {/* Кнопка Помощь PELBY */}
         <AnimatedPressable 
@@ -178,7 +235,18 @@ export default function DashboardHeader({ navigation, onHeaderPress, selectedVen
         </AnimatedPressable>
       </View>
     );
-  }, [projectAvatarUri, city, cityIconSvg, helpButtonIconSvg, navigation]);
+  }, [
+    projectAvatarUri,
+    projectName,
+    city,
+    cityIconSvg,
+    helpButtonIconSvg,
+    navigation,
+    onHeaderPress,
+    leftContent,
+    headerReady,
+    compact,
+  ]);
 
   return headerJSX;
 }
@@ -198,6 +266,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     marginRight: spacing.md,
     marginLeft: spacing.sm,
+  },
+  profileSectionCompact: {
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm - 15,
   },
   profileInfo: {
     flexDirection: 'row',
@@ -297,5 +369,9 @@ const styles = StyleSheet.create({
   },
   profileInfoPressed: {
     opacity: 0.6,
+  },
+  customLeftContentWrap: {
+    flex: 1,
+    justifyContent: 'center',
   },
 });

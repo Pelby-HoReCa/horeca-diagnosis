@@ -11,10 +11,11 @@ import { DEFAULT_BLOCKS, DiagnosisBlock } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { palette, radii, spacing } from '../styles/theme';
 import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey, loadUserQuestionnaire } from '../utils/userDataStorage';
+import { getCityFromAddress } from '../utils/address';
 
 const initialCards = [{ id: 'summary', type: 'summary' as const }];
 
-export default function DiagnosisHistoryScreen({ navigation }: any) {
+export default function DiagnosisHistoryScreen({ navigation, route }: any) {
   const [backIconSvg, setBackIconSvg] = useState<string>('');
   const [menuIconSvg, setMenuIconSvg] = useState<string>('');
   const [projectAvatarUri, setProjectAvatarUri] = useState<string | null>(null);
@@ -112,9 +113,7 @@ export default function DiagnosisHistoryScreen({ navigation }: any) {
   );
 
   const parseCityFromAddress = (address?: string) => {
-    if (!address) return 'город';
-    const cityPart = address.split(',')[0]?.trim();
-    return cityPart || 'город';
+    return getCityFromAddress(address, 'город');
   };
 
   const updateHeaderFromVenue = (venue?: { id: string; name: string; city: string; logoUri?: string | null }) => {
@@ -703,13 +702,6 @@ export default function DiagnosisHistoryScreen({ navigation }: any) {
       const historyKey = getVenueScopedKey('diagnosis_history', userId, resolvedVenueId);
       const raw = await AsyncStorage.getItem(historyKey);
       let history = raw ? JSON.parse(raw) : [];
-      const allKeys = await AsyncStorage.getAllKeys();
-      const hasAnyAnswersForVenue = allKeys.some((k) => k.includes('diagnosis_answers_') && k.includes(resolvedVenueId));
-      if (!hasAnyAnswersForVenue) {
-        history = [];
-        await AsyncStorage.setItem(historyKey, JSON.stringify([]));
-      }
-
 
       if (!Array.isArray(history) || history.length === 0) {
         history = [];
@@ -856,13 +848,26 @@ export default function DiagnosisHistoryScreen({ navigation }: any) {
     }
   };
 
+  const handleBackPress = useCallback(() => {
+    if (route?.params?.from === 'profile') {
+      const tabNavigation = navigation?.getParent?.();
+      if (tabNavigation?.navigate) {
+        tabNavigation.navigate('Профиль');
+        return;
+      }
+      navigation?.navigate?.('Профиль');
+      return;
+    }
+    navigation?.goBack?.();
+  }, [navigation, route?.params?.from]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         {backIconSvg && (
           <TouchableOpacity
             style={styles.iconButtonLeft}
-            onPress={() => navigation?.goBack?.()}
+            onPress={handleBackPress}
             activeOpacity={0.7}
           >
             <SvgXml xml={backIconSvg} width={25} height={25} />
@@ -1174,55 +1179,61 @@ export default function DiagnosisHistoryScreen({ navigation }: any) {
               )}
             </View>
             <View style={styles.venuesCard}>
-              {venues.map((venue, index) => {
-                const isSelected = venue.id === selectedVenueId;
-                return (
-                  <TouchableOpacity
-                    key={venue.id}
-                    style={[styles.venueRow, index === venues.length - 1 && styles.venueRowLast]}
-                    activeOpacity={0.8}
-                    onPress={() => toggleVenue(venue.id)}
-                  >
-                    <View style={styles.venueAvatar}>
-                      {venue.logoUri ? (
-                        <Image source={{ uri: venue.logoUri }} style={styles.venueLogo} />
-                      ) : logoPlaceholderSvg ? (
-                        <View style={styles.venueIconScaled}>
-                          <SvgXml xml={logoPlaceholderSvg} width={50} height={50} />
-                        </View>
-                      ) : (
-                        <Ionicons name="image-outline" size={30} color={palette.gray400} />
-                      )}
-                    </View>
-                    <View style={styles.venueInfo}>
-                      <Text style={styles.venueName}>{venue.name}</Text>
-                      <View style={styles.venueCityRow}>
-                        <Text style={styles.venueCity}>{venue.city}</Text>
-                        <View style={styles.venueCityIconContainer}>
-                          {cityIconSvg ? (
-                            <SvgXml xml={cityIconSvg} width={16} height={16} />
-                          ) : (
-                            <View style={{ width: 16, height: 16 }} />
-                          )}
-                        </View>
-                      </View>
-                    </View>
+              <ScrollView
+                style={styles.venuesScroll}
+                contentContainerStyle={styles.venuesScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {venues.map((venue, index) => {
+                  const isSelected = venue.id === selectedVenueId;
+                  return (
                     <TouchableOpacity
-                      style={styles.venueCheckPlaceholder}
+                      key={venue.id}
+                      style={[styles.venueRow, index === venues.length - 1 && styles.venueRowLast]}
                       activeOpacity={0.8}
                       onPress={() => toggleVenue(venue.id)}
                     >
-                      {isSelected && radioActiveSvg ? (
-                        <SvgXml xml={radioActiveSvg} width={20} height={20} />
-                      ) : radioInactiveSvg ? (
-                        <SvgXml xml={radioInactiveSvg} width={20} height={20} />
-                      ) : (
-                        <View style={{ width: 20, height: 20 }} />
-                      )}
+                      <View style={styles.venueAvatar}>
+                        {venue.logoUri ? (
+                          <Image source={{ uri: venue.logoUri }} style={styles.venueLogo} />
+                        ) : logoPlaceholderSvg ? (
+                          <View style={styles.venueIconScaled}>
+                            <SvgXml xml={logoPlaceholderSvg} width={50} height={50} />
+                          </View>
+                        ) : (
+                          <Ionicons name="image-outline" size={30} color={palette.gray400} />
+                        )}
+                      </View>
+                      <View style={styles.venueInfo}>
+                        <Text style={styles.venueName}>{venue.name}</Text>
+                        <View style={styles.venueCityRow}>
+                          <Text style={styles.venueCity}>{venue.city}</Text>
+                          <View style={styles.venueCityIconContainer}>
+                            {cityIconSvg ? (
+                              <SvgXml xml={cityIconSvg} width={16} height={16} />
+                            ) : (
+                              <View style={{ width: 16, height: 16 }} />
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.venueCheckPlaceholder}
+                        activeOpacity={0.8}
+                        onPress={() => toggleVenue(venue.id)}
+                      >
+                        {isSelected && radioActiveSvg ? (
+                          <SvgXml xml={radioActiveSvg} width={20} height={20} />
+                        ) : radioInactiveSvg ? (
+                          <SvgXml xml={radioInactiveSvg} width={20} height={20} />
+                        ) : (
+                          <View style={{ width: 20, height: 20 }} />
+                        )}
+                      </TouchableOpacity>
                     </TouchableOpacity>
-                  </TouchableOpacity>
-                );
-              })}
+                  );
+                })}
+              </ScrollView>
             </View>
           </View>
         </View>
@@ -1698,6 +1709,7 @@ export default function DiagnosisHistoryScreen({ navigation }: any) {
 }
 
 const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
 const cardWidth = screenWidth - spacing.md * 2;
 
 const styles = StyleSheet.create({
@@ -2540,6 +2552,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignSelf: 'center',
     marginTop: 120,
+    maxHeight: screenHeight - 160,
   },
   addModalHeader: {
     flexDirection: 'row',
@@ -2559,9 +2572,16 @@ const styles = StyleSheet.create({
     backgroundColor: palette.white,
     borderRadius: 16,
   },
+  venuesScroll: {
+    maxHeight: screenHeight * 0.46,
+  },
+  venuesScrollContent: {
+    paddingBottom: spacing.xs,
+  },
   venueRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: 56,
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E4E9',
@@ -2589,6 +2609,7 @@ const styles = StyleSheet.create({
   },
   venueInfo: {
     flex: 1,
+    justifyContent: 'center',
   },
   venueName: {
     fontSize: 16,
@@ -2613,6 +2634,8 @@ const styles = StyleSheet.create({
   },
   venueCheckPlaceholder: {
     width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconButtonLeft: {
     position: 'absolute',

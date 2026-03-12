@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey } from '../utils/userDataStorage';
+import { getCityFromAddress } from '../utils/address';
 import { SvgXml } from 'react-native-svg';
 import AnimatedPressable from '../components/AnimatedPressable';
 import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
@@ -15,13 +16,21 @@ interface RegisterScreen3Props {
   onContinue?: (selectedBlocks: string[]) => void;
   onSkip?: () => void;
   onBack?: () => void;
+  isRepeatMode?: boolean;
+  repeatVenueId?: string | null;
 }
 
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 const cardWidth = screenWidth - spacing.md * 2;
 
-export default function RegisterScreen3({ onContinue, onSkip, onBack }: RegisterScreen3Props) {
+export default function RegisterScreen3({
+  onContinue,
+  onSkip,
+  onBack,
+  isRepeatMode = false,
+  repeatVenueId = null,
+}: RegisterScreen3Props) {
   const navigation = useNavigation<any>();
   const [logoPlaceholderSvg, setLogoPlaceholderSvg] = useState<string>('');
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
@@ -47,11 +56,7 @@ export default function RegisterScreen3({ onContinue, onSkip, onBack }: Register
   const [selectedBlocks, setSelectedBlocks] = useState<Set<string>>(new Set());
 
   const parseCityFromAddress = (address?: string) => {
-    if (!address) {
-      return 'город';
-    }
-    const firstPart = address.split(',')[0]?.trim();
-    return firstPart || 'город';
+    return getCityFromAddress(address, 'город');
   };
 
   const toggleSelectAll = () => {
@@ -322,8 +327,9 @@ export default function RegisterScreen3({ onContinue, onSkip, onBack }: Register
           setVenues(mapped);
           const userId = await getCurrentUserId();
           const savedVenueId = await getSelectedVenueId(userId);
-          const exists = savedVenueId && mapped.some((venue) => venue.id === savedVenueId);
-          setSelectedVenueId(exists ? savedVenueId : mapped[0].id);
+          const preferredVenueId = repeatVenueId || savedVenueId;
+          const exists = preferredVenueId && mapped.some((venue) => venue.id === preferredVenueId);
+          setSelectedVenueId(exists ? preferredVenueId : mapped[0].id);
         }
       } catch (error) {
         console.error('Ошибка загрузки заведений (шаг 3):', error);
@@ -331,7 +337,13 @@ export default function RegisterScreen3({ onContinue, onSkip, onBack }: Register
     };
 
     loadVenues();
-  }, []);
+  }, [repeatVenueId]);
+
+  useEffect(() => {
+    if (isRepeatMode) {
+      setSelectedBlocks(new Set(DEFAULT_BLOCKS.map((block) => block.id)));
+    }
+  }, [isRepeatMode]);
 
   useEffect(() => {
     const persistSelectedVenue = async () => {
@@ -577,10 +589,18 @@ export default function RegisterScreen3({ onContinue, onSkip, onBack }: Register
                   getVenueScopedKey('diagnosis_progress', userId, selectedVenueId),
                   progressPayload
                 );
+                await AsyncStorage.setItem(
+                  getVenueScopedKey('diagnosis_repeat_mode', userId, selectedVenueId),
+                  isRepeatMode ? 'true' : 'false'
+                );
               }
               await AsyncStorage.setItem(
                 getVenueScopedKey('diagnosis_progress', null, selectedVenueId),
                 progressPayload
+              );
+              await AsyncStorage.setItem(
+                getVenueScopedKey('diagnosis_repeat_mode', null, selectedVenueId),
+                isRepeatMode ? 'true' : 'false'
               );
             } catch (error) {
               console.error('Ошибка сохранения выбранных направлений:', error);

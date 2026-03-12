@@ -137,7 +137,8 @@ export default function BlockQuestionsScreen({
       const existingTasksArray = existingTasks ? JSON.parse(existingTasks) : [];
       console.log('Существующие задачи в хранилище:', existingTasksArray.length);
       
-      const newTasks = [...existingTasksArray, ...tasks];
+      const tasksWithoutCurrentBlock = existingTasksArray.filter((task: Task) => task?.blockId !== blockId);
+      const newTasks = [...tasksWithoutCurrentBlock, ...tasks];
       console.log('Общее количество задач после добавления:', newTasks.length);
       
       await AsyncStorage.setItem(tasksKey, JSON.stringify(newTasks));
@@ -153,7 +154,8 @@ export default function BlockQuestionsScreen({
       if (userId) {
         try {
           const userTasks = await loadUserTasks(userId);
-          const updatedUserTasks = [...userTasks, ...tasks];
+          const userTasksWithoutCurrentBlock = (userTasks as Task[]).filter((task: Task) => task?.blockId !== blockId);
+          const updatedUserTasks = [...userTasksWithoutCurrentBlock, ...tasks];
           await saveUserTasks(userId, updatedUserTasks as Task[]);
           console.log(`Задачи сохранены для пользователя ${userId}:`, updatedUserTasks.length);
         } catch (userError) {
