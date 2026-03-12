@@ -19,6 +19,11 @@ const AI_MAX_HISTORY_MESSAGES = Number(process.env.AI_MAX_HISTORY_MESSAGES || 10
 const AI_MAX_INPUT_CHARS = Number(process.env.AI_MAX_INPUT_CHARS || 2000);
 const AI_TEMPERATURE = Number(process.env.AI_TEMPERATURE || 0.25);
 const AI_MAX_TOKENS = Number(process.env.AI_MAX_TOKENS || 500);
+const AI_LOG_MAX_TEXT_CHARS = Number(process.env.AI_LOG_MAX_TEXT_CHARS || 8000);
+const ADMIN_AI_CHAT_DEFAULT_LIMIT = Number(process.env.ADMIN_AI_CHAT_DEFAULT_LIMIT || 200);
+const ADMIN_AI_CHAT_MAX_LIMIT = Number(process.env.ADMIN_AI_CHAT_MAX_LIMIT || 5000);
+const ADMIN_PHONE_DEFAULT_LIMIT = Number(process.env.ADMIN_PHONE_DEFAULT_LIMIT || 200);
+const ADMIN_PHONE_MAX_LIMIT = Number(process.env.ADMIN_PHONE_MAX_LIMIT || 5000);
 
 const PHONE_VERIFICATION_TTL_MS = Number(process.env.PHONE_VERIFICATION_TTL_MS || 5 * 60 * 1000);
 const PHONE_VERIFICATION_MAX_ATTEMPTS = Number(process.env.PHONE_VERIFICATION_MAX_ATTEMPTS || 5);
@@ -165,6 +170,118 @@ const buildSmsRuUrl = (baseUrl, params) => {
     url.searchParams.set(key, String(value));
   });
   return url.toString();
+};
+
+const trimText = (value, maxChars = AI_LOG_MAX_TEXT_CHARS) => {
+  if (typeof value !== 'string') return '';
+  const text = value.trim();
+  if (!text) return '';
+  if (text.length <= maxChars) return text;
+  return text.slice(0, maxChars);
+};
+
+const normalizeNullableString = (value, maxChars = 256) => {
+  const text = trimText(value, maxChars);
+  return text || null;
+};
+
+const toJsonString = (value, fallback) => {
+  try {
+    return JSON.stringify(value);
+  } catch (_error) {
+    return JSON.stringify(fallback);
+  }
+};
+
+const parseAdminLimit = (rawValue, fallback, maxLimit) => {
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(Math.trunc(parsed), maxLimit);
+};
+
+const extractAiLogContext = (userContext) => {
+  const safeContext =
+    userContext && typeof userContext === 'object' && !Array.isArray(userContext)
+      ? userContext
+      : {};
+
+  return {
+    userId: normalizeNullableString(safeContext.userId, 128),
+    selectedVenueId: normalizeNullableString(safeContext.selectedVenueId, 128),
+    safeContext,
+  };
+};
+
+const persistAiChatMessage = async ({
+  userId,
+  selectedVenueId,
+  message,
+  history,
+  userContext,
+  provider,
+  reply,
+  status,
+  error,
+  providerErrors,
+}) => {
+  const normalizedHistory = Array.isArray(history)
+    ? history
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+          role: item.role === 'assistant' ? 'assistant' : 'user',
+          text: trimText(item.text, AI_LOG_MAX_TEXT_CHARS),
+        }))
+        .filter((item) => item.text.length > 0)
+        .slice(-AI_MAX_HISTORY_MESSAGES)
+    : [];
+
+  try {
+    await prisma.$executeRawUnsafe(
+      `
+        INSERT INTO "AiChatMessage" (
+          "id",
+          "userId",
+          "selectedVenueId",
+          "requestMessage",
+          "requestHistory",
+          "userContext",
+          "provider",
+          "reply",
+          "status",
+          "error",
+          "providerErrors",
+          "createdAt"
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5::jsonb,
+          $6::jsonb,
+          $7,
+          $8,
+          $9,
+          $10,
+          $11::jsonb,
+          NOW()
+        );
+      `,
+      randomUUID(),
+      normalizeNullableString(userId, 128),
+      normalizeNullableString(selectedVenueId, 128),
+      trimText(message, AI_LOG_MAX_TEXT_CHARS),
+      toJsonString(normalizedHistory, []),
+      toJsonString(userContext, {}),
+      normalizeNullableString(provider, 64),
+      normalizeNullableString(reply, 20000),
+      status === 'success' ? 'success' : 'error',
+      normalizeNullableString(error, 2000),
+      toJsonString(Array.isArray(providerErrors) ? providerErrors.slice(0, 10) : [], [])
+    );
+  } catch (logError) {
+    console.error('persistAiChatMessage error', logError);
+  }
 };
 
 const sendSmsRuCode = async ({ phone, code }) => {
@@ -526,6 +643,30 @@ const ensureSchema = async () => {
       `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_expiresAt_idx"
        ON "PhoneVerificationSession" ("expiresAt" DESC);`
     );
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "AiChatMessage" (
+        "id" text PRIMARY KEY,
+        "userId" text,
+        "selectedVenueId" text,
+        "requestMessage" text NOT NULL,
+        "requestHistory" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "userContext" jsonb NOT NULL DEFAULT '{}'::jsonb,
+        "provider" text,
+        "reply" text,
+        "status" text NOT NULL,
+        "error" text,
+        "providerErrors" jsonb NOT NULL DEFAULT '[]'::jsonb,
+        "createdAt" timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "AiChatMessage_createdAt_idx"
+       ON "AiChatMessage" ("createdAt" DESC);`
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "AiChatMessage_userId_createdAt_idx"
+       ON "AiChatMessage" ("userId", "createdAt" DESC);`
+    );
   } catch (error) {
     console.error('ensureSchema error', error);
   }
@@ -736,6 +877,7 @@ app.post('/ai/chat', async (req, res) => {
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const history = normalizeChatHistory(body.history);
     const userContext = body.userContext && typeof body.userContext === 'object' ? body.userContext : {};
+    const aiLogContext = extractAiLogContext(userContext);
 
     if (!message) {
       return res.status(400).json({ ok: false, error: 'message_is_required' });
@@ -753,6 +895,18 @@ app.post('/ai/chat', async (req, res) => {
     const providerCandidates = getProviderCandidates().filter(isProviderConfigured);
 
     if (providerCandidates.length === 0) {
+      await persistAiChatMessage({
+        userId: aiLogContext.userId,
+        selectedVenueId: aiLogContext.selectedVenueId,
+        message,
+        history,
+        userContext: aiLogContext.safeContext,
+        provider: null,
+        reply: null,
+        status: 'error',
+        error: 'ai_provider_not_configured',
+        providerErrors: [],
+      });
       return res.status(503).json({
         ok: false,
         error: 'ai_provider_not_configured',
@@ -767,6 +921,19 @@ app.post('/ai/chat', async (req, res) => {
             ? await callYandexProvider({ messages, userContext })
             : await callGigaChatProvider({ messages, userContext });
 
+        await persistAiChatMessage({
+          userId: aiLogContext.userId,
+          selectedVenueId: aiLogContext.selectedVenueId,
+          message,
+          history,
+          userContext: aiLogContext.safeContext,
+          provider,
+          reply,
+          status: 'success',
+          error: null,
+          providerErrors: [],
+        });
+
         return res.json({
           ok: true,
           provider,
@@ -779,6 +946,19 @@ app.post('/ai/chat', async (req, res) => {
         });
       }
     }
+
+    await persistAiChatMessage({
+      userId: aiLogContext.userId,
+      selectedVenueId: aiLogContext.selectedVenueId,
+      message,
+      history,
+      userContext: aiLogContext.safeContext,
+      provider: null,
+      reply: null,
+      status: 'error',
+      error: 'ai_upstream_error',
+      providerErrors,
+    });
 
     return res.status(502).json({
       ok: false,
@@ -881,6 +1061,25 @@ app.get('/sync/pull/:userId', async (req, res) => {
 // Admin endpoints
 app.get('/admin/users', requireAdmin, async (_req, res) => {
   try {
+    const aiStatsRows = await prisma.$queryRawUnsafe(`
+      SELECT
+        "userId",
+        COUNT(*)::int AS "aiMessagesCount",
+        MAX("createdAt") AS "lastAiMessageAt"
+      FROM "AiChatMessage"
+      WHERE "userId" IS NOT NULL
+      GROUP BY "userId";
+    `);
+    const aiStatsByUserId = new Map(
+      (Array.isArray(aiStatsRows) ? aiStatsRows : []).map((row) => [
+        String(row.userId),
+        {
+          aiMessagesCount: Number(row.aiMessagesCount || 0),
+          lastAiMessageAt: row.lastAiMessageAt || null,
+        },
+      ])
+    );
+
     const users = await prisma.userData.findMany({
       select: { userId: true, createdAt: true, updatedAt: true, data: true },
       orderBy: { updatedAt: 'desc' },
@@ -901,6 +1100,8 @@ app.get('/admin/users', requireAdmin, async (_req, res) => {
         updatedAt: item.updatedAt,
         isDeleted: Boolean(accountMeta.deleted),
         deletedAt: accountMeta.deletedAt || null,
+        aiMessagesCount: aiStatsByUserId.get(item.userId)?.aiMessagesCount || 0,
+        lastAiMessageAt: aiStatsByUserId.get(item.userId)?.lastAiMessageAt || null,
       };
     });
     return res.json({ ok: true, users: normalized });
@@ -913,13 +1114,196 @@ app.get('/admin/users', requireAdmin, async (_req, res) => {
 app.get('/admin/user/:userId', requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
+    const aiLimit = parseAdminLimit(
+      req.query?.aiLimit,
+      ADMIN_AI_CHAT_DEFAULT_LIMIT,
+      ADMIN_AI_CHAT_MAX_LIMIT
+    );
+    const includeAi = String(req.query?.includeAi ?? '1') !== '0';
+
     const record = await prisma.userData.findUnique({ where: { userId } });
     if (!record) {
       return res.status(404).json({ ok: false, error: 'not_found' });
     }
-    return res.json({ ok: true, userId: record.userId, data: record.data, updatedAt: record.updatedAt });
+
+    const [aiCountRow] = await prisma.$queryRawUnsafe(
+      `
+        SELECT COUNT(*)::int AS "count"
+        FROM "AiChatMessage"
+        WHERE "userId" = $1;
+      `,
+      userId
+    );
+    const aiTotalCount = Number(aiCountRow?.count || 0);
+
+    const aiChats = includeAi
+      ? await prisma.$queryRawUnsafe(
+          `
+            SELECT
+              "id",
+              "userId",
+              "selectedVenueId",
+              "provider",
+              "requestMessage",
+              "requestHistory",
+              "userContext",
+              "reply",
+              "status",
+              "error",
+              "providerErrors",
+              "createdAt"
+            FROM "AiChatMessage"
+            WHERE "userId" = $1
+            ORDER BY "createdAt" DESC
+            LIMIT $2::int;
+          `,
+          userId,
+          aiLimit
+        )
+      : [];
+
+    return res.json({
+      ok: true,
+      userId: record.userId,
+      data: record.data,
+      updatedAt: record.updatedAt,
+      aiTotalCount,
+      aiLimit,
+      aiChats,
+    });
   } catch (error) {
     console.error('admin/user error', error);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.get('/admin/ai/chats', requireAdmin, async (req, res) => {
+  try {
+    const requestedUserId =
+      typeof req.query?.userId === 'string' ? req.query.userId.trim() : '';
+    const userId = requestedUserId || null;
+    const limit = parseAdminLimit(
+      req.query?.limit,
+      ADMIN_AI_CHAT_DEFAULT_LIMIT,
+      ADMIN_AI_CHAT_MAX_LIMIT
+    );
+
+    const rows = userId
+      ? await prisma.$queryRawUnsafe(
+          `
+            SELECT
+              "id",
+              "userId",
+              "selectedVenueId",
+              "provider",
+              "requestMessage",
+              "requestHistory",
+              "userContext",
+              "reply",
+              "status",
+              "error",
+              "providerErrors",
+              "createdAt"
+            FROM "AiChatMessage"
+            WHERE "userId" = $1
+            ORDER BY "createdAt" DESC
+            LIMIT $2::int;
+          `,
+          userId,
+          limit
+        )
+      : await prisma.$queryRawUnsafe(
+          `
+            SELECT
+              "id",
+              "userId",
+              "selectedVenueId",
+              "provider",
+              "requestMessage",
+              "requestHistory",
+              "userContext",
+              "reply",
+              "status",
+              "error",
+              "providerErrors",
+              "createdAt"
+            FROM "AiChatMessage"
+            ORDER BY "createdAt" DESC
+            LIMIT $1::int;
+          `,
+          limit
+        );
+
+    return res.json({
+      ok: true,
+      userId,
+      limit,
+      chats: Array.isArray(rows) ? rows : [],
+    });
+  } catch (error) {
+    console.error('admin/ai/chats error', error);
+    return res.status(500).json({ ok: false, error: 'server_error' });
+  }
+});
+
+app.get('/admin/phone-verifications', requireAdmin, async (req, res) => {
+  try {
+    const requestedPhone = typeof req.query?.phone === 'string' ? req.query.phone : '';
+    const normalizedPhone = requestedPhone ? normalizeRuPhone(requestedPhone) : null;
+    const limit = parseAdminLimit(req.query?.limit, ADMIN_PHONE_DEFAULT_LIMIT, ADMIN_PHONE_MAX_LIMIT);
+
+    const rows = normalizedPhone
+      ? await prisma.$queryRawUnsafe(
+          `
+            SELECT
+              "id",
+              "phone",
+              "method",
+              "callcheckId",
+              "callPhone",
+              "attemptsLeft",
+              "expiresAt",
+              "verifiedAt",
+              "consumedAt",
+              "createdAt",
+              "updatedAt"
+            FROM "PhoneVerificationSession"
+            WHERE "phone" = $1
+            ORDER BY "createdAt" DESC
+            LIMIT $2::int;
+          `,
+          normalizedPhone,
+          limit
+        )
+      : await prisma.$queryRawUnsafe(
+          `
+            SELECT
+              "id",
+              "phone",
+              "method",
+              "callcheckId",
+              "callPhone",
+              "attemptsLeft",
+              "expiresAt",
+              "verifiedAt",
+              "consumedAt",
+              "createdAt",
+              "updatedAt"
+            FROM "PhoneVerificationSession"
+            ORDER BY "createdAt" DESC
+            LIMIT $1::int;
+          `,
+          limit
+        );
+
+    return res.json({
+      ok: true,
+      phone: normalizedPhone,
+      limit,
+      sessions: Array.isArray(rows) ? rows : [],
+    });
+  } catch (error) {
+    console.error('admin/phone-verifications error', error);
     return res.status(500).json({ ok: false, error: 'server_error' });
   }
 });
