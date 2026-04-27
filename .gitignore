@@ -43,3 +43,17 @@ app-example
 /android
 .env
 backend/.env
+
+# local backups and ad-hoc artifacts
+.backups/*.tar.gz
+backup_*.tar.gz
+backup_*/
+deliverables/
+kumir_photos/
+location_report_*
+*_attractors_*.csv
+*_attractors_*.json
+*_horeca_*.csv
+yandex_playlist_songs.txt
+marketing_strategy_*.md
+.private/
