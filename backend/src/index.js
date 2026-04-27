@@ -73,6 +73,11 @@ const PHONE_VERIFICATION_MAX_STARTS_PER_HOUR = Number(
 const PHONE_VERIFICATION_MIN_RESTART_INTERVAL_MS = Number(
   process.env.PHONE_VERIFICATION_MIN_RESTART_INTERVAL_MS || 30 * 1000
 );
+const PHONE_REVIEW_BYPASS_ENABLED = String(process.env.PHONE_REVIEW_BYPASS_ENABLED || '')
+  .trim()
+  .toLowerCase() === 'true';
+const PHONE_REVIEW_BYPASS_CODE = String(process.env.PHONE_REVIEW_BYPASS_CODE || '').trim();
+const PHONE_REVIEW_BYPASS_PHONES_RAW = String(process.env.PHONE_REVIEW_BYPASS_PHONES || '').trim();
 
 const SMSRU_API_ID = process.env.SMSRU_API_ID || '';
 const SMSRU_SMS_ENDPOINT = process.env.SMSRU_SMS_ENDPOINT || 'https://sms.ru/sms/send';
@@ -209,6 +214,33 @@ const normalizeRuPhone = (rawValue) => {
   }
   return null;
 };
+
+const PHONE_REVIEW_BYPASS_PHONES = new Set(
+  PHONE_REVIEW_BYPASS_PHONES_RAW
+    .split(',')
+    .map((value) => normalizeRuPhone(value))
+    .filter(Boolean)
+);
+
+const isPhoneReviewBypassEnabledForPhone = (normalizedPhone) =>
+  Boolean(
+    PHONE_REVIEW_BYPASS_ENABLED &&
+      PHONE_REVIEW_BYPASS_CODE &&
+      normalizedPhone &&
+      PHONE_REVIEW_BYPASS_PHONES.has(normalizedPhone)
+  );
+
+if (PHONE_REVIEW_BYPASS_ENABLED) {
+  if (!PHONE_REVIEW_BYPASS_CODE || PHONE_REVIEW_BYPASS_PHONES.size === 0) {
+    console.warn(
+      'PHONE_REVIEW_BYPASS_ENABLED is set but PHONE_REVIEW_BYPASS_CODE/PHONE_REVIEW_BYPASS_PHONES are incomplete.'
+    );
+  } else {
+    console.warn(
+      `PHONE_REVIEW_BYPASS_ENABLED is active for ${PHONE_REVIEW_BYPASS_PHONES.size} phone(s). Disable after App Review.`
+    );
+  }
+}
 
 const maskPhone = (normalizedPhone) => {
   if (!normalizedPhone || normalizedPhone.length !== 11) return normalizedPhone || '';
@@ -901,11 +933,13 @@ app.post('/auth/phone/start', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'invalid_phone' });
     }
 
-    if (!SMSRU_API_ID) {
+    const isReviewBypass = isPhoneReviewBypassEnabledForPhone(normalizedPhone);
+
+    if (!isReviewBypass && !SMSRU_API_ID) {
       return res.status(503).json({ ok: false, error: 'phone_provider_not_configured' });
     }
 
-    if (method === 'sms' && !SMSRU_FROM) {
+    if (!isReviewBypass && method === 'sms' && !SMSRU_FROM) {
       return res.status(503).json({ ok: false, error: 'sms_sender_not_configured' });
     }
 
@@ -950,7 +984,9 @@ app.post('/auth/phone/start', async (req, res) => {
       callPhone: '',
     };
 
-    if (method === 'sms') {
+    if (isReviewBypass) {
+      session.code = PHONE_REVIEW_BYPASS_CODE;
+    } else if (method === 'sms') {
       const code = String(Math.floor(1000 + Math.random() * 9000));
       await sendSmsRuCode({ phone: normalizedPhone, code });
       session.code = code;
