@@ -143,6 +143,31 @@ const markSnapshotSynced = async (hash: string) => {
   ]);
 };
 
+type ServerSnapshotState = 'exists' | 'missing' | 'unknown';
+
+const checkServerSnapshotState = async (userId: string): Promise<ServerSnapshotState> => {
+  try {
+    const res = await fetchWithTimeoutAndRetry(
+      `${API_BASE_URL}/sync/pull/${encodeURIComponent(userId)}`
+    );
+    if (res.status === 404) {
+      return 'missing';
+    }
+    if (res.ok) {
+      return 'exists';
+    }
+    return 'unknown';
+  } catch (error) {
+    if (isNetworkRequestError(error)) {
+      activateNetworkBackoff();
+      logSyncNetworkWarning('pull', error);
+      return 'unknown';
+    }
+    console.error('checkServerSnapshotState error', error);
+    return 'unknown';
+  }
+};
+
 export const pushLocalDataToServer = async (force = false): Promise<boolean> => {
   try {
     const userId = await getCurrentUserId();
@@ -181,6 +206,27 @@ export const pushLocalDataToServer = async (force = false): Promise<boolean> => 
       return false;
     }
     console.error('pushLocalDataToServer error', error);
+    return false;
+  }
+};
+
+export const ensureServerSnapshotForCurrentUser = async (): Promise<boolean> => {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return false;
+    if (isNetworkBackoffActive()) return false;
+
+    const localSnapshot = await buildLocalSnapshot();
+    if (!localSnapshot) return false;
+
+    const serverState = await checkServerSnapshotState(userId);
+    if (serverState !== 'missing') {
+      return false;
+    }
+
+    return await pushLocalDataToServer(true);
+  } catch (error) {
+    console.error('ensureServerSnapshotForCurrentUser error', error);
     return false;
   }
 };

@@ -28,7 +28,11 @@ import { DEFAULT_BLOCKS } from '../data/diagnosisBlocks';
 import questionsData from '../data/questions.json';
 import { getCurrentUserId, getSelectedVenueId, getVenueScopedKey, loadUserQuestionnaire } from '../utils/userDataStorage';
 import { generateTasksFromAnswers, Task } from '../utils/recommendationEngine';
-import { pushLocalDataToServer, pullServerDataToLocal } from '../utils/syncService';
+import {
+  ensureServerSnapshotForCurrentUser,
+  pushLocalDataToServer,
+  pullServerDataToLocal,
+} from '../utils/syncService';
 
 const Stack = createStackNavigator();
 
@@ -99,12 +103,13 @@ export default function AppWrapper() {
   useEffect(() => {
     const syncOnce = async () => {
       try {
+        const restoredMissingServerSnapshot = await ensureServerSnapshotForCurrentUser();
         const syncedFlag = await AsyncStorage.getItem('serverSyncCompleted_v1');
         // Первая инициализация: пробуем подтянуть данные сервера только до первичного sync-флага.
         const pulled = syncedFlag ? false : await pullServerDataToLocal(false);
         // Затем всегда пытаемся отправить локальные изменения (внутри есть проверка хеша).
         const pushed = await syncLocalSnapshot();
-        if (!syncedFlag && (pulled || pushed)) {
+        if (restoredMissingServerSnapshot || (!syncedFlag && (pulled || pushed))) {
           await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
         }
       } catch (error) {
