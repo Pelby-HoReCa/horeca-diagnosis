@@ -9,6 +9,20 @@ type UserRow = {
   updatedAt: string;
 };
 
+const TECH_USER_PREFIXES = [
+  'smoke_',
+  'deploy_',
+  'post_push_',
+  'sync_overwrite_',
+  'deploy_recheck_',
+  'postfixcheck_',
+];
+
+const isTechnicalUserId = (userId: string): boolean => {
+  const value = String(userId || '').toLowerCase();
+  return TECH_USER_PREFIXES.some((prefix) => value.startsWith(prefix));
+};
+
 const formatValue = (value: any) => {
   if (value === null || value === undefined) return '—';
   if (typeof value === 'string') return value;
@@ -45,6 +59,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [storedToken, setStoredToken] = useState<string>('');
   const [storedEmail, setStoredEmail] = useState<string>('');
+  const [showTechnicalUsers, setShowTechnicalUsers] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -80,12 +95,15 @@ export default function AdminPage() {
       const data = await res.json();
       setUsers(data.users || []);
       setAuthed(true);
-      const token = btoa(`${email}:${password}`);
-      setStoredToken(token);
-      setStoredEmail(email);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('pelby_admin_token', token);
-        window.localStorage.setItem('pelby_admin_email', email);
+      const nextToken = storedToken || (email && password ? btoa(`${email}:${password}`) : '');
+      const nextEmail = storedEmail || email || '';
+      if (nextToken) {
+        setStoredToken(nextToken);
+      }
+      setStoredEmail(nextEmail);
+      if (typeof window !== 'undefined' && nextToken) {
+        window.localStorage.setItem('pelby_admin_token', nextToken);
+        window.localStorage.setItem('pelby_admin_email', nextEmail);
       }
     } catch (e) {
       setError('Ошибка загрузки');
@@ -99,7 +117,7 @@ export default function AdminPage() {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch(`${API_URL}/admin/user/${userId}`, {
+      const res = await fetch(`${API_URL}/admin/user/${encodeURIComponent(userId)}`, {
         headers: { Authorization: authHeader },
       });
       if (!res.ok) {
@@ -123,10 +141,11 @@ export default function AdminPage() {
   }, [authed, authHeader, users.length]);
 
   const filteredUsers = useMemo(() => {
+    const withoutTechnical = showTechnicalUsers ? users : users.filter((u) => !isTechnicalUserId(u.userId));
     const q = query.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter((u) => u.userId.toLowerCase().includes(q));
-  }, [query, users]);
+    if (!q) return withoutTechnical;
+    return withoutTechnical.filter((u) => u.userId.toLowerCase().includes(q));
+  }, [query, showTechnicalUsers, users]);
 
   const selectedSnapshot = selectedUser?.data || {};
   const parsedSnapshot = useMemo(() => {
@@ -184,7 +203,7 @@ export default function AdminPage() {
     parsedSnapshot.userProfile ||
     {};
 
-  const totalUsers = users.length;
+  const totalUsers = filteredUsers.length;
   const totalProjects = Array.isArray(projects) ? projects.length : 0;
   const totalDiagnoses = Array.isArray(diagnosisHistory) ? diagnosisHistory.length : 0;
   const totalTasks = Array.isArray(tasks) ? tasks.length : 0;
@@ -326,6 +345,14 @@ export default function AdminPage() {
               Обновить
             </button>
           </div>
+          <label style={styles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={showTechnicalUsers}
+              onChange={(e) => setShowTechnicalUsers(e.target.checked)}
+            />
+            <span>Показывать тех-ID</span>
+          </label>
           <input
             style={styles.search}
             placeholder="Поиск по ID..."
@@ -551,6 +578,14 @@ const styles: Record<string, React.CSSProperties> = {
   loginTitle: { fontSize: 18, fontWeight: 700, marginBottom: 6 },
   loginSubtitle: { fontSize: 12, color: '#525866', marginBottom: 16 },
   loginForm: { display: 'flex', gap: 12, flexWrap: 'wrap' },
+  checkboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    fontSize: 12,
+    color: '#525866',
+    marginBottom: 10,
+  },
   sidebar: {
     background: '#fff',
     borderRadius: 12,
