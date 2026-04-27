@@ -2,16 +2,56 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
+const { randomUUID, timingSafeEqual } = require('crypto');
 
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors());
+const DATABASE_URL = String(process.env.DATABASE_URL || '').trim();
+if (!DATABASE_URL) {
+  console.error('Fatal: DATABASE_URL is required.');
+  process.exit(1);
+}
+
+const CORS_ORIGIN = String(process.env.CORS_ORIGIN || '*').trim();
+const allowedCorsOrigins =
+  !CORS_ORIGIN || CORS_ORIGIN === '*'
+    ? null
+    : new Set(
+        CORS_ORIGIN.split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      );
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!allowedCorsOrigins) {
+      callback(null, true);
+      return;
+    }
+    if (!origin || allowedCorsOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error('cors_not_allowed'));
+  },
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '20mb' }));
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'it@pelby.ru';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Sergo1289';
-const { randomUUID } = require('crypto');
+const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || '').trim();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '');
+const ADMIN_AUTH_ENABLED = Boolean(ADMIN_EMAIL && ADMIN_PASSWORD);
+if (!ADMIN_AUTH_ENABLED) {
+  console.warn('ADMIN_EMAIL or ADMIN_PASSWORD is missing. Admin API endpoints are disabled.');
+}
+if (ADMIN_EMAIL === 'it@pelby.ru' || ADMIN_PASSWORD === 'Sergo1289') {
+  console.warn('Insecure admin credentials detected. Rotate ADMIN_EMAIL/ADMIN_PASSWORD immediately.');
+}
+const ADMIN_LOGIN_WINDOW_MS = Number(process.env.ADMIN_LOGIN_WINDOW_MS || 15 * 60 * 1000);
+const ADMIN_LOGIN_MAX_ATTEMPTS = Number(process.env.ADMIN_LOGIN_MAX_ATTEMPTS || 30);
+const adminAuthFailuresByIp = new Map();
 
 const AI_PROVIDER = (process.env.AI_PROVIDER || 'yandex').toLowerCase();
 const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS || 30000);
@@ -42,6 +82,120 @@ const SMSRU_CALLCHECK_STATUS_ENDPOINT =
   process.env.SMSRU_CALLCHECK_STATUS_ENDPOINT || 'https://sms.ru/callcheck/status';
 const SMSRU_CODE_TEMPLATE = process.env.SMSRU_CODE_TEMPLATE || 'Код Pelby: {code}';
 const SMSRU_FROM = (process.env.SMSRU_FROM || '').trim();
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const TRANSIENT_PRISMA_ERROR_CODES = new Set(['P1001', 'P1002', 'P1017', 'P2024']);
+
+const isTransientPrismaError = (error) => {
+  if (!error || typeof error !== 'object') return false;
+  const code = typeof error.code === 'string' ? error.code : '';
+  if (TRANSIENT_PRISMA_ERROR_CODES.has(code)) return true;
+
+  const text = [error.message, error.name, error.stack, String(error)]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  return (
+    text.includes('server has closed the connection') ||
+    text.includes('terminating connection') ||
+    text.includes('connection reset') ||
+    text.includes('connection timeout') ||
+    text.includes('timed out') ||
+    text.includes('can\'t reach database server')
+  );
+};
+
+const withPrismaRetry = async (operationName, operation, attempts = 2) => {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      const transient = isTransientPrismaError(error);
+      const canRetry = transient && attempt < attempts;
+      if (!canRetry) {
+        throw error;
+      }
+
+      console.warn(
+        `${operationName} transient db error (attempt ${attempt}/${attempts}), reconnecting...`
+      );
+      try {
+        await prisma.$disconnect();
+      } catch (_disconnectError) {}
+      try {
+        await prisma.$connect();
+      } catch (_connectError) {}
+      await sleep(250 * attempt);
+    }
+  }
+
+  throw lastError;
+};
+
+const safeCompare = (left, right) => {
+  const leftBuffer = Buffer.from(String(left || ''), 'utf8');
+  const rightBuffer = Buffer.from(String(right || ''), 'utf8');
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false;
+  }
+  return timingSafeEqual(leftBuffer, rightBuffer);
+};
+
+const getRequestIp = (req) => {
+  const forwardedRaw = req.headers['x-forwarded-for'];
+  const forwarded = Array.isArray(forwardedRaw) ? forwardedRaw[0] : forwardedRaw;
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+};
+
+const pruneAdminAuthFailures = () => {
+  const now = Date.now();
+  for (const [ip, state] of adminAuthFailuresByIp.entries()) {
+    const expired = now - state.firstFailureAt > ADMIN_LOGIN_WINDOW_MS;
+    if (expired) {
+      adminAuthFailuresByIp.delete(ip);
+    }
+  }
+};
+
+const isAdminIpRateLimited = (ip) => {
+  pruneAdminAuthFailures();
+  const state = adminAuthFailuresByIp.get(ip);
+  if (!state) return false;
+  return state.count >= ADMIN_LOGIN_MAX_ATTEMPTS;
+};
+
+const markAdminAuthFailure = (ip) => {
+  if (!ip) return;
+  pruneAdminAuthFailures();
+  const now = Date.now();
+  const current = adminAuthFailuresByIp.get(ip);
+  if (!current) {
+    adminAuthFailuresByIp.set(ip, { count: 1, firstFailureAt: now });
+    return;
+  }
+  const sameWindow = now - current.firstFailureAt <= ADMIN_LOGIN_WINDOW_MS;
+  if (!sameWindow) {
+    adminAuthFailuresByIp.set(ip, { count: 1, firstFailureAt: now });
+    return;
+  }
+  adminAuthFailuresByIp.set(ip, {
+    count: current.count + 1,
+    firstFailureAt: current.firstFailureAt,
+  });
+};
+
+const clearAdminAuthFailures = (ip) => {
+  if (!ip) return;
+  adminAuthFailuresByIp.delete(ip);
+};
 
 const createPhoneVerificationId = () => randomUUID();
 
@@ -608,64 +762,70 @@ const callGigaChatProvider = async ({ messages, userContext }) => {
 
 const ensureSchema = async () => {
   try {
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "UserData" (
-        "userId" text PRIMARY KEY,
-        "data" jsonb NOT NULL,
-        "createdAt" timestamptz NOT NULL DEFAULT now(),
-        "updatedAt" timestamptz NOT NULL DEFAULT now()
-      );
-    `);
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "UserData_updatedAt_idx" ON "UserData" ("updatedAt" DESC);`
-    );
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "PhoneVerificationSession" (
-        "id" text PRIMARY KEY,
-        "phone" text NOT NULL,
-        "method" text NOT NULL,
-        "code" text,
-        "callcheckId" text,
-        "callPhone" text,
-        "attemptsLeft" integer NOT NULL DEFAULT 5,
-        "expiresAt" timestamptz NOT NULL,
-        "verifiedAt" timestamptz,
-        "consumedAt" timestamptz,
-        "createdAt" timestamptz NOT NULL DEFAULT now(),
-        "updatedAt" timestamptz NOT NULL DEFAULT now()
-      );
-    `);
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_phone_createdAt_idx"
-       ON "PhoneVerificationSession" ("phone", "createdAt" DESC);`
-    );
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_expiresAt_idx"
-       ON "PhoneVerificationSession" ("expiresAt" DESC);`
-    );
-    await prisma.$executeRawUnsafe(`
-      CREATE TABLE IF NOT EXISTS "AiChatMessage" (
-        "id" text PRIMARY KEY,
-        "userId" text,
-        "selectedVenueId" text,
-        "requestMessage" text NOT NULL,
-        "requestHistory" jsonb NOT NULL DEFAULT '[]'::jsonb,
-        "userContext" jsonb NOT NULL DEFAULT '{}'::jsonb,
-        "provider" text,
-        "reply" text,
-        "status" text NOT NULL,
-        "error" text,
-        "providerErrors" jsonb NOT NULL DEFAULT '[]'::jsonb,
-        "createdAt" timestamptz NOT NULL DEFAULT now()
-      );
-    `);
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "AiChatMessage_createdAt_idx"
-       ON "AiChatMessage" ("createdAt" DESC);`
-    );
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "AiChatMessage_userId_createdAt_idx"
-       ON "AiChatMessage" ("userId", "createdAt" DESC);`
+    await withPrismaRetry(
+      'ensureSchema',
+      async () => {
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "UserData" (
+            "userId" text PRIMARY KEY,
+            "data" jsonb NOT NULL,
+            "createdAt" timestamptz NOT NULL DEFAULT now(),
+            "updatedAt" timestamptz NOT NULL DEFAULT now()
+          );
+        `);
+        await prisma.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "UserData_updatedAt_idx" ON "UserData" ("updatedAt" DESC);`
+        );
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "PhoneVerificationSession" (
+            "id" text PRIMARY KEY,
+            "phone" text NOT NULL,
+            "method" text NOT NULL,
+            "code" text,
+            "callcheckId" text,
+            "callPhone" text,
+            "attemptsLeft" integer NOT NULL DEFAULT 5,
+            "expiresAt" timestamptz NOT NULL,
+            "verifiedAt" timestamptz,
+            "consumedAt" timestamptz,
+            "createdAt" timestamptz NOT NULL DEFAULT now(),
+            "updatedAt" timestamptz NOT NULL DEFAULT now()
+          );
+        `);
+        await prisma.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_phone_createdAt_idx"
+           ON "PhoneVerificationSession" ("phone", "createdAt" DESC);`
+        );
+        await prisma.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "PhoneVerificationSession_expiresAt_idx"
+           ON "PhoneVerificationSession" ("expiresAt" DESC);`
+        );
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS "AiChatMessage" (
+            "id" text PRIMARY KEY,
+            "userId" text,
+            "selectedVenueId" text,
+            "requestMessage" text NOT NULL,
+            "requestHistory" jsonb NOT NULL DEFAULT '[]'::jsonb,
+            "userContext" jsonb NOT NULL DEFAULT '{}'::jsonb,
+            "provider" text,
+            "reply" text,
+            "status" text NOT NULL,
+            "error" text,
+            "providerErrors" jsonb NOT NULL DEFAULT '[]'::jsonb,
+            "createdAt" timestamptz NOT NULL DEFAULT now()
+          );
+        `);
+        await prisma.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "AiChatMessage_createdAt_idx"
+           ON "AiChatMessage" ("createdAt" DESC);`
+        );
+        await prisma.$executeRawUnsafe(
+          `CREATE INDEX IF NOT EXISTS "AiChatMessage_userId_createdAt_idx"
+           ON "AiChatMessage" ("userId", "createdAt" DESC);`
+        );
+      },
+      3
     );
   } catch (error) {
     console.error('ensureSchema error', error);
@@ -673,23 +833,60 @@ const ensureSchema = async () => {
 };
 
 const requireAdmin = (req, res, next) => {
+  if (!ADMIN_AUTH_ENABLED) {
+    return res.status(503).json({ ok: false, error: 'admin_not_configured' });
+  }
+
+  const ip = getRequestIp(req);
+  if (isAdminIpRateLimited(ip)) {
+    return res.status(429).json({ ok: false, error: 'too_many_admin_auth_attempts' });
+  }
+
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Basic ')) {
+    markAdminAuthFailure(ip);
     res.set('WWW-Authenticate', 'Basic realm="admin"');
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
   const base64 = auth.replace('Basic ', '');
-  const decoded = Buffer.from(base64, 'base64').toString('utf8');
-  const [email, password] = decoded.split(':');
-  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+  let decoded = '';
+  try {
+    decoded = Buffer.from(base64, 'base64').toString('utf8');
+  } catch (_error) {
+    markAdminAuthFailure(ip);
     res.set('WWW-Authenticate', 'Basic realm="admin"');
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
+  const separatorIndex = decoded.indexOf(':');
+  if (separatorIndex < 0) {
+    markAdminAuthFailure(ip);
+    res.set('WWW-Authenticate', 'Basic realm="admin"');
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  const email = decoded.slice(0, separatorIndex);
+  const password = decoded.slice(separatorIndex + 1);
+  const isValid = safeCompare(email, ADMIN_EMAIL) && safeCompare(password, ADMIN_PASSWORD);
+  if (!isValid) {
+    markAdminAuthFailure(ip);
+    res.set('WWW-Authenticate', 'Basic realm="admin"');
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  clearAdminAuthFailures(ip);
   return next();
 };
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+app.get('/health/db', async (_req, res) => {
+  try {
+    await withPrismaRetry('health/db', async () => prisma.$queryRawUnsafe('SELECT 1 AS ok;'), 2);
+    return res.json({ ok: true, db: 'up', timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error('health/db error', error);
+    return res.status(503).json({ ok: false, db: 'down', error: 'database_unavailable' });
+  }
 });
 
 app.post('/auth/phone/start', async (req, res) => {
@@ -982,11 +1179,13 @@ app.post('/sync/push', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'data is required' });
     }
 
-    const record = await prisma.userData.upsert({
-      where: { userId },
-      update: { data },
-      create: { userId, data },
-    });
+    const record = await withPrismaRetry('sync/push', async () =>
+      prisma.userData.upsert({
+        where: { userId },
+        update: { data },
+        create: { userId, data },
+      })
+    );
 
     return res.json({ ok: true, updatedAt: record.updatedAt });
   } catch (error) {
@@ -1004,7 +1203,9 @@ app.post('/sync/delete-account', async (req, res) => {
     }
 
     const nowIso = new Date().toISOString();
-    const existing = await prisma.userData.findUnique({ where: { userId } });
+    const existing = await withPrismaRetry('sync/delete-account:findUnique', async () =>
+      prisma.userData.findUnique({ where: { userId } })
+    );
     const existingData =
       existing?.data && typeof existing.data === 'object' && !Array.isArray(existing.data)
         ? existing.data
@@ -1030,11 +1231,13 @@ app.post('/sync/delete-account', async (req, res) => {
       },
     };
 
-    const record = await prisma.userData.upsert({
-      where: { userId },
-      update: { data: nextData },
-      create: { userId, data: nextData },
-    });
+    const record = await withPrismaRetry('sync/delete-account:upsert', async () =>
+      prisma.userData.upsert({
+        where: { userId },
+        update: { data: nextData },
+        create: { userId, data: nextData },
+      })
+    );
 
     return res.json({ ok: true, updatedAt: record.updatedAt, deletedAt: nowIso });
   } catch (error) {
@@ -1047,7 +1250,9 @@ app.post('/sync/delete-account', async (req, res) => {
 app.get('/sync/pull/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const record = await prisma.userData.findUnique({ where: { userId } });
+    const record = await withPrismaRetry('sync/pull', async () =>
+      prisma.userData.findUnique({ where: { userId } })
+    );
     if (!record) {
       return res.status(404).json({ ok: false, error: 'not_found' });
     }
@@ -1061,15 +1266,24 @@ app.get('/sync/pull/:userId', async (req, res) => {
 // Admin endpoints
 app.get('/admin/users', requireAdmin, async (_req, res) => {
   try {
-    const aiStatsRows = await prisma.$queryRawUnsafe(`
-      SELECT
-        "userId",
-        COUNT(*)::int AS "aiMessagesCount",
-        MAX("createdAt") AS "lastAiMessageAt"
-      FROM "AiChatMessage"
-      WHERE "userId" IS NOT NULL
-      GROUP BY "userId";
-    `);
+    const { aiStatsRows, users } = await withPrismaRetry('admin/users', async () => {
+      const aiStatsRows = await prisma.$queryRawUnsafe(`
+        SELECT
+          "userId",
+          COUNT(*)::int AS "aiMessagesCount",
+          MAX("createdAt") AS "lastAiMessageAt"
+        FROM "AiChatMessage"
+        WHERE "userId" IS NOT NULL
+        GROUP BY "userId";
+      `);
+      const users = await prisma.userData.findMany({
+        select: { userId: true, createdAt: true, updatedAt: true, data: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      return { aiStatsRows, users };
+    });
+
     const aiStatsByUserId = new Map(
       (Array.isArray(aiStatsRows) ? aiStatsRows : []).map((row) => [
         String(row.userId),
@@ -1080,10 +1294,6 @@ app.get('/admin/users', requireAdmin, async (_req, res) => {
       ])
     );
 
-    const users = await prisma.userData.findMany({
-      select: { userId: true, createdAt: true, updatedAt: true, data: true },
-      orderBy: { updatedAt: 'desc' },
-    });
     const normalized = users.map((item) => {
       const snapshot =
         item?.data && typeof item.data === 'object' && !Array.isArray(item.data) ? item.data : {};
@@ -1121,44 +1331,50 @@ app.get('/admin/user/:userId', requireAdmin, async (req, res) => {
     );
     const includeAi = String(req.query?.includeAi ?? '1') !== '0';
 
-    const record = await prisma.userData.findUnique({ where: { userId } });
+    const record = await withPrismaRetry('admin/user:record', async () =>
+      prisma.userData.findUnique({ where: { userId } })
+    );
     if (!record) {
       return res.status(404).json({ ok: false, error: 'not_found' });
     }
 
-    const [aiCountRow] = await prisma.$queryRawUnsafe(
-      `
-        SELECT COUNT(*)::int AS "count"
-        FROM "AiChatMessage"
-        WHERE "userId" = $1;
-      `,
-      userId
+    const [aiCountRow] = await withPrismaRetry('admin/user:ai-count', async () =>
+      prisma.$queryRawUnsafe(
+        `
+          SELECT COUNT(*)::int AS "count"
+          FROM "AiChatMessage"
+          WHERE "userId" = $1;
+        `,
+        userId
+      )
     );
     const aiTotalCount = Number(aiCountRow?.count || 0);
 
     const aiChats = includeAi
-      ? await prisma.$queryRawUnsafe(
-          `
-            SELECT
-              "id",
-              "userId",
-              "selectedVenueId",
-              "provider",
-              "requestMessage",
-              "requestHistory",
-              "userContext",
-              "reply",
-              "status",
-              "error",
-              "providerErrors",
-              "createdAt"
-            FROM "AiChatMessage"
-            WHERE "userId" = $1
-            ORDER BY "createdAt" DESC
-            LIMIT $2::int;
-          `,
-          userId,
-          aiLimit
+      ? await withPrismaRetry('admin/user:ai-list', async () =>
+          prisma.$queryRawUnsafe(
+            `
+              SELECT
+                "id",
+                "userId",
+                "selectedVenueId",
+                "provider",
+                "requestMessage",
+                "requestHistory",
+                "userContext",
+                "reply",
+                "status",
+                "error",
+                "providerErrors",
+                "createdAt"
+              FROM "AiChatMessage"
+              WHERE "userId" = $1
+              ORDER BY "createdAt" DESC
+              LIMIT $2::int;
+            `,
+            userId,
+            aiLimit
+          )
         )
       : [];
 
@@ -1188,51 +1404,53 @@ app.get('/admin/ai/chats', requireAdmin, async (req, res) => {
       ADMIN_AI_CHAT_MAX_LIMIT
     );
 
-    const rows = userId
-      ? await prisma.$queryRawUnsafe(
-          `
-            SELECT
-              "id",
-              "userId",
-              "selectedVenueId",
-              "provider",
-              "requestMessage",
-              "requestHistory",
-              "userContext",
-              "reply",
-              "status",
-              "error",
-              "providerErrors",
-              "createdAt"
-            FROM "AiChatMessage"
-            WHERE "userId" = $1
-            ORDER BY "createdAt" DESC
-            LIMIT $2::int;
-          `,
-          userId,
-          limit
-        )
-      : await prisma.$queryRawUnsafe(
-          `
-            SELECT
-              "id",
-              "userId",
-              "selectedVenueId",
-              "provider",
-              "requestMessage",
-              "requestHistory",
-              "userContext",
-              "reply",
-              "status",
-              "error",
-              "providerErrors",
-              "createdAt"
-            FROM "AiChatMessage"
-            ORDER BY "createdAt" DESC
-            LIMIT $1::int;
-          `,
-          limit
-        );
+    const rows = await withPrismaRetry('admin/ai/chats', async () =>
+      userId
+        ? prisma.$queryRawUnsafe(
+            `
+              SELECT
+                "id",
+                "userId",
+                "selectedVenueId",
+                "provider",
+                "requestMessage",
+                "requestHistory",
+                "userContext",
+                "reply",
+                "status",
+                "error",
+                "providerErrors",
+                "createdAt"
+              FROM "AiChatMessage"
+              WHERE "userId" = $1
+              ORDER BY "createdAt" DESC
+              LIMIT $2::int;
+            `,
+            userId,
+            limit
+          )
+        : prisma.$queryRawUnsafe(
+            `
+              SELECT
+                "id",
+                "userId",
+                "selectedVenueId",
+                "provider",
+                "requestMessage",
+                "requestHistory",
+                "userContext",
+                "reply",
+                "status",
+                "error",
+                "providerErrors",
+                "createdAt"
+              FROM "AiChatMessage"
+              ORDER BY "createdAt" DESC
+              LIMIT $1::int;
+            `,
+            limit
+          )
+    );
 
     return res.json({
       ok: true,
@@ -1252,49 +1470,51 @@ app.get('/admin/phone-verifications', requireAdmin, async (req, res) => {
     const normalizedPhone = requestedPhone ? normalizeRuPhone(requestedPhone) : null;
     const limit = parseAdminLimit(req.query?.limit, ADMIN_PHONE_DEFAULT_LIMIT, ADMIN_PHONE_MAX_LIMIT);
 
-    const rows = normalizedPhone
-      ? await prisma.$queryRawUnsafe(
-          `
-            SELECT
-              "id",
-              "phone",
-              "method",
-              "callcheckId",
-              "callPhone",
-              "attemptsLeft",
-              "expiresAt",
-              "verifiedAt",
-              "consumedAt",
-              "createdAt",
-              "updatedAt"
-            FROM "PhoneVerificationSession"
-            WHERE "phone" = $1
-            ORDER BY "createdAt" DESC
-            LIMIT $2::int;
-          `,
-          normalizedPhone,
-          limit
-        )
-      : await prisma.$queryRawUnsafe(
-          `
-            SELECT
-              "id",
-              "phone",
-              "method",
-              "callcheckId",
-              "callPhone",
-              "attemptsLeft",
-              "expiresAt",
-              "verifiedAt",
-              "consumedAt",
-              "createdAt",
-              "updatedAt"
-            FROM "PhoneVerificationSession"
-            ORDER BY "createdAt" DESC
-            LIMIT $1::int;
-          `,
-          limit
-        );
+    const rows = await withPrismaRetry('admin/phone-verifications', async () =>
+      normalizedPhone
+        ? prisma.$queryRawUnsafe(
+            `
+              SELECT
+                "id",
+                "phone",
+                "method",
+                "callcheckId",
+                "callPhone",
+                "attemptsLeft",
+                "expiresAt",
+                "verifiedAt",
+                "consumedAt",
+                "createdAt",
+                "updatedAt"
+              FROM "PhoneVerificationSession"
+              WHERE "phone" = $1
+              ORDER BY "createdAt" DESC
+              LIMIT $2::int;
+            `,
+            normalizedPhone,
+            limit
+          )
+        : prisma.$queryRawUnsafe(
+            `
+              SELECT
+                "id",
+                "phone",
+                "method",
+                "callcheckId",
+                "callPhone",
+                "attemptsLeft",
+                "expiresAt",
+                "verifiedAt",
+                "consumedAt",
+                "createdAt",
+                "updatedAt"
+              FROM "PhoneVerificationSession"
+              ORDER BY "createdAt" DESC
+              LIMIT $1::int;
+            `,
+            limit
+          )
+    );
 
     return res.json({
       ok: true,

@@ -70,7 +70,7 @@ export default function AppWrapper() {
 
   const contextValue: AppContextType = useMemo(() => ({ navigateToAuth }), []);
 
-  const syncLocalSnapshot = useCallback(async () => {
+  const syncLocalSnapshot = useCallback(async (force = false) => {
     if (syncInFlightRef.current) {
       return false;
     }
@@ -87,7 +87,7 @@ export default function AppWrapper() {
       }
 
       syncInFlightRef.current = true;
-      const pushed = await pushLocalDataToServer();
+      const pushed = await pushLocalDataToServer(force);
       if (pushed) {
         await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
       }
@@ -108,7 +108,7 @@ export default function AppWrapper() {
         // Первая инициализация: пробуем подтянуть данные сервера только до первичного sync-флага.
         const pulled = syncedFlag ? false : await pullServerDataToLocal(false);
         // Затем всегда пытаемся отправить локальные изменения (внутри есть проверка хеша).
-        const pushed = await syncLocalSnapshot();
+        const pushed = await syncLocalSnapshot(false);
         if (restoredMissingServerSnapshot || (!syncedFlag && (pulled || pushed))) {
           await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
         }
@@ -121,20 +121,100 @@ export default function AppWrapper() {
   }, [syncLocalSnapshot]);
 
   useEffect(() => {
-    const syncOnActive = (state: string) => {
+    const syncOnAppStateChange = (state: string) => {
       if (state === 'active') {
-        void syncLocalSnapshot();
+        void syncLocalSnapshot(false);
+        return;
+      }
+      if (state === 'inactive' || state === 'background') {
+        void syncLocalSnapshot(true);
       }
     };
 
-    const appStateSubscription = AppState.addEventListener('change', syncOnActive);
+    const appStateSubscription = AppState.addEventListener('change', syncOnAppStateChange);
     const syncIntervalId = setInterval(() => {
-      void syncLocalSnapshot();
-    }, 45000);
+      void syncLocalSnapshot(false);
+    }, 20000);
 
     return () => {
       appStateSubscription.remove();
       clearInterval(syncIntervalId);
+    };
+  }, [syncLocalSnapshot]);
+
+  useEffect(() => {
+    const syncMetaKeys = new Set([
+      'sync_last_snapshot_hash_v1',
+      'sync_last_success_at_v1',
+      'serverSyncCompleted_v1',
+    ]);
+    let syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleSync = (force = false) => {
+      if (syncTimer) {
+        clearTimeout(syncTimer);
+      }
+      syncTimer = setTimeout(() => {
+        syncTimer = null;
+        void syncLocalSnapshot(force);
+      }, 1500);
+    };
+
+    const shouldSkipKey = (key: string) => syncMetaKeys.has(key);
+    const shouldSkipKeys = (keys: string[]) => keys.every((key) => shouldSkipKey(key));
+
+    const originalSetItem = AsyncStorage.setItem.bind(AsyncStorage);
+    const originalMultiSet = AsyncStorage.multiSet.bind(AsyncStorage);
+    const originalRemoveItem = AsyncStorage.removeItem.bind(AsyncStorage);
+    const originalMultiRemove = AsyncStorage.multiRemove.bind(AsyncStorage);
+
+    AsyncStorage.setItem = (async (key: string, value: string, callback?: (error?: Error | null) => void) => {
+      const result = await originalSetItem(key, value, callback);
+      if (!shouldSkipKey(key)) {
+        scheduleSync(false);
+      }
+      return result;
+    }) as typeof AsyncStorage.setItem;
+
+    AsyncStorage.multiSet = (async (
+      keyValuePairs: readonly [string, string][],
+      callback?: (errors?: Error[] | null) => void
+    ) => {
+      const result = await originalMultiSet(keyValuePairs, callback);
+      const keys = keyValuePairs.map(([key]) => key);
+      if (!shouldSkipKeys(keys)) {
+        scheduleSync(false);
+      }
+      return result;
+    }) as typeof AsyncStorage.multiSet;
+
+    AsyncStorage.removeItem = (async (key: string, callback?: (error?: Error | null) => void) => {
+      const result = await originalRemoveItem(key, callback);
+      if (!shouldSkipKey(key)) {
+        scheduleSync(false);
+      }
+      return result;
+    }) as typeof AsyncStorage.removeItem;
+
+    AsyncStorage.multiRemove = (async (
+      keys: readonly string[],
+      callback?: (errors?: Error[] | null) => void
+    ) => {
+      const result = await originalMultiRemove(keys, callback);
+      if (!shouldSkipKeys(Array.from(keys))) {
+        scheduleSync(false);
+      }
+      return result;
+    }) as typeof AsyncStorage.multiRemove;
+
+    return () => {
+      AsyncStorage.setItem = originalSetItem;
+      AsyncStorage.multiSet = originalMultiSet;
+      AsyncStorage.removeItem = originalRemoveItem;
+      AsyncStorage.multiRemove = originalMultiRemove;
+      if (syncTimer) {
+        clearTimeout(syncTimer);
+      }
     };
   }, [syncLocalSnapshot]);
 

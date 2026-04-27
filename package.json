@@ -8,6 +8,7 @@
     "android": "expo start --android",
     "web": "expo start --web",
     "backup:server": "node ./scripts/backup-server-snapshots.mjs",
+    "smoke:server": "node ./scripts/smoke-backend.mjs",
     "pwa:build": "bash ./scripts/pwa-build.sh",
     "lint": "expo lint"
   },
