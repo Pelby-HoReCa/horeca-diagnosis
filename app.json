@@ -2,14 +2,18 @@
   "expo": {
     "name": "horeca-diagnosis",
     "slug": "horeca-diagnosis",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app-icon-1024.png",
     "scheme": "horecadiagnosis",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "ru.pelby.horecadiagnosis",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -31,6 +35,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "70037d30-2771-4d0c-a3f5-992862a9c546"
+      }
+    },
+    "owner": "pelby"
   }
 }

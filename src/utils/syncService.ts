@@ -8,6 +8,19 @@ const SYNC_META_KEYS = new Set([
   SYNC_LAST_HASH_KEY,
   SYNC_LAST_SUCCESS_AT_KEY,
   'serverSyncCompleted_v1',
+  'serverSyncUserId_v1',
+]);
+const SYNC_BOOTSTRAP_KEYS = new Set([
+  ...SYNC_META_KEYS,
+  'authToken',
+  'isAuthenticated',
+  'userId',
+  'userEmail',
+  'hasSeenOnboarding',
+  'registrationStep1',
+  'registrationStep2',
+  'registrationStep3',
+  'registeredUsers',
 ]);
 const SYNC_REQUEST_TIMEOUT_MS = 15000;
 const SYNC_RETRY_COUNT = 1;
@@ -239,7 +252,8 @@ export const pullServerDataToLocal = async (force = false): Promise<boolean> => 
 
     if (!force) {
       const existingKeys = await AsyncStorage.getAllKeys();
-      if (existingKeys.length > 0) {
+      const hasMeaningfulLocalData = existingKeys.some((key) => !SYNC_BOOTSTRAP_KEYS.has(key));
+      if (hasMeaningfulLocalData) {
         return false;
       }
     }

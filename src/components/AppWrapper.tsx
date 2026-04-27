@@ -85,11 +85,20 @@ export default function AppWrapper() {
       if (!isAuthorized) {
         return false;
       }
+      if (!force) {
+        const syncCompleted = await AsyncStorage.getItem('serverSyncCompleted_v1');
+        if (syncCompleted !== 'true') {
+          return false;
+        }
+      }
 
       syncInFlightRef.current = true;
       const pushed = await pushLocalDataToServer(force);
       if (pushed) {
-        await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
+        await AsyncStorage.multiSet([
+          ['serverSyncCompleted_v1', 'true'],
+          ['serverSyncUserId_v1', userId],
+        ]);
       }
       return pushed;
     } catch (error) {
@@ -103,14 +112,38 @@ export default function AppWrapper() {
   useEffect(() => {
     const syncOnce = async () => {
       try {
+        const [currentUserId, syncedUserId] = await Promise.all([
+          AsyncStorage.getItem('userId'),
+          AsyncStorage.getItem('serverSyncUserId_v1'),
+        ]);
+        if (currentUserId && syncedUserId && currentUserId !== syncedUserId) {
+          await AsyncStorage.multiRemove([
+            'sync_last_snapshot_hash_v1',
+            'sync_last_success_at_v1',
+            'serverSyncCompleted_v1',
+          ]);
+        }
+
         const restoredMissingServerSnapshot = await ensureServerSnapshotForCurrentUser();
         const syncedFlag = await AsyncStorage.getItem('serverSyncCompleted_v1');
         // Первая инициализация: пробуем подтянуть данные сервера только до первичного sync-флага.
         const pulled = syncedFlag ? false : await pullServerDataToLocal(false);
+        if ((restoredMissingServerSnapshot || (!syncedFlag && pulled)) && currentUserId) {
+          await AsyncStorage.multiSet([
+            ['serverSyncCompleted_v1', 'true'],
+            ['serverSyncUserId_v1', currentUserId],
+          ]);
+        }
         // Затем всегда пытаемся отправить локальные изменения (внутри есть проверка хеша).
         const pushed = await syncLocalSnapshot(false);
-        if (restoredMissingServerSnapshot || (!syncedFlag && (pulled || pushed))) {
-          await AsyncStorage.setItem('serverSyncCompleted_v1', 'true');
+        if (
+          (restoredMissingServerSnapshot || (!syncedFlag && (pulled || pushed))) &&
+          currentUserId
+        ) {
+          await AsyncStorage.multiSet([
+            ['serverSyncCompleted_v1', 'true'],
+            ['serverSyncUserId_v1', currentUserId],
+          ]);
         }
       } catch (error) {
         console.error('Ошибка синхронизации с сервером:', error);
@@ -147,6 +180,7 @@ export default function AppWrapper() {
       'sync_last_snapshot_hash_v1',
       'sync_last_success_at_v1',
       'serverSyncCompleted_v1',
+      'serverSyncUserId_v1',
     ]);
     let syncTimer: ReturnType<typeof setTimeout> | null = null;
 

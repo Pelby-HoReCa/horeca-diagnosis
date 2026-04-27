@@ -1215,11 +1215,31 @@ app.post('/sync/push', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'data is required' });
     }
 
+    const existingRecord = await withPrismaRetry('sync/push:findUnique', async () =>
+      prisma.userData.findUnique({ where: { userId } })
+    );
+    const existingData =
+      existingRecord?.data &&
+      typeof existingRecord.data === 'object' &&
+      !Array.isArray(existingRecord.data)
+        ? { ...existingRecord.data }
+        : {};
+    const incomingData = !Array.isArray(data) ? data : {};
+
+    const nextData = { ...existingData };
+    Object.entries(incomingData).forEach(([key, value]) => {
+      if (value === null || typeof value === 'undefined') {
+        delete nextData[key];
+        return;
+      }
+      nextData[key] = value;
+    });
+
     const record = await withPrismaRetry('sync/push', async () =>
       prisma.userData.upsert({
         where: { userId },
-        update: { data },
-        create: { userId, data },
+        update: { data: nextData },
+        create: { userId, data: nextData },
       })
     );
 

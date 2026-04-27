@@ -47,6 +47,7 @@ backend/.env
 # local backups and ad-hoc artifacts
 .backups/*.tar.gz
 .backups/server-json/
+.backups/release-checkpoints/
 backup_*.tar.gz
 backup_*/
 deliverables/

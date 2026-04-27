@@ -331,11 +331,17 @@ export const logout = async (): Promise<void> => {
   try {
     // TODO: Реальный API вызов для инвалидации токена
     console.log('Начало выхода из аккаунта...');
-    await AsyncStorage.removeItem('authToken');
-    await AsyncStorage.removeItem('isAuthenticated');
-    await AsyncStorage.removeItem('userEmail');
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('userAvatar'); // Также удаляем аватар
+    await AsyncStorage.multiRemove([
+      'authToken',
+      'isAuthenticated',
+      'userEmail',
+      'userId',
+      'userAvatar', // Также удаляем аватар
+      'sync_last_snapshot_hash_v1',
+      'sync_last_success_at_v1',
+      'serverSyncCompleted_v1',
+      'serverSyncUserId_v1',
+    ]);
     console.log('Выход из аккаунта выполнен успешно');
   } catch (error) {
     console.error('Ошибка выхода:', error);
@@ -475,6 +481,10 @@ export const deleteAccount = async (): Promise<boolean> => {
           'userEmail',
           'userId',
           'userAvatar',
+          'sync_last_snapshot_hash_v1',
+          'sync_last_success_at_v1',
+          'serverSyncCompleted_v1',
+          'serverSyncUserId_v1',
         ])
       )
     );
